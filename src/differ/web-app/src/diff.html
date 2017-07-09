@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>Differ</title>
+
+    <style type="text/css">
+    	html,body{margin:0;padding:0;}
+
+    	.page{
+    		position:absolute;top:0;left:0;right:0;bottom:0;width:100%;
+    		display:flex;
+            flex-direction:column;
+
+    	}
+    	.header{
+            height:3em;
+            display:flex;
+            align-items: center;
+            justify-content: center;
+    	}
+    	.body{
+            height:calc(100% - 3em);
+    	}
+
+        .diff {
+            display: flex;
+            margin-bottom: 1em;
+        }
+
+        .diff--left {
+            width:49%;
+        }
+
+        .diff--sep{
+            flex: 1 0 auto;
+        }
+
+        .diff--right {
+            width:49%;
+        }
+
+        .diff--left, .diff--right {
+            position:relative;
+        }
+
+        .diff--bounds {
+            position:absolute;
+            border:2px red solid;
+        }
+
+        [class^=diff--] img {
+            width: 100%;
+        }
+
+    </style>
+</head>
+
+<body>
+    <div id="mount"></div>
+    <script src="script.js"></script>
+    <script>
+        window.diffApp = new DiffApp('[[CONFIG]]')
+        diffApp.start()
+    </script>
+</body>
+
+</html>
