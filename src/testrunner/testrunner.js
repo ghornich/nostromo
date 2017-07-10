@@ -1,7 +1,7 @@
 const Promise=require('bluebird')
 Promise.config({ longStackTraces: true })
 const Loggr=require('loggr')
-const defaults=require('defaults')
+const defaults=require('shallow-defaults')
 const Schema=require('schema-inspector')
 const http=require('http')
 const fs=require('fs')

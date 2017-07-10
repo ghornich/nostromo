@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 var pathlib = require('path')
-var defaults = require('defaults')
+var defaults = require('shallow-defaults')
 var args = require('minimist')(process.argv.slice(2))
 var BrowserSpawners = require('browser-spawners')
 var Loggr=require('loggr')

@@ -14,9 +14,8 @@
   "author": "ghornich",
   "dependencies": {
     "bluebird": "^3.5.0",
-    "browser-spawners": "github:ghornich/browser-spawners",
     "browser-puppeteer": "github:ghornich/browser-puppeteer",
-    "defaults": "^1.0.3",
+    "browser-spawners": "github:ghornich/browser-spawners",
     "glob": "^7.1.2",
     "jquery": "^3.2.1",
     "jsonf": "github:ghornich/jsonf",
@@ -28,6 +27,7 @@
     "pngjs": "^3.2.0",
     "schema-inspector": "^1.6.8",
     "screenshot-js": "github:ghornich/screenshot-js",
+    "shallow-defaults": "github:ghornich/shallow-defaults",
     "tap-writer": "github:ghornich/tap-writer",
     "ws": "^3.0.0"
   },
