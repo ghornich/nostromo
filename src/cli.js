@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+var fs=require('fs')
 var pathlib = require('path')
 var defaults = require('shallow-defaults')
 var args = require('minimist')(process.argv.slice(2))
@@ -20,11 +21,20 @@ const DEFAULT_DIFF_CFG_FILE='nostromo.diff.conf.js'
 
 if (args.record || args.rec) {
     var configPath = args.config||args.c||DEFAULT_REC_CFG_FILE
-    var configFn=require(pathlib.resolve(configPath))
-    
-    var baseConf = configFn({
-        LOG_LEVELS: Loggr.LEVELS
-    })
+    var baseConf={}
+
+    try {
+        fs.statSync(configPath)
+        var configFn=require(pathlib.resolve(configPath))
+
+        baseConf = configFn({
+            LOG_LEVELS: Loggr.LEVELS
+        })
+    }
+    catch(e){
+        console.log(e.message)
+        console.log('Using default conf')
+    }
 
     var conf = defaults(baseConf, {
         recorderAppPort: 7700,

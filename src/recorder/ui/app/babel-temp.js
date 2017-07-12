@@ -14,7 +14,7 @@ var defaults = require('shallow-defaults');
 var util = require('util');
 var JSONF = require('jsonf');
 var m = require('mithril');
-var ReconnectingWebsocket = require('reconnecting-websocket');
+var Ws4ever = require('ws4ever');
 
 var CommandList = require('../../../command-list');
 var CMD_TYPES = require('../../../command').TYPES;
@@ -66,6 +66,15 @@ function RecorderApp(conf) {
         },
         addScreenshotAssert: function addScreenshotAssert() {
             self.commandList.add({ type: CMD_TYPES.ASSERT_SCREENSHOT });
+        },
+        downloadTestfile: function downloadTestfile() {
+            var testFileStr = renderTestfile(self.commandList);
+            var blob = new Blob([testFileStr], { type: 'application/octet-stream' });
+            var dlTarget = document.getElementById('download-target');
+            var dlUrl = window.URL.createObjectURL(blob);
+            dlTarget.href = dlUrl;
+            dlTarget.download = 'testfile.js';
+            dlTarget.click();
         }
     };
 }
@@ -75,14 +84,9 @@ function RecorderApp(conf) {
 // TODO promise, resolve when loaded
 RecorderApp.prototype.start = function () {
     var self = this;
-    self._wsConn = new ReconnectingWebsocket(location.origin.replace('http://', 'ws://'), [], {
-        minReconnectionDelay: 1000,
-        maxReconnectionDelay: 1000,
-        reconnectionDelayGrowFactor: 1,
-        connectionTimeout: Number.POSITIVE_INFINITY
-    });
+    self._wsConn = new Ws4ever(location.origin.replace('http://', 'ws://'));
 
-    self._wsConn.addEventListener('message', function (e) {
+    self._wsConn.onmessage = function (e) {
         var data = e.data;
 
         try {
@@ -106,7 +110,7 @@ RecorderApp.prototype.start = function () {
         } catch (e) {
             console.warn('message error: ' + e);
         }
-    });
+    };
 
     var MountComp = {
         view: function view() {
@@ -116,11 +120,6 @@ RecorderApp.prototype.start = function () {
 
     m.mount($('#mount')[0], MountComp);
 };
-
-/*RecorderApp.prototype._sendMessage = function(msg){
-    msg=typeof msg==='object'?JSONF.stringify(msg):msg
-    this._wsConn.send(msg)
-}*/
 
 RecorderApp.prototype.onCapturedEvent = function (data) {
     if (!this._isRecording) return;
@@ -209,6 +208,12 @@ var RootComp = {
                 { onclick: actions.addScreenshotAssert },
                 'Add screenshot assert'
             ),
+            '\xA0',
+            m(
+                'button',
+                { onclick: actions.downloadTestfile },
+                'Download testfile'
+            ),
             '\xA0 | ',
             app._isRecording ? 'Recording' : 'Not recording',
             m(
@@ -236,7 +241,8 @@ var RootComp = {
                     null,
                     renderTestfile(app.commandList)
                 )
-            )
+            ),
+            m('a', { href: '#', id: 'download-target', 'class': 'hidden' })
         );
     }
 

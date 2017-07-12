@@ -34970,217 +34970,6 @@ process.chdir = function (dir) {
 process.umask = function() { return 0; };
 
 },{}],11:[function(require,module,exports){
-"use strict";
-var isWebSocket = function (constructor) {
-    return constructor && constructor.CLOSING === 2;
-};
-var isGlobalWebSocket = function () {
-    return typeof WebSocket !== 'undefined' && isWebSocket(WebSocket);
-};
-var getDefaultOptions = function () { return ({
-    constructor: isGlobalWebSocket() ? WebSocket : null,
-    maxReconnectionDelay: 10000,
-    minReconnectionDelay: 1500,
-    reconnectionDelayGrowFactor: 1.3,
-    connectionTimeout: 4000,
-    maxRetries: Infinity,
-    debug: false,
-}); };
-var bypassProperty = function (src, dst, name) {
-    Object.defineProperty(dst, name, {
-        get: function () { return src[name]; },
-        set: function (value) { src[name] = value; },
-        enumerable: true,
-        configurable: true,
-    });
-};
-var initReconnectionDelay = function (config) {
-    return (config.minReconnectionDelay + Math.random() * config.minReconnectionDelay);
-};
-var updateReconnectionDelay = function (config, previousDelay) {
-    var newDelay = previousDelay * config.reconnectionDelayGrowFactor;
-    return (newDelay > config.maxReconnectionDelay)
-        ? config.maxReconnectionDelay
-        : newDelay;
-};
-var LEVEL_0_EVENTS = ['onopen', 'onclose', 'onmessage', 'onerror'];
-var reassignEventListeners = function (ws, oldWs, listeners) {
-    Object.keys(listeners).forEach(function (type) {
-        listeners[type].forEach(function (_a) {
-            var listener = _a[0], options = _a[1];
-            ws.addEventListener(type, listener, options);
-        });
-    });
-    if (oldWs) {
-        LEVEL_0_EVENTS.forEach(function (name) { ws[name] = oldWs[name]; });
-    }
-};
-var ReconnectingWebsocket = function (url, protocols, options) {
-    var _this = this;
-    if (options === void 0) { options = {}; }
-    var ws;
-    var connectingTimeout;
-    var reconnectDelay = 0;
-    var retriesCount = 0;
-    var shouldRetry = true;
-    var savedOnClose = null;
-    var listeners = {};
-    // require new to construct
-    if (!(this instanceof ReconnectingWebsocket)) {
-        throw new TypeError("Failed to construct 'ReconnectingWebSocket': Please use the 'new' operator");
-    }
-    // Set config. Not using `Object.assign` because of IE11
-    var config = getDefaultOptions();
-    Object.keys(config)
-        .filter(function (key) { return options.hasOwnProperty(key); })
-        .forEach(function (key) { return config[key] = options[key]; });
-    if (!isWebSocket(config.constructor)) {
-        throw new TypeError('Invalid WebSocket constructor. Set `options.constructor`');
-    }
-    var log = config.debug ? function () {
-        var params = [];
-        for (var _i = 0; _i < arguments.length; _i++) {
-            params[_i] = arguments[_i];
-        }
-        return console.log.apply(console, ['RWS:'].concat(params));
-    } : function () { };
-    /**
-     * Not using dispatchEvent, otherwise we must use a DOM Event object
-     * Deferred because we want to handle the close event before this
-     */
-    var emitError = function (code, msg) { return setTimeout(function () {
-        var err = new Error(msg);
-        err.code = code;
-        if (Array.isArray(listeners.error)) {
-            listeners.error.forEach(function (_a) {
-                var fn = _a[0];
-                return fn(err);
-            });
-        }
-        if (ws.onerror) {
-            ws.onerror(err);
-        }
-    }, 0); };
-    var handleClose = function () {
-        log('handleClose', { shouldRetry: shouldRetry });
-        retriesCount++;
-        log('retries count:', retriesCount);
-        if (retriesCount > config.maxRetries) {
-            emitError('EHOSTDOWN', 'Too many failed connection attempts');
-            return;
-        }
-        if (!reconnectDelay) {
-            reconnectDelay = initReconnectionDelay(config);
-        }
-        else {
-            reconnectDelay = updateReconnectionDelay(config, reconnectDelay);
-        }
-        log('handleClose - reconnectDelay:', reconnectDelay);
-        if (shouldRetry) {
-            setTimeout(connect, reconnectDelay);
-        }
-    };
-    var connect = function () {
-        if (!shouldRetry) {
-            return;
-        }
-        log('connect');
-        var oldWs = ws;
-        ws = new config.constructor(url, protocols);
-        connectingTimeout = setTimeout(function () {
-            log('timeout');
-            ws.close();
-            emitError('ETIMEDOUT', 'Connection timeout');
-        }, config.connectionTimeout);
-        log('bypass properties');
-        for (var key in ws) {
-            // @todo move to constant
-            if (['addEventListener', 'removeEventListener', 'close', 'send'].indexOf(key) < 0) {
-                bypassProperty(ws, _this, key);
-            }
-        }
-        ws.addEventListener('open', function () {
-            clearTimeout(connectingTimeout);
-            log('open');
-            reconnectDelay = initReconnectionDelay(config);
-            log('reconnectDelay:', reconnectDelay);
-            retriesCount = 0;
-        });
-        ws.addEventListener('close', handleClose);
-        reassignEventListeners(ws, oldWs, listeners);
-        // because when closing with fastClose=true, it is saved and set to null to avoid double calls
-        ws.onclose = ws.onclose || savedOnClose;
-        savedOnClose = null;
-    };
-    log('init');
-    connect();
-    this.close = function (code, reason, _a) {
-        if (code === void 0) { code = 1000; }
-        if (reason === void 0) { reason = ''; }
-        var _b = _a === void 0 ? {} : _a, _c = _b.keepClosed, keepClosed = _c === void 0 ? false : _c, _d = _b.fastClose, fastClose = _d === void 0 ? true : _d, _e = _b.delay, delay = _e === void 0 ? 0 : _e;
-        log('close - params:', { reason: reason, keepClosed: keepClosed, fastClose: fastClose, delay: delay });
-        shouldRetry = !keepClosed;
-        if (delay) {
-            reconnectDelay = delay;
-        }
-        ws.close(code, reason);
-        if (fastClose) {
-            var fakeCloseEvent_1 = {
-                code: code,
-                reason: reason,
-                wasClean: true,
-            };
-            // execute close listeners soon with a fake closeEvent
-            // and remove them from the WS instance so they
-            // don't get fired on the real close.
-            handleClose();
-            ws.removeEventListener('close', handleClose);
-            // run and remove level2
-            if (Array.isArray(listeners.close)) {
-                listeners.close.forEach(function (_a) {
-                    var listener = _a[0], options = _a[1];
-                    listener(fakeCloseEvent_1);
-                    ws.removeEventListener('close', listener, options);
-                });
-            }
-            // run and remove level0
-            if (ws.onclose) {
-                savedOnClose = ws.onclose;
-                ws.onclose(fakeCloseEvent_1);
-                ws.onclose = null;
-            }
-        }
-    };
-    this.send = function (data) {
-        ws.send(data);
-    };
-    this.addEventListener = function (type, listener, options) {
-        if (Array.isArray(listeners[type])) {
-            if (!listeners[type].some(function (_a) {
-                var l = _a[0];
-                return l === listener;
-            })) {
-                listeners[type].push([listener, options]);
-            }
-        }
-        else {
-            listeners[type] = [[listener, options]];
-        }
-        ws.addEventListener(type, listener, options);
-    };
-    this.removeEventListener = function (type, listener, options) {
-        if (Array.isArray(listeners[type])) {
-            listeners[type] = listeners[type].filter(function (_a) {
-                var l = _a[0];
-                return l !== listener;
-            });
-        }
-        ws.removeEventListener(type, listener, options);
-    };
-};
-module.exports = ReconnectingWebsocket;
-
-},{}],12:[function(require,module,exports){
 'use strict'
 
 exports=module.exports=function(opts, defaults){
@@ -35195,7 +34984,7 @@ exports=module.exports=function(opts, defaults){
     return opts
 }
 
-},{}],13:[function(require,module,exports){
+},{}],12:[function(require,module,exports){
 if (typeof Object.create === 'function') {
   // implementation from standard node.js 'util' module
   module.exports = function inherits(ctor, superCtor) {
@@ -35220,14 +35009,14 @@ if (typeof Object.create === 'function') {
   }
 }
 
-},{}],14:[function(require,module,exports){
+},{}],13:[function(require,module,exports){
 module.exports = function isBuffer(arg) {
   return arg && typeof arg === 'object'
     && typeof arg.copy === 'function'
     && typeof arg.fill === 'function'
     && typeof arg.readUInt8 === 'function';
 }
-},{}],15:[function(require,module,exports){
+},{}],14:[function(require,module,exports){
 (function (process,global){
 // Copyright Joyent, Inc. and other Node contributors.
 //
@@ -35817,7 +35606,113 @@ function hasOwnProperty(obj, prop) {
 }
 
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./support/isBuffer":14,"_process":10,"inherits":13}],16:[function(require,module,exports){
+},{"./support/isBuffer":13,"_process":10,"inherits":12}],15:[function(require,module,exports){
+
+if (isNode()) {
+    module.exports=Ws4ever
+}
+else {
+    window.Ws4ever=Ws4ever
+}
+
+
+function Ws4ever(url, protocols, options){
+    this._opts=Object.assign({}, {
+        retryInterval:1000
+    }, options||{})
+
+    this._url=url
+    this._protocols=protocols
+    this._ws=null
+    this._isConnecting=false
+
+    this.onopen=noop
+    this.onclose=noop
+    this.onerror=noop
+    this.onmessage=noop
+
+    Object.defineProperties(this, {
+        readyState: {
+            get: function () { return this._ws?this._ws.readyState:WebSocket.CLOSED }
+        },
+        url: {
+            get: function () { return this._url }
+        },
+    })
+
+    this._ensureConnection=this._ensureConnection.bind(this)
+    this._onWsOpen=this._onWsOpen.bind(this)
+    this._onWsClose=this._onWsClose.bind(this)
+    // this._onWsError=this._onWsError.bind(this)
+    this._onWsMessage=this._onWsMessage.bind(this)
+
+    setInterval(this._ensureConnection, this._opts.retryInterval)
+}
+
+Ws4ever.prototype.isConnected=function(){
+    return Boolean(this._ws && this._ws.readyState === WebSocket.OPEN)
+}
+
+Ws4ever.prototype.send=function(msg){
+    if (!this.isConnected())throw new Error('cannot send message, ws closed')
+    this._ws.send(msg)
+}
+
+Ws4ever.prototype._ensureConnection=function(){
+    if (this.isConnected())return
+    if (this._isConnecting)return
+
+    try {
+        console.log('_ensureConnection: connecting')
+        this._isConnecting=true
+        this._ws=new WebSocket(this._url, this._protocols)
+        this._ws.onopen=this._onWsOpen
+        this._ws.onclose=this._onWsClose
+        this._ws.onerror=this._onWsError
+        this._ws.onmessage=this._onWsMessage
+    }
+    catch(e){
+        // TODO handle or log?
+        this._isConnecting=false
+        this._ws=null
+    }
+}
+
+Ws4ever.prototype._onWsOpen=function () {
+    console.log('_onWsOpen')
+    this.onopen.apply(null, arguments)
+    this._isConnecting=false
+}
+
+Ws4ever.prototype._onWsClose=function () {
+    console.log('_onWsClose')
+    this.onclose.apply(null, arguments)
+    this._isConnecting=false
+    this._ws=null
+}
+
+Ws4ever.prototype._onWsError=function () {
+    console.log('_onWsError')
+    this.onerror.apply(null, arguments)
+    // this._isConnecting=false
+    // this._ws=null
+}
+
+Ws4ever.prototype._onWsMessage=function () {
+    console.log('_onWsMessage')
+    this.onmessage.apply(null,arguments)
+}
+
+
+
+
+function noop(){}
+
+function isNode(){return typeof module==='object'&&typeof module.exports==='object'}
+
+
+
+},{}],16:[function(require,module,exports){
 var Command=require('./command')
 var TYPES=Command.TYPES
 
@@ -35936,7 +35831,7 @@ var defaults = require('shallow-defaults');
 var util = require('util');
 var JSONF = require('jsonf');
 var m = require('mithril');
-var ReconnectingWebsocket = require('reconnecting-websocket');
+var Ws4ever = require('ws4ever');
 
 var CommandList = require('../../../command-list');
 var CMD_TYPES = require('../../../command').TYPES;
@@ -35988,6 +35883,15 @@ function RecorderApp(conf) {
         },
         addScreenshotAssert: function addScreenshotAssert() {
             self.commandList.add({ type: CMD_TYPES.ASSERT_SCREENSHOT });
+        },
+        downloadTestfile: function downloadTestfile() {
+            var testFileStr = renderTestfile(self.commandList);
+            var blob = new Blob([testFileStr], { type: 'application/octet-stream' });
+            var dlTarget = document.getElementById('download-target');
+            var dlUrl = window.URL.createObjectURL(blob);
+            dlTarget.href = dlUrl;
+            dlTarget.download = 'testfile.js';
+            dlTarget.click();
         }
     };
 }
@@ -35997,14 +35901,9 @@ function RecorderApp(conf) {
 // TODO promise, resolve when loaded
 RecorderApp.prototype.start = function () {
     var self = this;
-    self._wsConn = new ReconnectingWebsocket(location.origin.replace('http://', 'ws://'), [], {
-        minReconnectionDelay: 1000,
-        maxReconnectionDelay: 1000,
-        reconnectionDelayGrowFactor: 1,
-        connectionTimeout: Number.POSITIVE_INFINITY
-    });
+    self._wsConn = new Ws4ever(location.origin.replace('http://', 'ws://'));
 
-    self._wsConn.addEventListener('message', function (e) {
+    self._wsConn.onmessage = function (e) {
         var data = e.data;
 
         try {
@@ -36028,7 +35927,7 @@ RecorderApp.prototype.start = function () {
         } catch (e) {
             console.warn('message error: ' + e);
         }
-    });
+    };
 
     var MountComp = {
         view: function view() {
@@ -36038,11 +35937,6 @@ RecorderApp.prototype.start = function () {
 
     m.mount($('#mount')[0], MountComp);
 };
-
-/*RecorderApp.prototype._sendMessage = function(msg){
-    msg=typeof msg==='object'?JSONF.stringify(msg):msg
-    this._wsConn.send(msg)
-}*/
 
 RecorderApp.prototype.onCapturedEvent = function (data) {
     if (!this._isRecording) return;
@@ -36131,6 +36025,12 @@ var RootComp = {
                 { onclick: actions.addScreenshotAssert },
                 'Add screenshot assert'
             ),
+            '\xA0',
+            m(
+                'button',
+                { onclick: actions.downloadTestfile },
+                'Download testfile'
+            ),
             '\xA0 | ',
             app._isRecording ? 'Recording' : 'Not recording',
             m(
@@ -36158,7 +36058,8 @@ var RootComp = {
                     null,
                     renderTestfile(app.commandList)
                 )
-            )
+            ),
+            m('a', { href: '#', id: 'download-target', 'class': 'hidden' })
         );
     }
 
@@ -36230,4 +36131,4 @@ function nl2backslashnl(str) {
     return str.replace(/\n/g, '\\n');
 }
 
-},{"../../../../node_modules/browser-puppeteer/src/messages.js":2,"../../../command":17,"../../../command-list":16,"bluebird":1,"get-unique-selector":3,"jquery":4,"jsonf":5,"lodash":6,"loggr":7,"mithril":8,"reconnecting-websocket":11,"shallow-defaults":12,"util":15}]},{},[18]);
+},{"../../../../node_modules/browser-puppeteer/src/messages.js":2,"../../../command":17,"../../../command-list":16,"bluebird":1,"get-unique-selector":3,"jquery":4,"jsonf":5,"lodash":6,"loggr":7,"mithril":8,"shallow-defaults":11,"util":14,"ws4ever":15}]},{},[18]);

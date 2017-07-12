@@ -12,7 +12,7 @@ var defaults=require('shallow-defaults')
 var util=require('util')
 var JSONF=require('jsonf')
 var m=require('mithril')
-var ReconnectingWebsocket=require('reconnecting-websocket')
+var Ws4ever=require('ws4ever')
 
 var CommandList = require('../../../command-list')
 var CMD_TYPES=require('../../../command').TYPES
@@ -58,7 +58,16 @@ function RecorderApp(conf){
     self.actions={
         toggleRecording:function(){self._isRecording=!self._isRecording},
         clearRecording:function(){self.commandList.clear()},
-        addScreenshotAssert:function(){self.commandList.add({ type: CMD_TYPES.ASSERT_SCREENSHOT })}
+        addScreenshotAssert:function(){self.commandList.add({ type: CMD_TYPES.ASSERT_SCREENSHOT })},
+        downloadTestfile:function(){
+            var testFileStr=renderTestfile(self.commandList)
+            var blob=new Blob([testFileStr], {type:'application/octet-stream'})
+            var dlTarget=document.getElementById('download-target')
+            var dlUrl=window.URL.createObjectURL(blob)
+            dlTarget.href=dlUrl
+            dlTarget.download='testfile.js'
+            dlTarget.click()
+        }
     }
 
 }
@@ -68,14 +77,9 @@ function RecorderApp(conf){
 // TODO promise, resolve when loaded
 RecorderApp.prototype.start = function(){
     var self=this
-    self._wsConn=new ReconnectingWebsocket(location.origin.replace('http://','ws://'), [], {
-        minReconnectionDelay: 1000,
-        maxReconnectionDelay: 1000,
-        reconnectionDelayGrowFactor: 1,
-        connectionTimeout: Number.POSITIVE_INFINITY,
-    })
+    self._wsConn=new Ws4ever(location.origin.replace('http://','ws://'))
 
-    self._wsConn.addEventListener('message', function(e){
+    self._wsConn.onmessage= function(e){
         var data=e.data
 
         try{
@@ -99,7 +103,7 @@ RecorderApp.prototype.start = function(){
         catch(e){
             console.warn('message error: '+e)
         }
-    })
+    }
 
     var MountComp={
         view: function () {
@@ -109,11 +113,6 @@ RecorderApp.prototype.start = function(){
 
     m.mount($('#mount')[0], MountComp)
 }
-
-/*RecorderApp.prototype._sendMessage = function(msg){
-    msg=typeof msg==='object'?JSONF.stringify(msg):msg
-    this._wsConn.send(msg)
-}*/
 
 RecorderApp.prototype.onCapturedEvent=function(data){
     if (!this._isRecording)return
@@ -188,6 +187,7 @@ var RootComp={
             <button onclick={ actions.toggleRecording }>Toggle recording</button>&nbsp;
             <button onclick={ actions.clearRecording }>Clear recording</button>&nbsp;
             <button onclick={ actions.addScreenshotAssert }>Add screenshot assert</button>&nbsp;
+            <button onclick={ actions.downloadTestfile }>Download testfile</button>&nbsp;
             | { app._isRecording ? 'Recording': 'Not recording' }
             <div>
                 <ul>{
@@ -200,6 +200,8 @@ var RootComp={
             <div>
                 <pre>{ renderTestfile(app.commandList) }</pre>
             </div>
+
+            <a href="#" id="download-target" class="hidden"></a>
         </div>
     }
 }
