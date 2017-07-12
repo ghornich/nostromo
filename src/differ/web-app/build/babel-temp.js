@@ -5,7 +5,6 @@ var m = require('mithril');
 var JSONF = require('jsonf');
 var Buffer = require('buffer');
 var pathlib = require('path');
-var diffImages = require('../src/diff-images');
 var Promise = require('bluebird');
 
 var get = Promise.method(function (url) {

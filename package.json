@@ -4,7 +4,7 @@
   "description": "",
   "main": "src/cli.js",
   "scripts": {
-    "build": "npm run build-ui",
+    "build": "npm run build-ui && npm run build-diff-app",
     "build-ui": "babel src/recorder/ui/app/recorder-app.jsx -o src/recorder/ui/app/babel-temp.js && browserify src/recorder/ui/app/babel-temp.js -o dist/recorder-app.dist.js",
     "build-diff-app": "babel src/differ/web-app/src/diff-app.jsx -o src/differ/web-app/build/babel-temp.js && browserify src/differ/web-app/build/babel-temp.js -o dist/diff-app.dist.js",
     "watch": "watchmen \"npm run build\" src",

@@ -14,6 +14,7 @@ var defaults = require('shallow-defaults');
 var util = require('util');
 var JSONF = require('jsonf');
 var m = require('mithril');
+var ReconnectingWebsocket = require('reconnecting-websocket');
 
 var CommandList = require('../../../command-list');
 var CMD_TYPES = require('../../../command').TYPES;
@@ -74,9 +75,14 @@ function RecorderApp(conf) {
 // TODO promise, resolve when loaded
 RecorderApp.prototype.start = function () {
     var self = this;
-    self._wsConn = new WebSocket(location.origin.replace('http://', 'ws://'));
+    self._wsConn = new ReconnectingWebsocket(location.origin.replace('http://', 'ws://'), [], {
+        minReconnectionDelay: 1000,
+        maxReconnectionDelay: 1000,
+        reconnectionDelayGrowFactor: 1,
+        connectionTimeout: Number.POSITIVE_INFINITY
+    });
 
-    self._wsConn.onmessage = function (e) {
+    self._wsConn.addEventListener('message', function (e) {
         var data = e.data;
 
         try {
@@ -100,7 +106,7 @@ RecorderApp.prototype.start = function () {
         } catch (e) {
             console.warn('message error: ' + e);
         }
-    };
+    });
 
     var MountComp = {
         view: function view() {
