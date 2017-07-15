@@ -505,7 +505,19 @@ TestRunner.prototype._waitWhileVisible_direct = Promise.method(function (selecto
 })
 
 TestRunner.prototype._focus_direct = Promise.method(function (selector, description) {
-    throw new Error('TODO _focus_direct')
+    this._log.info('focus: '+selector)
+
+    return this._browserPuppeteer.execCommand({
+        type: 'focus',
+        selector: selector
+    })
+    .catch(e=>{
+        this._tapWriter.notOk({ type: 'focus', message: e.message })
+
+        if (this._conf.bailout) {
+            throw createError('BailoutError', e.message)
+        }
+    })
 })
 
 TestRunner.prototype._scroll_direct = Promise.method(function(selector, scrollTop) {
