@@ -122,6 +122,7 @@ RecorderApp.prototype.onCapturedEvent=function(data){
     // TODO use command instead of raw capture data
     // type, target, $target, selector
     var beforeCaptureData = {
+        avent:event,
         type: event.type,
         target:event.target,
         selector: event.selector
