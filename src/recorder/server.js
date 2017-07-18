@@ -1,6 +1,7 @@
 var Promise=require('bluebird')
-var BrowserPuppeteer=require('browser-puppeteer').BrowserPuppeteer
-var MESSAGES=require('browser-puppeteer').MESSAGES
+var rfr=require('rfr')
+var BrowserPuppeteer=rfr('modules/browser-puppeteer').BrowserPuppeteer
+var MESSAGES=rfr('modules/browser-puppeteer').MESSAGES
 var WS=require('ws')
 var http=require('http')
 var fs=require('fs')

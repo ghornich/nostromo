@@ -20,7 +20,7 @@ var CommandList = require('../../../command-list');
 var CMD_TYPES = require('../../../command').TYPES;
 
 // TODO better require
-var MESSAGES = require('../../../../node_modules/browser-puppeteer/src/messages.js');
+var MESSAGES = require('../../../../modules/browser-puppeteer/src/messages.js');
 
 var EOL = '\n';
 
@@ -129,6 +129,7 @@ RecorderApp.prototype.onCapturedEvent = function (data) {
     // TODO use command instead of raw capture data
     // type, target, $target, selector
     var beforeCaptureData = {
+        avent: event,
         type: event.type,
         target: event.target,
         selector: event.selector
@@ -136,6 +137,11 @@ RecorderApp.prototype.onCapturedEvent = function (data) {
 
     if (this._conf.beforeCapture(beforeCaptureData) === false) {
         console.log('capture prevented in onBeforeCapture');
+        return;
+    }
+
+    // TODO configurable
+    if (event.type === 'keypress' && [13, 27].indexOf(event.keyCode) < 0) {
         return;
     }
 

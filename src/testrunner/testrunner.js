@@ -1,5 +1,6 @@
 const Promise=require('bluebird')
 Promise.config({ longStackTraces: true })
+var rfr=require('rfr')
 const Loggr=require('loggr')
 const defaults=require('shallow-defaults')
 const Schema=require('schema-inspector')
@@ -9,9 +10,9 @@ const pathlib=require('path')
 const util = require('util')
 const TapWriter=require('tap-writer')
 const EventEmitter=require('events').EventEmitter
-const BrowserPuppeteer=require('browser-puppeteer').BrowserPuppeteer
-const MESSAGES=require('browser-puppeteer').MESSAGES
-const cropMarkerImg=require('browser-puppeteer').SCREENSHOT_MARKER
+const BrowserPuppeteer=rfr('modules/browser-puppeteer').BrowserPuppeteer
+const MESSAGES=rfr('modules/browser-puppeteer').MESSAGES
+const cropMarkerImg=rfr('modules/browser-puppeteer').SCREENSHOT_MARKER
 const screenshotjs=require('screenshot-js')
 const mkdirpAsync=Promise.promisify(require('mkdirp'))
 const PNG=require('pngjs').PNG
