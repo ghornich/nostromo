@@ -4,11 +4,11 @@ var Promise = require('bluebird');
 var $ = require('jquery'); $.noConflict();
 var jQuery=$
 var MESSAGES = require('../messages');
-var JSONF = require('jsonf');
-var UniqueSelector = require('get-unique-selector');
+var JSONF = require('../../../../modules/jsonf');
+var UniqueSelector = require('../../../../modules/get-unique-selector');
 var SS_MARKER_IMG = require('../screenshot-marker').base64;
 var debounce = require('lodash.debounce');
-var Ws4ever=require('ws4ever');
+var Ws4ever=require('../../../../modules/ws4ever');
 
 // TODO option to transmit console?
 // TODO transmit uncaught exceptions

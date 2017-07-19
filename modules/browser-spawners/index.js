@@ -1,2 +1,3 @@
-exports.Chrome = require('browser-spawner-chrome');
-exports.Firefox = require('browser-spawner-firefox');
+const rfr=require('rfr')
+exports.Chrome = rfr('modules/browser-spawner-chrome');
+exports.Firefox = rfr('modules/browser-spawner-firefox');

@@ -1,3 +1,4 @@
+var rfr=require('rfr')
 var Promise=require('bluebird')
 var fs=require('fs')
 var fsAsync=Promise.promisifyAll(fs)
@@ -5,11 +6,11 @@ var resolve=require('path').resolve
 var http=require('http')
 var urllib=require('url')
 var qs=require('querystring')
-var JSONF=require('jsonf')
+var JSONF=rfr('modules/jsonf')
 var pngjs=require('pngjs')
 var PNG=pngjs.PNG
 var glob=require('glob')
-var diffImages=require('buffer-image-diff')
+var diffImages=rfr('modules/buffer-image-diff')
 
 exports=module.exports=DiffServer
 

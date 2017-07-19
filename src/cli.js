@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 
+var rfr=require('rfr')
 var fs=require('fs')
 var pathlib = require('path')
-var defaults = require('shallow-defaults')
+var defaults = rfr('modules/shallow-defaults')
 var args = require('minimist')(process.argv.slice(2))
-var rfr=require('rfr')
 var BrowserSpawners = rfr('modules/browser-spawners')
-var Loggr=require('loggr')
+var Loggr=rfr('modules/loggr')
 
 /*
 args:

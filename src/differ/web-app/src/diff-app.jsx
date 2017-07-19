@@ -1,6 +1,6 @@
 var $=require('jquery')
 var m=require('mithril')
-var JSONF=require('jsonf')
+var JSONF=require('../../../../modules/jsonf')
 var Buffer=require('buffer')
 var pathlib=require('path')
 var Promise=require('bluebird')

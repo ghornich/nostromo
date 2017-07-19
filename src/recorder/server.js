@@ -5,9 +5,10 @@ var MESSAGES=rfr('modules/browser-puppeteer').MESSAGES
 var WS=require('ws')
 var http=require('http')
 var fs=require('fs')
-var JSONF=require('jsonf')
+var rfr=require('rfr')
+var JSONF=rfr('modules/jsonf')
 var pathlib=require('path')
-var Loggr=require('loggr')
+var Loggr=rfr('modules/loggr')
 
 module.exports=Server
 
