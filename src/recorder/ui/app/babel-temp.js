@@ -5,14 +5,12 @@ var $ = require('jquery');
 var Promise = require('bluebird');
 // var css=require('./src/styles/index.styl')
 // var views=require('./views.msx')
-// TODO move to Puppet
-var UniqueSelector = require('get-unique-selector');
 // var utils = require('./utils')
-var Loggr = require('loggr');
-var defaults = require('shallow-defaults');
+var Loggr = require('../../../../modules/loggr');
+var defaults = require('../../../../modules/shallow-defaults');
 // var EventEmitter=require('events').EventEmitter
 var util = require('util');
-var JSONF = require('jsonf');
+var JSONF = require('../../../../modules/jsonf');
 var m = require('mithril');
 var Ws4ever = require('ws4ever');
 

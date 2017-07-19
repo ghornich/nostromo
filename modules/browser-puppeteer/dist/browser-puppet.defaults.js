@@ -1,361 +1,5 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
 (function () {
-	'use strict';
-
-	// TODO preferred selectors?
-
-	var NodeUtils = {}
-
-	UniqueSelector._SelectorElement = SelectorElement
-	UniqueSelector._SelectorElementList = SelectorElementList
-	UniqueSelector._NodeUtils = NodeUtils
-
-	// -----------------------
-
-	if (typeof module === 'object' && typeof module.exports === 'object' && typeof exports === 'object') {
-		exports = module.exports = UniqueSelector
-	}
-	else {
-		window.UniqueSelector = UniqueSelector
-	}
-
-	// -----------------------
-
-	function SelectorElement(node) {
-		var nodeSelectorData = SelectorElement.getNodeSelectorData(node)
-
-		this._node = node
-		this._rawSelector = nodeSelectorData.selector,
-		this._type = nodeSelectorData.type,
-		this._active = true,
-		this._useNthChild = false,
-		this._nthChild = Array.prototype.indexOf.call(node.parentNode.children, node) + 1
-
-		Object.defineProperties(this, {
-			node: {
-				get: function () {
-					return this._node
-				},
-				set: function () {
-					throw new Error('Cannot set read-only property "node"')
-				}
-			},
-			// TODO unit test
-			rawSelector: {
-				get: function () {
-					if (!this._active) {
-						return null
-					}
-
-					return this._rawSelector
-				},
-				set: function (val) {
-					// TODO enforce selector type?
-					this._rawSelector = val
-				}
-			},
-			selector: {
-				get: function () {
-					if (!this._active) {
-						return null
-					}
-
-					return this._rawSelector + (this._useNthChild ? ':nth-child(' + this._nthChild + ')' : '')
-				},
-				set: function () {
-					throw new Error('Cannot set read-only property "selector"')
-				}
-			},
-			type: {
-				get: function () {
-					return this._type
-				},
-				set: function () {
-					throw new Error('Cannot set read-only property "type"')
-				}
-			},
-			active: {
-				get: function () {
-					return this._active
-				},
-				set: function (val) {
-					if (typeof val !== 'boolean') {
-						throw new Error('Invalid type for "active"')
-					}
-
-					this._active = val
-				}
-			},
-			useNthChild: {
-				get: function () {
-					return this._useNthChild
-				},
-				set: function (val) {
-					if (typeof val !== 'boolean') {
-						throw new Error('Invalid type for "useNthChild"')
-					}
-
-					this._useNthChild = val
-				}
-			},
-			// nthChild: {
-			//  get: function () { return this._nthChild },
-			//  set: function () { throw new Error('Cannot set read-only property "nthChild"') }
-			// }
-		})
-
-		Object.seal(this)
-	}
-
-	SelectorElement.TYPE = {
-		ID: 0,
-		CLASS: 1,
-		ATTR: 2,
-		TAG: 3
-	}
-
-	SelectorElement.ERROR = {
-		INVALID_NODE: 0
-	}
-
-	/**
-	 * [getSelectorStringData description]
-	 * @param  {[type]} node [description]
-	 * @return {Object} { selector: String, type: Number }
-	 */
-	SelectorElement.getNodeSelectorData = function (node) {
-		if (!node || !('tagName' in node)) {
-			var error = new Error('SelectorElement::getNodeSelectorData: invalid node');
-			error.type = SelectorElement.ERROR.INVALID_NODE
-			throw error
-		}
-
-		if (NodeUtils.hasId(node)) {
-			return {
-				selector: '#' + NodeUtils.getId(node),
-				type: SelectorElement.TYPE.ID
-			}
-		}
-
-		if (NodeUtils.hasClass(node)) {
-			return {
-				selector: '.' + NodeUtils.getClass(node).replace(/ +/g, '.'),
-				type: SelectorElement.TYPE.CLASS
-			}
-		}
-
-		// TODO custom attributes?
-
-		var maybeNameAttr = (node.getAttribute('name') || '').trim(); 
-
-		if (maybeNameAttr.length > 0) {
-			return {
-				selector: node.tagName.toLowerCase() + '[name="' + maybeNameAttr + '"]',
-				type: SelectorElement.TYPE.ATTR
-			}
-		}
-
-		// TODO other common selectors?
-
-		return {
-			selector: node.tagName.toLowerCase(),
-			type: SelectorElement.TYPE.TAG
-		}
-	}
-
-	// -----------------------
-
-	function SelectorElementList(options) {
-		this._opts = optionDefaults(options, {
-			querySelectorAll: document.querySelectorAll.bind(document)
-		})
-
-		this._selectorElements = []
-
-		Object.seal(this)
-	}
-
-	SelectorElementList.prototype.getSelectorPath = function () {
-		return this._selectorElements
-			.map(function (selectorElement) {
-				return selectorElement.selector
-			})
-			.filter(function (selector) { return Boolean(selector) })
-			.join(' ')
-			.trim()
-			.replace(/ +/g, ' ');
-	}
-
-	SelectorElementList.prototype.addElement = function (element) {
-		this._selectorElements.unshift(element)
-	}
-
-	SelectorElementList.prototype.getAmbiguity = function () {
-		return this._opts.querySelectorAll(this.getSelectorPath()).length
-	}
-
-	SelectorElementList.prototype.isUnique = function () {
-		return this.getAmbiguity() === 1;
-	}
-
-	SelectorElementList.prototype.simplify = function () {
-		var ambiguity = this.getAmbiguity()
-
-		for (var i = 0, len = this._selectorElements.length; i < len - 1; i++) {
-			var selectorElement = this._selectorElements[i]
-
-			if (!selectorElement.active) {
-				continue
-			}
-
-			selectorElement.active = false
-
-			var newAmbiguity = this.getAmbiguity()
-
-			if (ambiguity !== newAmbiguity) {
-				selectorElement.active = true
-			}
-
-
-
-		}
-	}
-	
-	// TODO if selectorElement is type CLASS and >1 classnames: simplify classnames
-
-	SelectorElementList.prototype.simplifyClasses = function () {
-		var ambiguity = this.getAmbiguity()
-
-		for (var i = 0, len = this._selectorElements.length; i < len - 1; i++) {
-			var selectorElement = this._selectorElements[i]
-
-			if (!selectorElement.active || selectorElement.type !== SelectorElement.TYPE.CLASS) {
-				return
-			}
-
-			// 	var originalSelector = selectorElement.rawSelector
-			// 	var classNames = originalSelector.split(/(?=\.)/g)
-			// 	var ignoredClassIdxs = []
-			
-			// 	if (classNames.length > 1) {
-			// 		for (var classIdx = 0, classLen = classNames.length; classIdx < classLen; classIdx++) {
-			// 			var className = classNames[classIdx]
-
-						
-			// 		}
-			// 	}
-		}
-
-	}
-
-	/**
-	 * add "nth-child"s from back until selector becomes unique
-	 */
-	SelectorElementList.prototype.uniqueify = function () {
-		var ambiguity = this.getAmbiguity()
-
-		for (var i = this._selectorElements.length - 1; i >= 0; i--) {
-			var selectorElement = this._selectorElements[i]
-			var prevActiveValue = selectorElement.active
-
-			selectorElement.active = true
-			selectorElement.useNthChild = true
-
-			var newAmbiguity = this.getAmbiguity()
-
-			// TODO error check: newAmbiguity < 1
-
-			if (newAmbiguity < ambiguity) {
-				ambiguity = newAmbiguity
-
-				if (ambiguity === 1) {
-					break
-				}
-			}
-			else {
-				selectorElement.useNthChild = false
-				selectorElement.active = prevActiveValue
-			}
-		}
-	}
-
-	// -----------------------
-
-	function UniqueSelector(options) {
-		this._opts = optionDefaults(options, {
-			querySelectorAll: document.querySelectorAll.bind(document)
-		})
-	}
-
-	UniqueSelector.prototype.get = function(node) {
-		if (NodeUtils.hasId(node)) {
-			return '#' + NodeUtils.getId(node)
-		}
-
-		var selectorElementList = new SelectorElementList({
-			querySelectorAll: this._opts.querySelectorAll
-		})
-
-		var currentNode = node
-
-		while (currentNode && currentNode.tagName !== 'BODY') {
-			var selectorElement = new SelectorElement(currentNode)
-
-			selectorElementList.addElement(selectorElement);
-
-			if (selectorElement.type === SelectorElement.TYPE.ID) {
-				break
-			}
-
-			currentNode = currentNode.parentNode
-		}
-
-		selectorElementList.simplify()
-
-		if (!selectorElementList.isUnique()) {
-			selectorElementList.uniqueify()
-		}
-
-		return selectorElementList.getSelectorPath()
-	}
-
-	// -----------------------
-
-	NodeUtils.hasId = function (node) {
-		return Boolean(node && typeof node.id === 'string' && node.id.trim().length > 0)
-	}
-
-	NodeUtils.getId = function (node) {
-		return node.id.trim()
-	}
-
-	NodeUtils.hasClass = function (node) {
-		return Boolean(node && typeof node.className === 'string' && node.className.trim().length > 0)
-	}
-
-	NodeUtils.getClass = function (node) {
-		return node.className.trim()
-	}
-
-	// -----------------------
-
-	function optionDefaults(options, defaults) {
-		if (!options) {
-			return defaults
-		}
-
-		Object.keys(defaults).forEach(function (key) {
-			if (!(key in options)) {
-				options[key] = defaults[key]
-			}
-		})
-
-		return options
-	}
-})()
-
-},{}],2:[function(require,module,exports){
-(function () {
     var BrowserPuppet = require('../src/puppet/browser-puppet.js');
     window.browserPuppet = new BrowserPuppet();
 
@@ -367,7 +11,7 @@
     };
 }());
 
-},{"../src/puppet/browser-puppet.js":4}],3:[function(require,module,exports){
+},{"../src/puppet/browser-puppet.js":3}],2:[function(require,module,exports){
 // TODO use typedefs
 
 exports.UPSTREAM = {
@@ -406,18 +50,18 @@ exports.DOWNSTREAM = {
     SET_TRANSMIT_EVENTS: 'set-transmit-events',
 };
 
-},{}],4:[function(require,module,exports){
+},{}],3:[function(require,module,exports){
 'use strict';
 
 var Promise = require('bluebird');
 var $ = require('jquery'); $.noConflict();
 var jQuery=$
 var MESSAGES = require('../messages');
-var JSONF = require('jsonf');
-var UniqueSelector = require('get-unique-selector');
+var JSONF = require('../../../../modules/jsonf');
+var UniqueSelector = require('../../../../modules/get-unique-selector');
 var SS_MARKER_IMG = require('../screenshot-marker').base64;
 var debounce = require('lodash.debounce');
-var Ws4ever=require('ws4ever');
+var Ws4ever=require('../../../../modules/ws4ever');
 
 // TODO option to transmit console?
 // TODO transmit uncaught exceptions
@@ -962,7 +606,7 @@ function promiseWhile(condition, action) {
     });
 }
 
-},{"../messages":3,"../screenshot-marker":5,"bluebird":7,"get-unique-selector":1,"jquery":10,"jsonf":11,"lodash.debounce":12,"ws4ever":14}],5:[function(require,module,exports){
+},{"../../../../modules/get-unique-selector":5,"../../../../modules/jsonf":6,"../../../../modules/ws4ever":7,"../messages":2,"../screenshot-marker":4,"bluebird":9,"jquery":12,"lodash.debounce":13}],4:[function(require,module,exports){
 (function (Buffer){
 exports.width = 4;
 exports.height = 4;
@@ -978,7 +622,521 @@ exports.base64 =
     'kYGD4zwAEM2++YgABJgYg+F+vzpC2zJYBBJhm3nzFAAPp6mIMTAxAMCvqMANj400GEAAAvQYMY6PVnIQAAAAASUVORK5CYII=';
 
 }).call(this,require("buffer").Buffer)
-},{"buffer":8}],6:[function(require,module,exports){
+},{"buffer":10}],5:[function(require,module,exports){
+(function () {
+	'use strict';
+
+	// TODO preferred selectors?
+
+	var NodeUtils = {}
+
+	UniqueSelector._SelectorElement = SelectorElement
+	UniqueSelector._SelectorElementList = SelectorElementList
+	UniqueSelector._NodeUtils = NodeUtils
+
+	// -----------------------
+
+	if (typeof module === 'object' && typeof module.exports === 'object' && typeof exports === 'object') {
+		exports = module.exports = UniqueSelector
+	}
+	else {
+		window.UniqueSelector = UniqueSelector
+	}
+
+	// -----------------------
+
+	function SelectorElement(node) {
+		var nodeSelectorData = SelectorElement.getNodeSelectorData(node)
+
+		this._node = node
+		this._rawSelector = nodeSelectorData.selector,
+		this._type = nodeSelectorData.type,
+		this._active = true,
+		this._useNthChild = false,
+		this._nthChild = Array.prototype.indexOf.call(node.parentNode.children, node) + 1
+
+		Object.defineProperties(this, {
+			node: {
+				get: function () {
+					return this._node
+				},
+				set: function () {
+					throw new Error('Cannot set read-only property "node"')
+				}
+			},
+			// TODO unit test
+			rawSelector: {
+				get: function () {
+					if (!this._active) {
+						return null
+					}
+
+					return this._rawSelector
+				},
+				set: function (val) {
+					// TODO enforce selector type?
+					this._rawSelector = val
+				}
+			},
+			selector: {
+				get: function () {
+					if (!this._active) {
+						return null
+					}
+
+					return this._rawSelector + (this._useNthChild ? ':nth-child(' + this._nthChild + ')' : '')
+				},
+				set: function () {
+					throw new Error('Cannot set read-only property "selector"')
+				}
+			},
+			type: {
+				get: function () {
+					return this._type
+				},
+				set: function () {
+					throw new Error('Cannot set read-only property "type"')
+				}
+			},
+			active: {
+				get: function () {
+					return this._active
+				},
+				set: function (val) {
+					if (typeof val !== 'boolean') {
+						throw new Error('Invalid type for "active"')
+					}
+
+					this._active = val
+				}
+			},
+			useNthChild: {
+				get: function () {
+					return this._useNthChild
+				},
+				set: function (val) {
+					if (typeof val !== 'boolean') {
+						throw new Error('Invalid type for "useNthChild"')
+					}
+
+					this._useNthChild = val
+				}
+			},
+			// nthChild: {
+			//  get: function () { return this._nthChild },
+			//  set: function () { throw new Error('Cannot set read-only property "nthChild"') }
+			// }
+		})
+
+		Object.seal(this)
+	}
+
+	SelectorElement.TYPE = {
+		ID: 0,
+		CLASS: 1,
+		ATTR: 2,
+		TAG: 3
+	}
+
+	SelectorElement.ERROR = {
+		INVALID_NODE: 0
+	}
+
+	/**
+	 * [getSelectorStringData description]
+	 * @param  {[type]} node [description]
+	 * @return {Object} { selector: String, type: Number }
+	 */
+	SelectorElement.getNodeSelectorData = function (node) {
+		if (!node || !('tagName' in node)) {
+			var error = new Error('SelectorElement::getNodeSelectorData: invalid node');
+			error.type = SelectorElement.ERROR.INVALID_NODE
+			throw error
+		}
+
+		if (NodeUtils.hasId(node)) {
+			return {
+				selector: '#' + NodeUtils.getId(node),
+				type: SelectorElement.TYPE.ID
+			}
+		}
+
+		if (NodeUtils.hasClass(node)) {
+			return {
+				selector: '.' + NodeUtils.getClass(node).replace(/ +/g, '.'),
+				type: SelectorElement.TYPE.CLASS
+			}
+		}
+
+		// TODO custom attributes?
+
+		var maybeNameAttr = (node.getAttribute('name') || '').trim(); 
+
+		if (maybeNameAttr.length > 0) {
+			return {
+				selector: node.tagName.toLowerCase() + '[name="' + maybeNameAttr + '"]',
+				type: SelectorElement.TYPE.ATTR
+			}
+		}
+
+		// TODO other common selectors?
+
+		return {
+			selector: node.tagName.toLowerCase(),
+			type: SelectorElement.TYPE.TAG
+		}
+	}
+
+	// -----------------------
+
+	function SelectorElementList(options) {
+		this._opts = optionDefaults(options, {
+			querySelectorAll: document.querySelectorAll.bind(document)
+		})
+
+		this._selectorElements = []
+
+		Object.seal(this)
+	}
+
+	SelectorElementList.prototype.getSelectorPath = function () {
+		return this._selectorElements
+			.map(function (selectorElement) {
+				return selectorElement.selector
+			})
+			.filter(function (selector) { return Boolean(selector) })
+			.join(' ')
+			.trim()
+			.replace(/ +/g, ' ');
+	}
+
+	SelectorElementList.prototype.addElement = function (element) {
+		this._selectorElements.unshift(element)
+	}
+
+	SelectorElementList.prototype.getAmbiguity = function () {
+		return this._opts.querySelectorAll(this.getSelectorPath()).length
+	}
+
+	SelectorElementList.prototype.isUnique = function () {
+		return this.getAmbiguity() === 1;
+	}
+
+	SelectorElementList.prototype.simplify = function () {
+		var ambiguity = this.getAmbiguity()
+
+		for (var i = 0, len = this._selectorElements.length; i < len - 1; i++) {
+			var selectorElement = this._selectorElements[i]
+
+			if (!selectorElement.active) {
+				continue
+			}
+
+			selectorElement.active = false
+
+			var newAmbiguity = this.getAmbiguity()
+
+			if (ambiguity !== newAmbiguity) {
+				selectorElement.active = true
+			}
+
+
+
+		}
+	}
+	
+	// TODO if selectorElement is type CLASS and >1 classnames: simplify classnames
+
+	SelectorElementList.prototype.simplifyClasses = function () {
+		var ambiguity = this.getAmbiguity()
+
+		for (var i = 0, len = this._selectorElements.length; i < len - 1; i++) {
+			var selectorElement = this._selectorElements[i]
+
+			if (!selectorElement.active || selectorElement.type !== SelectorElement.TYPE.CLASS) {
+				return
+			}
+
+			// 	var originalSelector = selectorElement.rawSelector
+			// 	var classNames = originalSelector.split(/(?=\.)/g)
+			// 	var ignoredClassIdxs = []
+			
+			// 	if (classNames.length > 1) {
+			// 		for (var classIdx = 0, classLen = classNames.length; classIdx < classLen; classIdx++) {
+			// 			var className = classNames[classIdx]
+
+						
+			// 		}
+			// 	}
+		}
+
+	}
+
+	/**
+	 * add "nth-child"s from back until selector becomes unique
+	 */
+	SelectorElementList.prototype.uniqueify = function () {
+		var ambiguity = this.getAmbiguity()
+
+		for (var i = this._selectorElements.length - 1; i >= 0; i--) {
+			var selectorElement = this._selectorElements[i]
+			var prevActiveValue = selectorElement.active
+
+			selectorElement.active = true
+			selectorElement.useNthChild = true
+
+			var newAmbiguity = this.getAmbiguity()
+
+			// TODO error check: newAmbiguity < 1
+
+			if (newAmbiguity < ambiguity) {
+				ambiguity = newAmbiguity
+
+				if (ambiguity === 1) {
+					break
+				}
+			}
+			else {
+				selectorElement.useNthChild = false
+				selectorElement.active = prevActiveValue
+			}
+		}
+	}
+
+	// -----------------------
+
+	function UniqueSelector(options) {
+		this._opts = optionDefaults(options, {
+			querySelectorAll: document.querySelectorAll.bind(document)
+		})
+	}
+
+	UniqueSelector.prototype.get = function(node) {
+		if (NodeUtils.hasId(node)) {
+			return '#' + NodeUtils.getId(node)
+		}
+
+		var selectorElementList = new SelectorElementList({
+			querySelectorAll: this._opts.querySelectorAll
+		})
+
+		var currentNode = node
+
+		while (currentNode && currentNode.tagName !== 'BODY') {
+			var selectorElement = new SelectorElement(currentNode)
+
+			selectorElementList.addElement(selectorElement);
+
+			if (selectorElement.type === SelectorElement.TYPE.ID) {
+				break
+			}
+
+			currentNode = currentNode.parentNode
+		}
+
+		selectorElementList.simplify()
+
+		if (!selectorElementList.isUnique()) {
+			selectorElementList.uniqueify()
+		}
+
+		return selectorElementList.getSelectorPath()
+	}
+
+	// -----------------------
+
+	NodeUtils.hasId = function (node) {
+		return Boolean(node && typeof node.id === 'string' && node.id.trim().length > 0)
+	}
+
+	NodeUtils.getId = function (node) {
+		return node.id.trim()
+	}
+
+	NodeUtils.hasClass = function (node) {
+		return Boolean(node && typeof node.className === 'string' && node.className.trim().length > 0)
+	}
+
+	NodeUtils.getClass = function (node) {
+		return node.className.trim()
+	}
+
+	// -----------------------
+
+	function optionDefaults(options, defaults) {
+		if (!options) {
+			return defaults
+		}
+
+		Object.keys(defaults).forEach(function (key) {
+			if (!(key in options)) {
+				options[key] = defaults[key]
+			}
+		})
+
+		return options
+	}
+})()
+
+},{}],6:[function(require,module,exports){
+'use strict'
+
+// TODO tests
+// TODO support ES6 arrow fns
+
+var JSONF=exports
+
+var FN_TYPE='JSONF:Function'
+
+
+
+JSONF.stringify=function(o){
+    return JSON.stringify(o, function(key,val){
+        if (typeof val==='function'){
+            return {
+                type: FN_TYPE,
+                data: val.toString().replace(/\r/g, '\\r').replace(/\n/g, '\\n')
+            }
+        }
+        else {
+            return val
+        }
+    })
+}
+
+JSONF.parse=function(s){
+    var i=0
+    return JSON.parse(s, function(key, val){
+        if (val&&val.type===FN_TYPE){
+            try {
+                return new Function(
+                    // http://www.kristofdegrave.be/2012/07/json-serialize-and-deserialize.html
+                    val.data.match(/\(([^)]+?)\)/)[1],
+                    val.data.match(/\{([\s\S]+)\}/)[1]
+                )
+            }
+            catch (e){
+                // TODO throw a big fat error
+                return val
+            }
+        }
+        else {
+            return val
+        }
+        /*if (typeof val!=='string')return val
+        if (val.indexOf(FN_TYPE)<0)return val
+
+        */
+    })
+}
+
+},{}],7:[function(require,module,exports){
+
+if (isNode()) {
+    module.exports=Ws4ever
+}
+else {
+    window.Ws4ever=Ws4ever
+}
+
+
+function Ws4ever(url, protocols, options){
+    this._opts=Object.assign({}, {
+        retryInterval:1000
+    }, options||{})
+
+    this._url=url
+    this._protocols=protocols
+    this._ws=null
+    this._isConnecting=false
+
+    this.onopen=noop
+    this.onclose=noop
+    this.onerror=noop
+    this.onmessage=noop
+
+    Object.defineProperties(this, {
+        readyState: {
+            get: function () { return this._ws?this._ws.readyState:WebSocket.CLOSED }
+        },
+        url: {
+            get: function () { return this._url }
+        },
+    })
+
+    this._ensureConnection=this._ensureConnection.bind(this)
+    this._onWsOpen=this._onWsOpen.bind(this)
+    this._onWsClose=this._onWsClose.bind(this)
+    // this._onWsError=this._onWsError.bind(this)
+    this._onWsMessage=this._onWsMessage.bind(this)
+
+    setInterval(this._ensureConnection, this._opts.retryInterval)
+}
+
+Ws4ever.prototype.isConnected=function(){
+    return Boolean(this._ws && this._ws.readyState === WebSocket.OPEN)
+}
+
+Ws4ever.prototype.send=function(msg){
+    if (!this.isConnected())throw new Error('cannot send message, ws closed')
+    this._ws.send(msg)
+}
+
+Ws4ever.prototype._ensureConnection=function(){
+    if (this.isConnected())return
+    if (this._isConnecting)return
+
+    try {
+        console.log('_ensureConnection: connecting')
+        this._isConnecting=true
+        this._ws=new WebSocket(this._url, this._protocols)
+        this._ws.onopen=this._onWsOpen
+        this._ws.onclose=this._onWsClose
+        this._ws.onerror=this._onWsError
+        this._ws.onmessage=this._onWsMessage
+    }
+    catch(e){
+        // TODO handle or log?
+        this._isConnecting=false
+        this._ws=null
+    }
+}
+
+Ws4ever.prototype._onWsOpen=function () {
+    console.log('_onWsOpen')
+    this.onopen.apply(null, arguments)
+    this._isConnecting=false
+}
+
+Ws4ever.prototype._onWsClose=function () {
+    console.log('_onWsClose')
+    this.onclose.apply(null, arguments)
+    this._isConnecting=false
+    this._ws=null
+}
+
+Ws4ever.prototype._onWsError=function () {
+    console.log('_onWsError')
+    this.onerror.apply(null, arguments)
+    // this._isConnecting=false
+    // this._ws=null
+}
+
+Ws4ever.prototype._onWsMessage=function () {
+    console.log('_onWsMessage')
+    this.onmessage.apply(null,arguments)
+}
+
+
+
+
+function noop(){}
+
+function isNode(){return typeof module==='object'&&typeof module.exports==='object'}
+
+
+
+},{}],8:[function(require,module,exports){
 'use strict'
 
 exports.byteLength = byteLength
@@ -1094,7 +1252,7 @@ function fromByteArray (uint8) {
   return parts.join('')
 }
 
-},{}],7:[function(require,module,exports){
+},{}],9:[function(require,module,exports){
 (function (process,global){
 /* @preserve
  * The MIT License (MIT)
@@ -6716,7 +6874,7 @@ module.exports = ret;
 },{"./es5":13}]},{},[4])(4)
 });                    ;if (typeof window !== 'undefined' && window !== null) {                               window.P = window.Promise;                                                     } else if (typeof self !== 'undefined' && self !== null) {                             self.P = self.Promise;                                                         }
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"_process":13}],8:[function(require,module,exports){
+},{"_process":14}],10:[function(require,module,exports){
 /*!
  * The buffer module from node.js, for the browser.
  *
@@ -8424,7 +8582,7 @@ function numberIsNaN (obj) {
   return obj !== obj // eslint-disable-line no-self-compare
 }
 
-},{"base64-js":6,"ieee754":9}],9:[function(require,module,exports){
+},{"base64-js":8,"ieee754":11}],11:[function(require,module,exports){
 exports.read = function (buffer, offset, isLE, mLen, nBytes) {
   var e, m
   var eLen = nBytes * 8 - mLen - 1
@@ -8510,7 +8668,7 @@ exports.write = function (buffer, value, offset, isLE, mLen, nBytes) {
   buffer[offset + i - d] |= s * 128
 }
 
-},{}],10:[function(require,module,exports){
+},{}],12:[function(require,module,exports){
 /*!
  * jQuery JavaScript Library v3.2.1
  * https://jquery.com/
@@ -18765,59 +18923,7 @@ if ( !noGlobal ) {
 return jQuery;
 } );
 
-},{}],11:[function(require,module,exports){
-'use strict'
-
-// TODO tests
-// TODO support ES6 arrow fns
-
-var JSONF=exports
-
-var FN_TYPE='JSONF:Function'
-
-
-
-JSONF.stringify=function(o){
-    return JSON.stringify(o, function(key,val){
-        if (typeof val==='function'){
-            return {
-                type: FN_TYPE,
-                data: val.toString().replace(/\r/g, '\\r').replace(/\n/g, '\\n')
-            }
-        }
-        else {
-            return val
-        }
-    })
-}
-
-JSONF.parse=function(s){
-    var i=0
-    return JSON.parse(s, function(key, val){
-        if (val&&val.type===FN_TYPE){
-            try {
-                return new Function(
-                    // http://www.kristofdegrave.be/2012/07/json-serialize-and-deserialize.html
-                    val.data.match(/\(([^)]+?)\)/)[1],
-                    val.data.match(/\{([\s\S]+)\}/)[1]
-                )
-            }
-            catch (e){
-                // TODO throw a big fat error
-                return val
-            }
-        }
-        else {
-            return val
-        }
-        /*if (typeof val!=='string')return val
-        if (val.indexOf(FN_TYPE)<0)return val
-
-        */
-    })
-}
-
-},{}],12:[function(require,module,exports){
+},{}],13:[function(require,module,exports){
 (function (global){
 /**
  * lodash (Custom Build) <https://lodash.com/>
@@ -19198,7 +19304,7 @@ function toNumber(value) {
 module.exports = debounce;
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],13:[function(require,module,exports){
+},{}],14:[function(require,module,exports){
 // shim for using process in browser
 var process = module.exports = {};
 
@@ -19384,110 +19490,4 @@ process.chdir = function (dir) {
 };
 process.umask = function() { return 0; };
 
-},{}],14:[function(require,module,exports){
-
-if (isNode()) {
-    module.exports=Ws4ever
-}
-else {
-    window.Ws4ever=Ws4ever
-}
-
-
-function Ws4ever(url, protocols, options){
-    this._opts=Object.assign({}, {
-        retryInterval:1000
-    }, options||{})
-
-    this._url=url
-    this._protocols=protocols
-    this._ws=null
-    this._isConnecting=false
-
-    this.onopen=noop
-    this.onclose=noop
-    this.onerror=noop
-    this.onmessage=noop
-
-    Object.defineProperties(this, {
-        readyState: {
-            get: function () { return this._ws?this._ws.readyState:WebSocket.CLOSED }
-        },
-        url: {
-            get: function () { return this._url }
-        },
-    })
-
-    this._ensureConnection=this._ensureConnection.bind(this)
-    this._onWsOpen=this._onWsOpen.bind(this)
-    this._onWsClose=this._onWsClose.bind(this)
-    // this._onWsError=this._onWsError.bind(this)
-    this._onWsMessage=this._onWsMessage.bind(this)
-
-    setInterval(this._ensureConnection, this._opts.retryInterval)
-}
-
-Ws4ever.prototype.isConnected=function(){
-    return Boolean(this._ws && this._ws.readyState === WebSocket.OPEN)
-}
-
-Ws4ever.prototype.send=function(msg){
-    if (!this.isConnected())throw new Error('cannot send message, ws closed')
-    this._ws.send(msg)
-}
-
-Ws4ever.prototype._ensureConnection=function(){
-    if (this.isConnected())return
-    if (this._isConnecting)return
-
-    try {
-        console.log('_ensureConnection: connecting')
-        this._isConnecting=true
-        this._ws=new WebSocket(this._url, this._protocols)
-        this._ws.onopen=this._onWsOpen
-        this._ws.onclose=this._onWsClose
-        this._ws.onerror=this._onWsError
-        this._ws.onmessage=this._onWsMessage
-    }
-    catch(e){
-        // TODO handle or log?
-        this._isConnecting=false
-        this._ws=null
-    }
-}
-
-Ws4ever.prototype._onWsOpen=function () {
-    console.log('_onWsOpen')
-    this.onopen.apply(null, arguments)
-    this._isConnecting=false
-}
-
-Ws4ever.prototype._onWsClose=function () {
-    console.log('_onWsClose')
-    this.onclose.apply(null, arguments)
-    this._isConnecting=false
-    this._ws=null
-}
-
-Ws4ever.prototype._onWsError=function () {
-    console.log('_onWsError')
-    this.onerror.apply(null, arguments)
-    // this._isConnecting=false
-    // this._ws=null
-}
-
-Ws4ever.prototype._onWsMessage=function () {
-    console.log('_onWsMessage')
-    this.onmessage.apply(null,arguments)
-}
-
-
-
-
-function noop(){}
-
-function isNode(){return typeof module==='object'&&typeof module.exports==='object'}
-
-
-
-},{}]},{},[2]);
+},{}]},{},[1]);

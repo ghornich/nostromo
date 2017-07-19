@@ -1,29 +1,17 @@
+var Promise=require('bluebird')
 module.exports=function(config){
     return {
         logLevel: config.LOG_LEVELS.INFO,
         defaultBeforeCommand:function(t, command) {
-            var selectors = [
-                '.icon-spinner',
-                '.button--icon-loading',
-                '.button--working'
-            ]
-
-            if (command.type !== 'assertScreenshot') {
-                selectors.push(
-                    '.global-notifications .notification-message:not(.hide-notification)',
-                    '.details-notifications .notification-message:not(.hide-notification)'
-                )
-            }
-
-            return t.waitWhileVisible(selectors.join(', '))
         },
 
-        // defaultAfterCommand:function(t, command) {
-
-        // },
+        defaultAfterCommand:function(t, command) {
+            return Promise.delay(2000)
+        },
 
 
         beforeTest:function(){
+            return Promise.delay(5000)
             // console.log('before test')
         },
 
@@ -31,21 +19,20 @@ module.exports=function(config){
             // console.log('after test')
         },
 
-
-        appUrl: 'http://localhost:21000',
+        appUrl: 'file:///D:/GITHUB/nostromo/test/test.html',
 
         browsers: [
             new config.browsers.Chrome({
                 name:'Chrome',
                 path:'C:/Program Files (x86)/Google/Chrome/Application/chrome.exe',
-                // size:{width:1024,height:750}
+                bounds:{size:{width:1024,height:750},position:{x:5,y:5}}
             }),
             new config.browsers.Firefox({
                 name:'Firefox',
                 path:'C:/Program Files (x86)/Mozilla Firefox/firefox.exe',
-                // size:{width:1024,height:750}
+                bounds:{size:{width:1024,height:750},position:{x:5,y:5}}
             })
         ],
-        testFiles: ['test.js'],
+        testFiles: ['testfile.js'],
     }
 }

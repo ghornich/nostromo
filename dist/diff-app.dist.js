@@ -1,6 +1,58 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
 'use strict'
 
+// TODO tests
+// TODO support ES6 arrow fns
+
+var JSONF=exports
+
+var FN_TYPE='JSONF:Function'
+
+
+
+JSONF.stringify=function(o){
+    return JSON.stringify(o, function(key,val){
+        if (typeof val==='function'){
+            return {
+                type: FN_TYPE,
+                data: val.toString().replace(/\r/g, '\\r').replace(/\n/g, '\\n')
+            }
+        }
+        else {
+            return val
+        }
+    })
+}
+
+JSONF.parse=function(s){
+    var i=0
+    return JSON.parse(s, function(key, val){
+        if (val&&val.type===FN_TYPE){
+            try {
+                return new Function(
+                    // http://www.kristofdegrave.be/2012/07/json-serialize-and-deserialize.html
+                    val.data.match(/\(([^)]+?)\)/)[1],
+                    val.data.match(/\{([\s\S]+)\}/)[1]
+                )
+            }
+            catch (e){
+                // TODO throw a big fat error
+                return val
+            }
+        }
+        else {
+            return val
+        }
+        /*if (typeof val!=='string')return val
+        if (val.indexOf(FN_TYPE)<0)return val
+
+        */
+    })
+}
+
+},{}],2:[function(require,module,exports){
+'use strict'
+
 exports.byteLength = byteLength
 exports.toByteArray = toByteArray
 exports.fromByteArray = fromByteArray
@@ -114,7 +166,7 @@ function fromByteArray (uint8) {
   return parts.join('')
 }
 
-},{}],2:[function(require,module,exports){
+},{}],3:[function(require,module,exports){
 (function (process,global){
 /* @preserve
  * The MIT License (MIT)
@@ -5736,7 +5788,7 @@ module.exports = ret;
 },{"./es5":13}]},{},[4])(4)
 });                    ;if (typeof window !== 'undefined' && window !== null) {                               window.P = window.Promise;                                                     } else if (typeof self !== 'undefined' && self !== null) {                             self.P = self.Promise;                                                         }
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"_process":9}],3:[function(require,module,exports){
+},{"_process":9}],4:[function(require,module,exports){
 /*!
  * The buffer module from node.js, for the browser.
  *
@@ -7444,7 +7496,7 @@ function numberIsNaN (obj) {
   return obj !== obj // eslint-disable-line no-self-compare
 }
 
-},{"base64-js":1,"ieee754":4}],4:[function(require,module,exports){
+},{"base64-js":2,"ieee754":5}],5:[function(require,module,exports){
 exports.read = function (buffer, offset, isLE, mLen, nBytes) {
   var e, m
   var eLen = nBytes * 8 - mLen - 1
@@ -7530,7 +7582,7 @@ exports.write = function (buffer, value, offset, isLE, mLen, nBytes) {
   buffer[offset + i - d] |= s * 128
 }
 
-},{}],5:[function(require,module,exports){
+},{}],6:[function(require,module,exports){
 /*!
  * jQuery JavaScript Library v3.2.1
  * https://jquery.com/
@@ -17785,58 +17837,6 @@ if ( !noGlobal ) {
 return jQuery;
 } );
 
-},{}],6:[function(require,module,exports){
-'use strict'
-
-// TODO tests
-// TODO support ES6 arrow fns
-
-var JSONF=exports
-
-var FN_TYPE='JSONF:Function'
-
-
-
-JSONF.stringify=function(o){
-    return JSON.stringify(o, function(key,val){
-        if (typeof val==='function'){
-            return {
-                type: FN_TYPE,
-                data: val.toString().replace(/\r/g, '\\r').replace(/\n/g, '\\n')
-            }
-        }
-        else {
-            return val
-        }
-    })
-}
-
-JSONF.parse=function(s){
-    var i=0
-    return JSON.parse(s, function(key, val){
-        if (val&&val.type===FN_TYPE){
-            try {
-                return new Function(
-                    // http://www.kristofdegrave.be/2012/07/json-serialize-and-deserialize.html
-                    val.data.match(/\(([^)]+?)\)/)[1],
-                    val.data.match(/\{([\s\S]+)\}/)[1]
-                )
-            }
-            catch (e){
-                // TODO throw a big fat error
-                return val
-            }
-        }
-        else {
-            return val
-        }
-        /*if (typeof val!=='string')return val
-        if (val.indexOf(FN_TYPE)<0)return val
-
-        */
-    })
-}
-
 },{}],7:[function(require,module,exports){
 (function (global){
 ;(function() {
@@ -19486,7 +19486,7 @@ process.umask = function() { return 0; };
 
 var $ = require('jquery');
 var m = require('mithril');
-var JSONF = require('jsonf');
+var JSONF = require('../../../../modules/jsonf');
 var Buffer = require('buffer');
 var pathlib = require('path');
 var Promise = require('bluebird');
@@ -19588,4 +19588,4 @@ var RootComp = {
 	}
 };
 
-},{"bluebird":2,"buffer":3,"jquery":5,"jsonf":6,"mithril":7,"path":8}]},{},[10]);
+},{"../../../../modules/jsonf":1,"bluebird":3,"buffer":4,"jquery":6,"mithril":7,"path":8}]},{},[10]);

@@ -1,360 +1,4 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
-(function () {
-	'use strict';
-
-	// TODO preferred selectors?
-
-	var NodeUtils = {}
-
-	UniqueSelector._SelectorElement = SelectorElement
-	UniqueSelector._SelectorElementList = SelectorElementList
-	UniqueSelector._NodeUtils = NodeUtils
-
-	// -----------------------
-
-	if (typeof module === 'object' && typeof module.exports === 'object' && typeof exports === 'object') {
-		exports = module.exports = UniqueSelector
-	}
-	else {
-		window.UniqueSelector = UniqueSelector
-	}
-
-	// -----------------------
-
-	function SelectorElement(node) {
-		var nodeSelectorData = SelectorElement.getNodeSelectorData(node)
-
-		this._node = node
-		this._rawSelector = nodeSelectorData.selector,
-		this._type = nodeSelectorData.type,
-		this._active = true,
-		this._useNthChild = false,
-		this._nthChild = Array.prototype.indexOf.call(node.parentNode.children, node) + 1
-
-		Object.defineProperties(this, {
-			node: {
-				get: function () {
-					return this._node
-				},
-				set: function () {
-					throw new Error('Cannot set read-only property "node"')
-				}
-			},
-			// TODO unit test
-			rawSelector: {
-				get: function () {
-					if (!this._active) {
-						return null
-					}
-
-					return this._rawSelector
-				},
-				set: function (val) {
-					// TODO enforce selector type?
-					this._rawSelector = val
-				}
-			},
-			selector: {
-				get: function () {
-					if (!this._active) {
-						return null
-					}
-
-					return this._rawSelector + (this._useNthChild ? ':nth-child(' + this._nthChild + ')' : '')
-				},
-				set: function () {
-					throw new Error('Cannot set read-only property "selector"')
-				}
-			},
-			type: {
-				get: function () {
-					return this._type
-				},
-				set: function () {
-					throw new Error('Cannot set read-only property "type"')
-				}
-			},
-			active: {
-				get: function () {
-					return this._active
-				},
-				set: function (val) {
-					if (typeof val !== 'boolean') {
-						throw new Error('Invalid type for "active"')
-					}
-
-					this._active = val
-				}
-			},
-			useNthChild: {
-				get: function () {
-					return this._useNthChild
-				},
-				set: function (val) {
-					if (typeof val !== 'boolean') {
-						throw new Error('Invalid type for "useNthChild"')
-					}
-
-					this._useNthChild = val
-				}
-			},
-			// nthChild: {
-			//  get: function () { return this._nthChild },
-			//  set: function () { throw new Error('Cannot set read-only property "nthChild"') }
-			// }
-		})
-
-		Object.seal(this)
-	}
-
-	SelectorElement.TYPE = {
-		ID: 0,
-		CLASS: 1,
-		ATTR: 2,
-		TAG: 3
-	}
-
-	SelectorElement.ERROR = {
-		INVALID_NODE: 0
-	}
-
-	/**
-	 * [getSelectorStringData description]
-	 * @param  {[type]} node [description]
-	 * @return {Object} { selector: String, type: Number }
-	 */
-	SelectorElement.getNodeSelectorData = function (node) {
-		if (!node || !('tagName' in node)) {
-			var error = new Error('SelectorElement::getNodeSelectorData: invalid node');
-			error.type = SelectorElement.ERROR.INVALID_NODE
-			throw error
-		}
-
-		if (NodeUtils.hasId(node)) {
-			return {
-				selector: '#' + NodeUtils.getId(node),
-				type: SelectorElement.TYPE.ID
-			}
-		}
-
-		if (NodeUtils.hasClass(node)) {
-			return {
-				selector: '.' + NodeUtils.getClass(node).replace(/ +/g, '.'),
-				type: SelectorElement.TYPE.CLASS
-			}
-		}
-
-		// TODO custom attributes?
-
-		var maybeNameAttr = (node.getAttribute('name') || '').trim(); 
-
-		if (maybeNameAttr.length > 0) {
-			return {
-				selector: node.tagName.toLowerCase() + '[name="' + maybeNameAttr + '"]',
-				type: SelectorElement.TYPE.ATTR
-			}
-		}
-
-		// TODO other common selectors?
-
-		return {
-			selector: node.tagName.toLowerCase(),
-			type: SelectorElement.TYPE.TAG
-		}
-	}
-
-	// -----------------------
-
-	function SelectorElementList(options) {
-		this._opts = optionDefaults(options, {
-			querySelectorAll: document.querySelectorAll.bind(document)
-		})
-
-		this._selectorElements = []
-
-		Object.seal(this)
-	}
-
-	SelectorElementList.prototype.getSelectorPath = function () {
-		return this._selectorElements
-			.map(function (selectorElement) {
-				return selectorElement.selector
-			})
-			.filter(function (selector) { return Boolean(selector) })
-			.join(' ')
-			.trim()
-			.replace(/ +/g, ' ');
-	}
-
-	SelectorElementList.prototype.addElement = function (element) {
-		this._selectorElements.unshift(element)
-	}
-
-	SelectorElementList.prototype.getAmbiguity = function () {
-		return this._opts.querySelectorAll(this.getSelectorPath()).length
-	}
-
-	SelectorElementList.prototype.isUnique = function () {
-		return this.getAmbiguity() === 1;
-	}
-
-	SelectorElementList.prototype.simplify = function () {
-		var ambiguity = this.getAmbiguity()
-
-		for (var i = 0, len = this._selectorElements.length; i < len - 1; i++) {
-			var selectorElement = this._selectorElements[i]
-
-			if (!selectorElement.active) {
-				continue
-			}
-
-			selectorElement.active = false
-
-			var newAmbiguity = this.getAmbiguity()
-
-			if (ambiguity !== newAmbiguity) {
-				selectorElement.active = true
-			}
-
-
-
-		}
-	}
-	
-	// TODO if selectorElement is type CLASS and >1 classnames: simplify classnames
-
-	SelectorElementList.prototype.simplifyClasses = function () {
-		var ambiguity = this.getAmbiguity()
-
-		for (var i = 0, len = this._selectorElements.length; i < len - 1; i++) {
-			var selectorElement = this._selectorElements[i]
-
-			if (!selectorElement.active || selectorElement.type !== SelectorElement.TYPE.CLASS) {
-				return
-			}
-
-			// 	var originalSelector = selectorElement.rawSelector
-			// 	var classNames = originalSelector.split(/(?=\.)/g)
-			// 	var ignoredClassIdxs = []
-			
-			// 	if (classNames.length > 1) {
-			// 		for (var classIdx = 0, classLen = classNames.length; classIdx < classLen; classIdx++) {
-			// 			var className = classNames[classIdx]
-
-						
-			// 		}
-			// 	}
-		}
-
-	}
-
-	/**
-	 * add "nth-child"s from back until selector becomes unique
-	 */
-	SelectorElementList.prototype.uniqueify = function () {
-		var ambiguity = this.getAmbiguity()
-
-		for (var i = this._selectorElements.length - 1; i >= 0; i--) {
-			var selectorElement = this._selectorElements[i]
-			var prevActiveValue = selectorElement.active
-
-			selectorElement.active = true
-			selectorElement.useNthChild = true
-
-			var newAmbiguity = this.getAmbiguity()
-
-			// TODO error check: newAmbiguity < 1
-
-			if (newAmbiguity < ambiguity) {
-				ambiguity = newAmbiguity
-
-				if (ambiguity === 1) {
-					break
-				}
-			}
-			else {
-				selectorElement.useNthChild = false
-				selectorElement.active = prevActiveValue
-			}
-		}
-	}
-
-	// -----------------------
-
-	function UniqueSelector(options) {
-		this._opts = optionDefaults(options, {
-			querySelectorAll: document.querySelectorAll.bind(document)
-		})
-	}
-
-	UniqueSelector.prototype.get = function(node) {
-		if (NodeUtils.hasId(node)) {
-			return '#' + NodeUtils.getId(node)
-		}
-
-		var selectorElementList = new SelectorElementList({
-			querySelectorAll: this._opts.querySelectorAll
-		})
-
-		var currentNode = node
-
-		while (currentNode && currentNode.tagName !== 'BODY') {
-			var selectorElement = new SelectorElement(currentNode)
-
-			selectorElementList.addElement(selectorElement);
-
-			if (selectorElement.type === SelectorElement.TYPE.ID) {
-				break
-			}
-
-			currentNode = currentNode.parentNode
-		}
-
-		selectorElementList.simplify()
-
-		if (!selectorElementList.isUnique()) {
-			selectorElementList.uniqueify()
-		}
-
-		return selectorElementList.getSelectorPath()
-	}
-
-	// -----------------------
-
-	NodeUtils.hasId = function (node) {
-		return Boolean(node && typeof node.id === 'string' && node.id.trim().length > 0)
-	}
-
-	NodeUtils.getId = function (node) {
-		return node.id.trim()
-	}
-
-	NodeUtils.hasClass = function (node) {
-		return Boolean(node && typeof node.className === 'string' && node.className.trim().length > 0)
-	}
-
-	NodeUtils.getClass = function (node) {
-		return node.className.trim()
-	}
-
-	// -----------------------
-
-	function optionDefaults(options, defaults) {
-		if (!options) {
-			return defaults
-		}
-
-		Object.keys(defaults).forEach(function (key) {
-			if (!(key in options)) {
-				options[key] = defaults[key]
-			}
-		})
-
-		return options
-	}
-})()
-
-},{}],2:[function(require,module,exports){
 // TODO use typedefs
 
 exports.UPSTREAM = {
@@ -393,7 +37,170 @@ exports.DOWNSTREAM = {
     SET_TRANSMIT_EVENTS: 'set-transmit-events',
 };
 
+},{}],2:[function(require,module,exports){
+'use strict'
+
+// TODO tests
+// TODO support ES6 arrow fns
+
+var JSONF=exports
+
+var FN_TYPE='JSONF:Function'
+
+
+
+JSONF.stringify=function(o){
+    return JSON.stringify(o, function(key,val){
+        if (typeof val==='function'){
+            return {
+                type: FN_TYPE,
+                data: val.toString().replace(/\r/g, '\\r').replace(/\n/g, '\\n')
+            }
+        }
+        else {
+            return val
+        }
+    })
+}
+
+JSONF.parse=function(s){
+    var i=0
+    return JSON.parse(s, function(key, val){
+        if (val&&val.type===FN_TYPE){
+            try {
+                return new Function(
+                    // http://www.kristofdegrave.be/2012/07/json-serialize-and-deserialize.html
+                    val.data.match(/\(([^)]+?)\)/)[1],
+                    val.data.match(/\{([\s\S]+)\}/)[1]
+                )
+            }
+            catch (e){
+                // TODO throw a big fat error
+                return val
+            }
+        }
+        else {
+            return val
+        }
+        /*if (typeof val!=='string')return val
+        if (val.indexOf(FN_TYPE)<0)return val
+
+        */
+    })
+}
+
 },{}],3:[function(require,module,exports){
+(function (process){
+var os = require('os');
+
+module.exports = Loggr;
+
+var LEVELS = Loggr.LEVELS = {
+    OFF: 0,
+    INFO: 1,
+    DEBUG: 2,
+    TRACE: 3,
+    ALL: Number.POSITIVE_INFINITY,
+};
+
+// TODO accept string levels, normalize internally to numbers
+
+// TODO more/optional outputs
+// TODO string substitution, multiple params, etc
+
+function Loggr(config) {
+    var c = config || {};
+
+    c.level = c.level || c.logLevel || LEVELS.INFO;
+    c.showTime = 'showTime' in c ? Boolean(c.showTime) : true;
+    c.namespace = c.namespace || null;
+    c.outStream = c.outStream || process.stdout;
+    c.eol = c.eol || os.EOL;
+
+    this.config = c;
+}
+
+Loggr.prototype.fork = function (newNamespace) {
+    var conf = this.config;
+
+    return new Loggr({
+        level: conf.level,
+        showTime: conf.showTime,
+        namespace: newNamespace,
+        outStream: conf.outStream,
+        eol: conf.eol,
+    });
+};
+
+Loggr.prototype._log = function (lvl, messages) {
+    if (lvl <= this.config.level) {
+        var time = '';
+        var namespace = '';
+
+        if (this.config.showTime) {
+            var d = new Date();
+            var h = ('0' + d.getHours()).slice(-2);
+            var m = ('0' + d.getMinutes()).slice(-2);
+            var s = ('0' + d.getSeconds()).slice(-2);
+            var ms = ('00' + d.getMilliseconds()).slice(-3);
+
+            time = '[' + h + ':' + m + ':' + s + '.' + ms + '] ';
+        }
+
+        if (this.config.namespace) {
+            namespace = '[' + this.config.namespace + '] ';
+        }
+
+        var message = messages
+            .map(function (msg) {
+                return String(msg);
+            })
+            .join(' ');
+
+        var levelStr = Loggr.getLevelChar(lvl) + ' ';
+
+        this.config.outStream.write(time + levelStr + namespace + message + this.config.eol);
+    }
+};
+
+Loggr.prototype.info = function () {
+    this._log(LEVELS.INFO, Array.prototype.slice.call(arguments));
+};
+
+Loggr.prototype.debug = function () {
+    this._log(LEVELS.DEBUG, Array.prototype.slice.call(arguments));
+};
+
+Loggr.prototype.trace = function () {
+    this._log(LEVELS.TRACE, Array.prototype.slice.call(arguments));
+};
+
+Loggr.getLevelChar = function (level) {
+    switch (level) {
+        case Loggr.LEVELS.INFO: return 'I';
+        case Loggr.LEVELS.DEBUG: return 'D';
+        case Loggr.LEVELS.TRACE: return 'T';
+        default: return '?';
+    }
+};
+
+}).call(this,require('_process'))
+},{"_process":10,"os":9}],4:[function(require,module,exports){
+'use strict'
+
+exports=module.exports=function(opts, defaults){
+    opts=opts||{}
+
+    Object.keys(defaults).forEach(function(key){
+        if (opts[key]===undefined){
+            opts[key]=defaults[key]
+        }
+    })
+
+    return opts
+}
+
+},{}],5:[function(require,module,exports){
 (function (process,global){
 /* @preserve
  * The MIT License (MIT)
@@ -6015,7 +5822,7 @@ module.exports = ret;
 },{"./es5":13}]},{},[4])(4)
 });                    ;if (typeof window !== 'undefined' && window !== null) {                               window.P = window.Promise;                                                     } else if (typeof self !== 'undefined' && self !== null) {                             self.P = self.Promise;                                                         }
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"_process":10}],4:[function(require,module,exports){
+},{"_process":10}],6:[function(require,module,exports){
 /*!
  * jQuery JavaScript Library v3.2.1
  * https://jquery.com/
@@ -16270,59 +16077,7 @@ if ( !noGlobal ) {
 return jQuery;
 } );
 
-},{}],5:[function(require,module,exports){
-'use strict'
-
-// TODO tests
-// TODO support ES6 arrow fns
-
-var JSONF=exports
-
-var FN_TYPE='JSONF:Function'
-
-
-
-JSONF.stringify=function(o){
-    return JSON.stringify(o, function(key,val){
-        if (typeof val==='function'){
-            return {
-                type: FN_TYPE,
-                data: val.toString().replace(/\r/g, '\\r').replace(/\n/g, '\\n')
-            }
-        }
-        else {
-            return val
-        }
-    })
-}
-
-JSONF.parse=function(s){
-    var i=0
-    return JSON.parse(s, function(key, val){
-        if (val&&val.type===FN_TYPE){
-            try {
-                return new Function(
-                    // http://www.kristofdegrave.be/2012/07/json-serialize-and-deserialize.html
-                    val.data.match(/\(([^)]+?)\)/)[1],
-                    val.data.match(/\{([\s\S]+)\}/)[1]
-                )
-            }
-            catch (e){
-                // TODO throw a big fat error
-                return val
-            }
-        }
-        else {
-            return val
-        }
-        /*if (typeof val!=='string')return val
-        if (val.indexOf(FN_TYPE)<0)return val
-
-        */
-    })
-}
-
-},{}],6:[function(require,module,exports){
+},{}],7:[function(require,module,exports){
 (function (global){
 /**
  * @license
@@ -33410,103 +33165,7 @@ JSONF.parse=function(s){
 }.call(this));
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],7:[function(require,module,exports){
-(function (process){
-var os = require('os');
-
-module.exports = Loggr;
-
-var LEVELS = Loggr.LEVELS = {
-    OFF: 0,
-    INFO: 1,
-    DEBUG: 2,
-    TRACE: 3,
-    ALL: Number.POSITIVE_INFINITY,
-};
-
-// TODO accept string levels, normalize internally to numbers
-
-// TODO more/optional outputs
-// TODO string substitution, multiple params, etc
-
-function Loggr(config) {
-    var c = config || {};
-
-    c.level = c.level || c.logLevel || LEVELS.INFO;
-    c.showTime = 'showTime' in c ? Boolean(c.showTime) : true;
-    c.namespace = c.namespace || null;
-    c.outStream = c.outStream || process.stdout;
-    c.eol = c.eol || os.EOL;
-
-    this.config = c;
-}
-
-Loggr.prototype.fork = function (newNamespace) {
-    var conf = this.config;
-
-    return new Loggr({
-        level: conf.level,
-        showTime: conf.showTime,
-        namespace: newNamespace,
-        outStream: conf.outStream,
-        eol: conf.eol,
-    });
-};
-
-Loggr.prototype._log = function (lvl, messages) {
-    if (lvl <= this.config.level) {
-        var time = '';
-        var namespace = '';
-
-        if (this.config.showTime) {
-            var d = new Date();
-            var h = ('0' + d.getHours()).slice(-2);
-            var m = ('0' + d.getMinutes()).slice(-2);
-            var s = ('0' + d.getSeconds()).slice(-2);
-            var ms = ('00' + d.getMilliseconds()).slice(-3);
-
-            time = '[' + h + ':' + m + ':' + s + '.' + ms + '] ';
-        }
-
-        if (this.config.namespace) {
-            namespace = '[' + this.config.namespace + '] ';
-        }
-
-        var message = messages
-            .map(function (msg) {
-                return String(msg);
-            })
-            .join(' ');
-
-        var levelStr = Loggr.getLevelChar(lvl) + ' ';
-
-        this.config.outStream.write(time + levelStr + namespace + message + this.config.eol);
-    }
-};
-
-Loggr.prototype.info = function () {
-    this._log(LEVELS.INFO, Array.prototype.slice.call(arguments));
-};
-
-Loggr.prototype.debug = function () {
-    this._log(LEVELS.DEBUG, Array.prototype.slice.call(arguments));
-};
-
-Loggr.prototype.trace = function () {
-    this._log(LEVELS.TRACE, Array.prototype.slice.call(arguments));
-};
-
-Loggr.getLevelChar = function (level) {
-    switch (level) {
-        case Loggr.LEVELS.INFO: return 'I';
-        case Loggr.LEVELS.DEBUG: return 'D';
-        case Loggr.LEVELS.TRACE: return 'T';
-        default: return '?';
-    }
-};
-
-}).call(this,require('_process'))
-},{"_process":10,"os":9}],8:[function(require,module,exports){
+},{}],8:[function(require,module,exports){
 (function (global){
 ;(function() {
 "use strict"
@@ -34970,21 +34629,6 @@ process.chdir = function (dir) {
 process.umask = function() { return 0; };
 
 },{}],11:[function(require,module,exports){
-'use strict'
-
-exports=module.exports=function(opts, defaults){
-    opts=opts||{}
-
-    Object.keys(defaults).forEach(function(key){
-        if (opts[key]===undefined){
-            opts[key]=defaults[key]
-        }
-    })
-
-    return opts
-}
-
-},{}],12:[function(require,module,exports){
 if (typeof Object.create === 'function') {
   // implementation from standard node.js 'util' module
   module.exports = function inherits(ctor, superCtor) {
@@ -35009,14 +34653,14 @@ if (typeof Object.create === 'function') {
   }
 }
 
-},{}],13:[function(require,module,exports){
+},{}],12:[function(require,module,exports){
 module.exports = function isBuffer(arg) {
   return arg && typeof arg === 'object'
     && typeof arg.copy === 'function'
     && typeof arg.fill === 'function'
     && typeof arg.readUInt8 === 'function';
 }
-},{}],14:[function(require,module,exports){
+},{}],13:[function(require,module,exports){
 (function (process,global){
 // Copyright Joyent, Inc. and other Node contributors.
 //
@@ -35606,7 +35250,7 @@ function hasOwnProperty(obj, prop) {
 }
 
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./support/isBuffer":13,"_process":10,"inherits":12}],15:[function(require,module,exports){
+},{"./support/isBuffer":12,"_process":10,"inherits":11}],14:[function(require,module,exports){
 
 if (isNode()) {
     module.exports=Ws4ever
@@ -35712,7 +35356,7 @@ function isNode(){return typeof module==='object'&&typeof module.exports==='obje
 
 
 
-},{}],16:[function(require,module,exports){
+},{}],15:[function(require,module,exports){
 var Command=require('./command')
 var TYPES=Command.TYPES
 
@@ -35787,7 +35431,7 @@ CommandList.prototype.clear=function(){
 
 
 
-},{"./command":17}],17:[function(require,module,exports){
+},{"./command":16}],16:[function(require,module,exports){
 exports=module.exports=Command
 
 // TODO replace magic strings everywhere
@@ -35814,7 +35458,7 @@ function Command(data){
 	// 	})
 	// })
 }
-},{}],18:[function(require,module,exports){
+},{}],17:[function(require,module,exports){
 'use strict';
 
 var _ = require('lodash');
@@ -35822,14 +35466,12 @@ var $ = require('jquery');
 var Promise = require('bluebird');
 // var css=require('./src/styles/index.styl')
 // var views=require('./views.msx')
-// TODO move to Puppet
-var UniqueSelector = require('get-unique-selector');
 // var utils = require('./utils')
-var Loggr = require('loggr');
-var defaults = require('shallow-defaults');
+var Loggr = require('../../../../modules/loggr');
+var defaults = require('../../../../modules/shallow-defaults');
 // var EventEmitter=require('events').EventEmitter
 var util = require('util');
-var JSONF = require('jsonf');
+var JSONF = require('../../../../modules/jsonf');
 var m = require('mithril');
 var Ws4ever = require('ws4ever');
 
@@ -36137,4 +35779,4 @@ function nl2backslashnl(str) {
     return str.replace(/\n/g, '\\n');
 }
 
-},{"../../../../modules/browser-puppeteer/src/messages.js":2,"../../../command":17,"../../../command-list":16,"bluebird":3,"get-unique-selector":1,"jquery":4,"jsonf":5,"lodash":6,"loggr":7,"mithril":8,"shallow-defaults":11,"util":14,"ws4ever":15}]},{},[18]);
+},{"../../../../modules/browser-puppeteer/src/messages.js":1,"../../../../modules/jsonf":2,"../../../../modules/loggr":3,"../../../../modules/shallow-defaults":4,"../../../command":16,"../../../command-list":15,"bluebird":5,"jquery":6,"lodash":7,"mithril":8,"util":13,"ws4ever":14}]},{},[17]);
