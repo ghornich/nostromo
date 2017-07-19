@@ -133,6 +133,11 @@ RecorderApp.prototype.onCapturedEvent=function(data){
         return
     }
 
+    // TODO configurable
+    if (event.type==='keypress' && [13,27].indexOf(event.keyCode)<0) {
+        return
+    }
+
     switch(event.type){
         case 'input':
             event.type='setValue'
