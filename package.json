@@ -14,7 +14,6 @@
   "author": "ghornich",
   "dependencies": {
     "bluebird": "^3.5.0",
-    "browser-spawners": "github:ghornich/browser-spawners",
     "buffer-image-diff": "github:ghornich/buffer-image-diff",
     "get-unique-selector": "github:ghornich/get-unique-selector",
     "glob": "^7.1.2",
@@ -33,7 +32,9 @@
     "shallow-defaults": "github:ghornich/shallow-defaults",
     "tap-writer": "github:ghornich/tap-writer",
     "ws": "^3.0.0",
-    "ws4ever": "github:ghornich/ws4ever"
+    "ws4ever": "github:ghornich/ws4ever",
+    "browser-spawner-chrome": "github:ghornich/browser-spawner-chrome",
+    "browser-spawner-firefox": "github:ghornich/browser-spawner-firefox"
   },
   "license": "MIT",
   "bin": "src/cli.js",

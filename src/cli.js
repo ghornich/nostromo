@@ -4,7 +4,8 @@ var fs=require('fs')
 var pathlib = require('path')
 var defaults = require('shallow-defaults')
 var args = require('minimist')(process.argv.slice(2))
-var BrowserSpawners = require('browser-spawners')
+var rfr=require('rfr')
+var BrowserSpawners = rfr('modules/browser-spawners')
 var Loggr=require('loggr')
 
 /*
