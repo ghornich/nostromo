@@ -1,6 +1,6 @@
 const Promise=require('bluebird')
 Promise.config({ longStackTraces: true })
-var rfr=require('rfr')
+const rfr=require('rfr')
 const Loggr=rfr('modules/loggr')
 const defaults=rfr('modules/shallow-defaults')
 const Schema=require('schema-inspector')
@@ -17,6 +17,7 @@ const screenshotjs=rfr('modules/screenshot-js')
 const mkdirpAsync=Promise.promisify(require('mkdirp'))
 const PNG=require('pngjs').PNG
 const globAsync=Promise.promisify(require('glob'))
+const bufferImageSearch=rfr('modules/buffer-image-search')
 
 // TODO show error if test(...) doesn't return a promise
 
@@ -198,6 +199,22 @@ TestRunner.prototype.run = Promise.method(function(){
             .then(() => this._browserPuppeteer.sendMessage({
                 type: MESSAGES.DOWNSTREAM.SHOW_SCREENSHOT_MARKER
             }))
+            .then(async ()=>{
+                this._log.info('Ensuring browser is visible...')
+                
+                while(true){
+                    var screenshot = await screenshotjs()
+                    var markerPositions = bufferImageSearch(screenshot, cropMarkerImg)
+                    if (markerPositions.length === 2){
+                        this._log.info('Browser is visible')
+                        break
+                    }
+                    else {
+                        this._log.debug(`Screenshot markers not found (marker count: ${ markerPositions.length })`)
+                    }
+                    await Promise.delay(2000)
+                }
+            })
             .then(() => this._runTestFiles(testFilePaths))
             .catch(err => {
                 // TODO better error handling
@@ -205,9 +222,6 @@ TestRunner.prototype.run = Promise.method(function(){
                 console.error(err.stack)
             })
             .finally(()=>{
-                this._tapWriter.diagnostic('tests ' + this._tapWriter.testCount)
-                this._tapWriter.diagnostic('pass ' + this._tapWriter.passCount)
-                this._tapWriter.diagnostic('fail ' + this._tapWriter.failCount)
 
                 // TODO optionally keep browser open for debugging (detach process & exit? OR wait for manual closing?)
                 if (!this._conf.keepalive) {
@@ -215,11 +229,16 @@ TestRunner.prototype.run = Promise.method(function(){
                 }
             })
         })
-        .then(()=>this._stopServers())
         .catch(err => {
             // TODO better error handling
             console.error(err)
             console.error(err.stack)
+        })
+        .finally(()=>{
+            this._stopServers()
+            this._tapWriter.diagnostic('tests ' + this._tapWriter.testCount)
+            this._tapWriter.diagnostic('pass ' + this._tapWriter.passCount)
+            this._tapWriter.diagnostic('fail ' + this._tapWriter.failCount)
         })
     })
     .catch(error => {

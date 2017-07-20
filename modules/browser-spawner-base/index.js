@@ -84,6 +84,8 @@ BrowserSpawnerBase.prototype._getDefaultTempDir = function () {
 };
 
 BrowserSpawnerBase.prototype._deleteTempDir = function () {
+    // TODO delete all previous temp dirs too
+
     return new Promise((resolve) => {
         this._log.debug('BrowserSpawnerBase: deleting temp dir');
 
