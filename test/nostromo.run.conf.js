@@ -6,7 +6,7 @@ module.exports=function(config){
         },
 
         defaultAfterCommand:function(t, command) {
-            return Promise.delay(2000)
+            // return Promise.delay(2000)
         },
 
 
