@@ -1,6 +1,7 @@
 var rfr=require('rfr')
 const fs = require('fs');
 const pathlib = require('path');
+const urllib = require('url');
 const http = require('http');
 const util = require('util');
 const EventEmitter = require('events').EventEmitter;
@@ -71,16 +72,18 @@ BrowserPuppeteer.prototype._startServers = function () {
 };
 
 BrowserPuppeteer.prototype._onHttpRequest = function (req, resp) {
-    if (req.url === '/browser-puppet.defaults.js') {
+    const parsedUrl = urllib.parse(req.url);
+    
+    if (parsedUrl.pathname === '/browser-puppet.defaults.js') {
         resp.setHeader('content-type', 'application/javascript');
         resp.end(fs.readFileSync(pathlib.resolve(__dirname, '../../dist/browser-puppet.defaults.js')));
     }
-    else if (req.url === '/browser-puppet.dist.js') {
+    else if (parsedUrl.pathname === '/browser-puppet.dist.js') {
         resp.setHeader('content-type', 'application/javascript');
         resp.end(fs.readFileSync(pathlib.resolve(__dirname, '../../dist/browser-puppet.dist.js')));
     }
     else {
-        resp.status = 404;
+        resp.statusCode = 404;
         resp.end('404');
     }
 };
