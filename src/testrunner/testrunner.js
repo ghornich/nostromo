@@ -75,8 +75,8 @@ function TestRunner(conf){
     this._conf=defaults(conf, {
         testPort: DEFAULT_TEST_PORT,
         waitForConnectionTimeout: 5000,
-        logLevel: 0,//Loggr.LEVELS.INFO,
-        bailout: true,
+        logLevel: Loggr.LEVELS.INFO,
+        bailout: false,
         keepalive: false,
         referenceScreenshotDir: REF_SCREENSHOT_BASE_DIR,
         beforeTest: noop,
@@ -84,7 +84,7 @@ function TestRunner(conf){
     })
 
     this._log=new Loggr({
-        level: 100,//this._conf.logLevel,
+        level: this._conf.logLevel,
         showTime:true,
         namespace:'TestRunner',
         outStream: {
@@ -526,13 +526,18 @@ TestRunner.prototype._waitWhileVisible_direct = Promise.method(function (selecto
 
 TestRunner.prototype._focus_direct = Promise.method(function (selector, description) {
     this._log.info('focus: '+selector)
+    description=description||'focus - selector: '+selector
 
     return this._browserPuppeteer.execCommand({
         type: 'focus',
         selector: selector
     })
+    .then(()=>{
+        // this._tapWriter.pass({type:'focus',message:description})
+    })
     .catch(e=>{
-        this._tapWriter.notOk({ type: 'focus', message: e.message })
+        // this._tapWriter.notOk('focus - '+ e.message)
+        this._tapWriter.diagnostic('WARNING - focus - '+e.message)
 
         if (this._conf.bailout) {
             throw createError('BailoutError', e.message)
@@ -549,7 +554,7 @@ TestRunner.prototype._scroll_direct = Promise.method(function(selector, scrollTo
         scrollTop: scrollTop
     })
     .catch(e=>{
-        this._tapWriter.notOk({ type: 'scroll', message: e.message })
+        this._tapWriter.notOk('scroll - ' + e.message)
 
         if (this._conf.bailout) {
             throw createError('BailoutError', e.message)

@@ -4,7 +4,7 @@ exports.UPSTREAM = {
     // { type, selector, [warning] }
     SELECTOR_BECAME_VISIBLE: 'selector-became-visible',
 
-    // { type, event: { type, selector, target, ... } }
+    // { type, event: { type, [selector,] [target,] ... } }
     CAPTURED_EVENT: 'captured-event',
 
     // general acknowledgement { type, result }
@@ -13,8 +13,8 @@ exports.UPSTREAM = {
     // general failure { type, error }
     NAK: 'nak',
 
-    // insert screenshot assert
-    INSERT_SCREENSHOT_ASSERT: 'insert-screenshot-assert',
+    // insert assertion
+    INSERT_ASSERTION: 'insert-assertion',
 };
 
 exports.DOWNSTREAM = {

@@ -34,7 +34,7 @@ function Ws4ever(url, protocols, options){
     this._ensureConnection=this._ensureConnection.bind(this)
     this._onWsOpen=this._onWsOpen.bind(this)
     this._onWsClose=this._onWsClose.bind(this)
-    // this._onWsError=this._onWsError.bind(this)
+    this._onWsError=this._onWsError.bind(this)
     this._onWsMessage=this._onWsMessage.bind(this)
 
     setInterval(this._ensureConnection, this._opts.retryInterval)

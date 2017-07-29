@@ -8,7 +8,7 @@ exports.UPSTREAM = {
     // { type, selector, [warning] }
     SELECTOR_BECAME_VISIBLE: 'selector-became-visible',
 
-    // { type, event: { type, selector, target, ... } }
+    // { type, event: { type, [selector,] [target,] ... } }
     CAPTURED_EVENT: 'captured-event',
 
     // general acknowledgement { type, result }
@@ -17,8 +17,8 @@ exports.UPSTREAM = {
     // general failure { type, error }
     NAK: 'nak',
 
-    // insert screenshot assert
-    INSERT_SCREENSHOT_ASSERT: 'insert-screenshot-assert',
+    // insert assertion
+    INSERT_ASSERTION: 'insert-assertion',
 };
 
 exports.DOWNSTREAM = {
@@ -60,7 +60,6 @@ var Ws4ever=require('../../../../modules/ws4ever');
 var AUTODETECT_INTERVAL_MS = 300;
 
 var DEFAULT_PORT = 47225;
-var SCROLL_DEBOUNCE = 500;
 
 exports = module.exports = BrowserPuppet;
 
@@ -185,27 +184,174 @@ BrowserPuppet.prototype._onMessage = function (data) {
     });
 };
 
-var SCREENSHOT_KEY_DEBOUNCE = 500;
+BrowserPuppet.prototype._canCapture = function () {
+    return this._transmitEvents && !this._isExecuting;
+}
 
 BrowserPuppet.prototype._attachCaptureEventListeners = function () {
-    document.addEventListener('click', this._onCaptureEvent.bind(this, 'click'), true);
-    document.addEventListener('focus', this._onCaptureEvent.bind(this, 'focus'), true);
-    document.addEventListener('keypress', this._onCaptureEvent.bind(this, 'keypress'), true);
-    document.addEventListener('input', this._onCaptureEvent.bind(this, 'input'), true);
-    document.addEventListener('scroll', debounce(this._onCaptureEvent.bind(this, 'scroll'), SCROLL_DEBOUNCE), true);
-    document.addEventListener('keydown', debounce(this._onKeydownEvent.bind(this), SCREENSHOT_KEY_DEBOUNCE), true);
+    document.addEventListener('click', this._onClickCapture.bind(this), true);
+    document.addEventListener('focus', this._onFocusCapture.bind(this), true);
+    document.addEventListener('input', this._onInputCapture.bind(this), true);
+    document.addEventListener('scroll', this._onScrollCapture.bind(this), true);
+    document.addEventListener('keydown', this._onKeydownCapture.bind(this), true);
 };
 
 var SHIFT_KEY = 16;
 var CTRL_KEY = 17;
 
-BrowserPuppet.prototype._onKeydownEvent = function (event) {
+BrowserPuppet.prototype._onClickCapture = function (event) {
+    if (!this._canCapture()) {
+        return
+    }
+
+    var target = event.target;
+
+    try {
+        var selector = this._uniqueSelector.get(target);
+    }
+    catch (err) {
+        console.error(err)
+        return
+    }
+
+    this._sendMessage({
+        type: MESSAGES.UPSTREAM.CAPTURED_EVENT,
+        event: {
+            type: 'click',
+            selector: selector,
+            target: {
+                innerText: target.innerText
+            },
+        },
+    });
+}
+
+BrowserPuppet.prototype._onFocusCapture = function (event) {
+    if (!this._canCapture()) {
+        return
+    }
+
+    var target = event.target;
+
+    try {
+        var selector = this._uniqueSelector.get(target);
+    }
+    catch (err) {
+        console.error(err)
+        return
+    }
+
+    this._sendMessage({
+        type: MESSAGES.UPSTREAM.CAPTURED_EVENT,
+        event: {
+            type: 'focus',
+            selector: selector,
+            target: {
+                innerText: target.innerText
+            },
+        },
+    });
+}
+
+BrowserPuppet.prototype._onInputCapture = function (event) {
+    if (!this._canCapture()) {
+        return
+    }
+
+    var target = event.target;
+
+    try {
+        var selector = this._uniqueSelector.get(target);
+    }
+    catch (err) {
+        console.error(err)
+        return
+    }
+
+    this._sendMessage({
+        type: MESSAGES.UPSTREAM.CAPTURED_EVENT,
+        event: {
+            type: 'input',
+            selector: selector,
+            value: target.value,
+            target: {
+                innerText: target.innerText
+            },
+        },
+    });
+}
+
+var SCROLL_DEBOUNCE = 500;
+
+BrowserPuppet.prototype._onScrollCapture = debounce(function (event) {
+    if (!this._canCapture()) {
+        return
+    }
+
+    var target = event.target;
+
+    try {
+        var selector = this._uniqueSelector.get(target);
+    }
+    catch (err) {
+        console.error(err)
+        return
+    }
+
+    this._sendMessage({
+        type: MESSAGES.UPSTREAM.CAPTURED_EVENT,
+        event: {
+            type: 'scroll',
+            selector: selector,
+            target: {
+                scrollTop: target.scrollTop,
+                innerText: target.innerText,
+            },
+        },
+    });
+}, SCROLL_DEBOUNCE)
+
+BrowserPuppet.prototype._onKeydownCapture = function (event) {
+    if (!this._canCapture()) {
+        return
+    }
+
     if (event.keyCode === SHIFT_KEY && event.ctrlKey === true ||
         event.keyCode === CTRL_KEY && event.shiftKey === true) {
 
-        this._sendMessage({ type: MESSAGES.UPSTREAM.INSERT_SCREENSHOT_ASSERT });
+        this._sendInsertAssertionDebounced()
+        return
     }
-};
+
+    var target = event.target;
+
+    try {
+        var selector = this._uniqueSelector.get(target);
+    }
+    catch (err) {
+        console.error(err)
+        return
+    }
+
+    this._sendMessage({
+        type: MESSAGES.UPSTREAM.CAPTURED_EVENT,
+        event: {
+            type: 'keydown',
+            selector: selector,
+            keyCode: event.keyCode || event.charCode,
+            ctrlKey: event.ctrlKey,
+            shiftKey: event.shiftKey,
+            altKey: event.altKey,
+            target: cleanTarget(target),
+        },
+    })
+}
+
+var INSERT_ASSERTION_DEBOUNCE = 500
+
+BrowserPuppet.prototype._sendInsertAssertionDebounced = debounce(function () {
+    this._sendMessage({ type: MESSAGES.UPSTREAM.INSERT_ASSERTION });
+}, INSERT_ASSERTION_DEBOUNCE)
 
 BrowserPuppet.prototype.setOnSelectorBecameVisibleSelectors = function (selectors) {
     this._onSelectorBecameVisibleData.selectors = deepCopy(selectors);
@@ -455,7 +601,7 @@ BrowserPuppet.prototype.focus = function (selector) {
         throw new Error('Unable to focus selector "' + selector + '": not unique');
     }
     else {
-        $el.focus();
+        $el[0].focus();
     }
 };
 
@@ -571,7 +717,14 @@ BrowserPuppet.prototype.setScreenshotMarkerState = function (state) {
 
 
 
-
+function cleanTarget(target){
+    return {
+        className: target.className,
+        id: target.id,
+        innerText: target.innerText,
+        tagName: target.tagName,
+    }
+}
 
 
 function deepCopy(o) {
@@ -1057,7 +1210,7 @@ function Ws4ever(url, protocols, options){
     this._ensureConnection=this._ensureConnection.bind(this)
     this._onWsOpen=this._onWsOpen.bind(this)
     this._onWsClose=this._onWsClose.bind(this)
-    // this._onWsError=this._onWsError.bind(this)
+    this._onWsError=this._onWsError.bind(this)
     this._onWsMessage=this._onWsMessage.bind(this)
 
     setInterval(this._ensureConnection, this._opts.retryInterval)

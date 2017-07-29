@@ -7,11 +7,5 @@
     }
 
     window.browserPuppet = new BrowserPuppet();
-
-    var prevOnload = window.onload;
-
-    window.onload = function () {
-        browserPuppet.start();
-        prevOnload && prevOnload();
-    };
-}());
+    browserPuppet.start();
+})();

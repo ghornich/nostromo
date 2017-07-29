@@ -29,19 +29,23 @@ window.RecorderApp=RecorderApp
 // TODO beforeCommand: provide raw data AND next command as param
 // TODO support touch events
 
-// TODO executable specifications? (image list with command target highlights)
-//      or play macro step-by-step?
+// TODO executable specifications
+// TODO play macro step-by-step
 
 function RecorderApp(conf){
     var self = this
-
-    // EventEmitter.call(self)
 
     if (typeof conf === 'string'){
         conf=JSONF.parse(conf)
     }
 
     self._conf = conf||{}
+
+    self._conf.pressKeyFilter=self._conf.pressKeyFilter||function (command) {
+        return [13, 27].indexOf(command.keyCode) >= 0;
+    }
+
+    self._conf.beforeCapture = self._conf.beforeCapture||noop
 
     self._log = new Loggr({
         logLevel: Loggr.LEVELS.ALL, // TODO logLevel
@@ -70,8 +74,6 @@ function RecorderApp(conf){
 
 }
 
-// util.inherits(RecorderApp,EventEmitter)
-
 // TODO promise, resolve when loaded
 RecorderApp.prototype.start = function(){
     var self=this
@@ -88,7 +90,7 @@ RecorderApp.prototype.start = function(){
                     self.onSelectorBecameVisibleEvent(data)
                     break
                 case MESSAGES.UPSTREAM.CAPTURED_EVENT:
-                    self.onCapturedEvent(data)
+                    self._onCapturedEvent(data.event)
                     break
                 case MESSAGES.UPSTREAM.INSERT_SCREENSHOT_ASSERT:
                     if (self._isRecording) self.commandList.add({ type: CMD_TYPES.ASSERT_SCREENSHOT })
@@ -112,18 +114,41 @@ RecorderApp.prototype.start = function(){
     m.mount($('#mount')[0], MountComp)
 }
 
-RecorderApp.prototype.onCapturedEvent=function(data){
-    if (!this._isRecording)return
+RecorderApp.prototype._onCapturedEvent=function(event){
+    if (!this._isRecording) {
+        return
+    }
 
-    var event=data.event
+    var command
 
-    // TODO use command instead of raw capture data
+    switch(event.type){
+        case 'input':
+            command = this._getCommandFromInputEvent(event);
+            break
+        case 'keydown':
+            command = this._getCommandFromKeydownEvent(event);
+            break
+        case 'scroll':
+            command = this._getCommandFromScrollEvent(event);
+            break
+        case 'click':
+            command = this._getCommandFromClickEvent(event);
+            break
+        case 'focus':
+            command = this._getCommandFromFocusEvent(event);
+            break
+        default:
+            console.error('Unknown event type: '+event.type+', event:',event)
+            return
+    }
+
+    // TODO pass event AND command
     // type, target, $target, selector
     var beforeCaptureData = {
-        avent:event,
+        event:event,
         type: event.type,
         target:event.target,
-        selector: event.selector
+        selector: event.selector,
     }
 
     if (this._conf.beforeCapture(beforeCaptureData)===false){
@@ -131,32 +156,52 @@ RecorderApp.prototype.onCapturedEvent=function(data){
         return
     }
 
-    // TODO configurable
-    if (event.type==='keypress' && [13,27].indexOf(event.keyCode)<0) {
+    if (command.type==='pressKey' && this._conf.pressKeyFilter(command,event) === false) {
         return
     }
 
-    switch(event.type){
-        case 'input':
-            event.type='setValue'
-            break
-        case 'keypress':
-            event.type='pressKey'
-            break
-        case 'scroll':
-            event.scrollTop = event.target.scrollTop
-            break
-        case 'click':
-            event.message='Click "'+event.target.innerText+'" ('+event.selector+')'
-        default:break
-    }
-
-    delete event.target
-
-    this.commandList.add(event)
+    this.addCommand(command)
 }
 
-// record.conf.js API
+RecorderApp.prototype._getCommandFromInputEvent=function(event){
+    return {
+        type: 'setValue',
+        selector: event.selector,
+        value: event.value,
+    }
+}
+
+RecorderApp.prototype._getCommandFromKeydownEvent=function(event){
+    return {
+        type: 'pressKey',
+        selector: event.selector,
+        keyCode: event.keyCode,
+    }
+}
+
+RecorderApp.prototype._getCommandFromScrollEvent=function(event){
+    return {
+        type: 'scroll',
+        selector: event.selector,
+        scrollTop: event.scrollTop,
+    }
+}
+
+RecorderApp.prototype._getCommandFromClickEvent=function(event){
+    return {
+        type: 'click',
+        selector: event.selector,
+        message: 'Click "'+ellipsis(event.target.innerText)+'" ('+event.selector+')'
+    }
+}
+
+RecorderApp.prototype._getCommandFromFocusEvent=function(event){
+    return {
+        type: 'focus',
+        selector: event.selector,
+    }
+}
+
 RecorderApp.prototype.addCommand=function(cmd){
     this.commandList.add(cmd)
 }
@@ -196,7 +241,7 @@ var RootComp={
             <div>
                 <ul>{
                     app.commandList.map(function(cmd){
-                        return <li>{ util.inspect(cmd) },</li>
+                        return <li>{ JSON.stringify(cmd) },</li>
                     })
                 }</ul>
             </div>
@@ -251,6 +296,8 @@ function renderCmd(cmd){
         default:console.error('unknown cmd type ',cmd.type, cmd);return '<unknown>'
     }
 }
+
+function ellipsis(s,l){l=l||30; return s.length<=l?s:s.substr(0,l-3)+'...'}
 
 function apos(s){return '\'' + String(s).replace(/'/g,'\\\'') + '\''}
 
