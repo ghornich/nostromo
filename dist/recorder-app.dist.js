@@ -1,360 +1,4 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
-(function () {
-	'use strict';
-
-	// TODO preferred selectors?
-
-	var NodeUtils = {}
-
-	UniqueSelector._SelectorElement = SelectorElement
-	UniqueSelector._SelectorElementList = SelectorElementList
-	UniqueSelector._NodeUtils = NodeUtils
-
-	// -----------------------
-
-	if (typeof module === 'object' && typeof module.exports === 'object' && typeof exports === 'object') {
-		exports = module.exports = UniqueSelector
-	}
-	else {
-		window.UniqueSelector = UniqueSelector
-	}
-
-	// -----------------------
-
-	function SelectorElement(node) {
-		var nodeSelectorData = SelectorElement.getNodeSelectorData(node)
-
-		this._node = node
-		this._rawSelector = nodeSelectorData.selector,
-		this._type = nodeSelectorData.type,
-		this._active = true,
-		this._useNthChild = false,
-		this._nthChild = Array.prototype.indexOf.call(node.parentNode.children, node) + 1
-
-		Object.defineProperties(this, {
-			node: {
-				get: function () {
-					return this._node
-				},
-				set: function () {
-					throw new Error('Cannot set read-only property "node"')
-				}
-			},
-			// TODO unit test
-			rawSelector: {
-				get: function () {
-					if (!this._active) {
-						return null
-					}
-
-					return this._rawSelector
-				},
-				set: function (val) {
-					// TODO enforce selector type?
-					this._rawSelector = val
-				}
-			},
-			selector: {
-				get: function () {
-					if (!this._active) {
-						return null
-					}
-
-					return this._rawSelector + (this._useNthChild ? ':nth-child(' + this._nthChild + ')' : '')
-				},
-				set: function () {
-					throw new Error('Cannot set read-only property "selector"')
-				}
-			},
-			type: {
-				get: function () {
-					return this._type
-				},
-				set: function () {
-					throw new Error('Cannot set read-only property "type"')
-				}
-			},
-			active: {
-				get: function () {
-					return this._active
-				},
-				set: function (val) {
-					if (typeof val !== 'boolean') {
-						throw new Error('Invalid type for "active"')
-					}
-
-					this._active = val
-				}
-			},
-			useNthChild: {
-				get: function () {
-					return this._useNthChild
-				},
-				set: function (val) {
-					if (typeof val !== 'boolean') {
-						throw new Error('Invalid type for "useNthChild"')
-					}
-
-					this._useNthChild = val
-				}
-			},
-			// nthChild: {
-			//  get: function () { return this._nthChild },
-			//  set: function () { throw new Error('Cannot set read-only property "nthChild"') }
-			// }
-		})
-
-		Object.seal(this)
-	}
-
-	SelectorElement.TYPE = {
-		ID: 0,
-		CLASS: 1,
-		ATTR: 2,
-		TAG: 3
-	}
-
-	SelectorElement.ERROR = {
-		INVALID_NODE: 0
-	}
-
-	/**
-	 * [getSelectorStringData description]
-	 * @param  {[type]} node [description]
-	 * @return {Object} { selector: String, type: Number }
-	 */
-	SelectorElement.getNodeSelectorData = function (node) {
-		if (!node || !('tagName' in node)) {
-			var error = new Error('SelectorElement::getNodeSelectorData: invalid node');
-			error.type = SelectorElement.ERROR.INVALID_NODE
-			throw error
-		}
-
-		if (NodeUtils.hasId(node)) {
-			return {
-				selector: '#' + NodeUtils.getId(node),
-				type: SelectorElement.TYPE.ID
-			}
-		}
-
-		if (NodeUtils.hasClass(node)) {
-			return {
-				selector: '.' + NodeUtils.getClass(node).replace(/ +/g, '.'),
-				type: SelectorElement.TYPE.CLASS
-			}
-		}
-
-		// TODO custom attributes?
-
-		var maybeNameAttr = (node.getAttribute('name') || '').trim(); 
-
-		if (maybeNameAttr.length > 0) {
-			return {
-				selector: node.tagName.toLowerCase() + '[name="' + maybeNameAttr + '"]',
-				type: SelectorElement.TYPE.ATTR
-			}
-		}
-
-		// TODO other common selectors?
-
-		return {
-			selector: node.tagName.toLowerCase(),
-			type: SelectorElement.TYPE.TAG
-		}
-	}
-
-	// -----------------------
-
-	function SelectorElementList(options) {
-		this._opts = optionDefaults(options, {
-			querySelectorAll: document.querySelectorAll.bind(document)
-		})
-
-		this._selectorElements = []
-
-		Object.seal(this)
-	}
-
-	SelectorElementList.prototype.getSelectorPath = function () {
-		return this._selectorElements
-			.map(function (selectorElement) {
-				return selectorElement.selector
-			})
-			.filter(function (selector) { return Boolean(selector) })
-			.join(' ')
-			.trim()
-			.replace(/ +/g, ' ');
-	}
-
-	SelectorElementList.prototype.addElement = function (element) {
-		this._selectorElements.unshift(element)
-	}
-
-	SelectorElementList.prototype.getAmbiguity = function () {
-		return this._opts.querySelectorAll(this.getSelectorPath()).length
-	}
-
-	SelectorElementList.prototype.isUnique = function () {
-		return this.getAmbiguity() === 1;
-	}
-
-	SelectorElementList.prototype.simplify = function () {
-		var ambiguity = this.getAmbiguity()
-
-		for (var i = 0, len = this._selectorElements.length; i < len - 1; i++) {
-			var selectorElement = this._selectorElements[i]
-
-			if (!selectorElement.active) {
-				continue
-			}
-
-			selectorElement.active = false
-
-			var newAmbiguity = this.getAmbiguity()
-
-			if (ambiguity !== newAmbiguity) {
-				selectorElement.active = true
-			}
-
-
-
-		}
-	}
-	
-	// TODO if selectorElement is type CLASS and >1 classnames: simplify classnames
-
-	SelectorElementList.prototype.simplifyClasses = function () {
-		var ambiguity = this.getAmbiguity()
-
-		for (var i = 0, len = this._selectorElements.length; i < len - 1; i++) {
-			var selectorElement = this._selectorElements[i]
-
-			if (!selectorElement.active || selectorElement.type !== SelectorElement.TYPE.CLASS) {
-				return
-			}
-
-			// 	var originalSelector = selectorElement.rawSelector
-			// 	var classNames = originalSelector.split(/(?=\.)/g)
-			// 	var ignoredClassIdxs = []
-			
-			// 	if (classNames.length > 1) {
-			// 		for (var classIdx = 0, classLen = classNames.length; classIdx < classLen; classIdx++) {
-			// 			var className = classNames[classIdx]
-
-						
-			// 		}
-			// 	}
-		}
-
-	}
-
-	/**
-	 * add "nth-child"s from back until selector becomes unique
-	 */
-	SelectorElementList.prototype.uniqueify = function () {
-		var ambiguity = this.getAmbiguity()
-
-		for (var i = this._selectorElements.length - 1; i >= 0; i--) {
-			var selectorElement = this._selectorElements[i]
-			var prevActiveValue = selectorElement.active
-
-			selectorElement.active = true
-			selectorElement.useNthChild = true
-
-			var newAmbiguity = this.getAmbiguity()
-
-			// TODO error check: newAmbiguity < 1
-
-			if (newAmbiguity < ambiguity) {
-				ambiguity = newAmbiguity
-
-				if (ambiguity === 1) {
-					break
-				}
-			}
-			else {
-				selectorElement.useNthChild = false
-				selectorElement.active = prevActiveValue
-			}
-		}
-	}
-
-	// -----------------------
-
-	function UniqueSelector(options) {
-		this._opts = optionDefaults(options, {
-			querySelectorAll: document.querySelectorAll.bind(document)
-		})
-	}
-
-	UniqueSelector.prototype.get = function(node) {
-		if (NodeUtils.hasId(node)) {
-			return '#' + NodeUtils.getId(node)
-		}
-
-		var selectorElementList = new SelectorElementList({
-			querySelectorAll: this._opts.querySelectorAll
-		})
-
-		var currentNode = node
-
-		while (currentNode && currentNode.tagName !== 'BODY') {
-			var selectorElement = new SelectorElement(currentNode)
-
-			selectorElementList.addElement(selectorElement);
-
-			if (selectorElement.type === SelectorElement.TYPE.ID) {
-				break
-			}
-
-			currentNode = currentNode.parentNode
-		}
-
-		selectorElementList.simplify()
-
-		if (!selectorElementList.isUnique()) {
-			selectorElementList.uniqueify()
-		}
-
-		return selectorElementList.getSelectorPath()
-	}
-
-	// -----------------------
-
-	NodeUtils.hasId = function (node) {
-		return Boolean(node && typeof node.id === 'string' && node.id.trim().length > 0)
-	}
-
-	NodeUtils.getId = function (node) {
-		return node.id.trim()
-	}
-
-	NodeUtils.hasClass = function (node) {
-		return Boolean(node && typeof node.className === 'string' && node.className.trim().length > 0)
-	}
-
-	NodeUtils.getClass = function (node) {
-		return node.className.trim()
-	}
-
-	// -----------------------
-
-	function optionDefaults(options, defaults) {
-		if (!options) {
-			return defaults
-		}
-
-		Object.keys(defaults).forEach(function (key) {
-			if (!(key in options)) {
-				options[key] = defaults[key]
-			}
-		})
-
-		return options
-	}
-})()
-
-},{}],2:[function(require,module,exports){
 (function (process,global){
 /* @preserve
  * The MIT License (MIT)
@@ -5976,7 +5620,7 @@ module.exports = ret;
 },{"./es5":13}]},{},[4])(4)
 });                    ;if (typeof window !== 'undefined' && window !== null) {                               window.P = window.Promise;                                                     } else if (typeof self !== 'undefined' && self !== null) {                             self.P = self.Promise;                                                         }
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"_process":10}],3:[function(require,module,exports){
+},{"_process":10}],2:[function(require,module,exports){
 // TODO use typedefs
 
 exports.UPSTREAM = {
@@ -6014,6 +5658,362 @@ exports.DOWNSTREAM = {
     // { type, value }
     SET_TRANSMIT_EVENTS: 'set-transmit-events',
 };
+
+},{}],3:[function(require,module,exports){
+(function () {
+	'use strict';
+
+	// TODO preferred selectors?
+
+	var NodeUtils = {}
+
+	UniqueSelector._SelectorElement = SelectorElement
+	UniqueSelector._SelectorElementList = SelectorElementList
+	UniqueSelector._NodeUtils = NodeUtils
+
+	// -----------------------
+
+	if (typeof module === 'object' && typeof module.exports === 'object' && typeof exports === 'object') {
+		exports = module.exports = UniqueSelector
+	}
+	else {
+		window.UniqueSelector = UniqueSelector
+	}
+
+	// -----------------------
+
+	function SelectorElement(node) {
+		var nodeSelectorData = SelectorElement.getNodeSelectorData(node)
+
+		this._node = node
+		this._rawSelector = nodeSelectorData.selector,
+		this._type = nodeSelectorData.type,
+		this._active = true,
+		this._useNthChild = false,
+		this._nthChild = Array.prototype.indexOf.call(node.parentNode.children, node) + 1
+
+		Object.defineProperties(this, {
+			node: {
+				get: function () {
+					return this._node
+				},
+				set: function () {
+					throw new Error('Cannot set read-only property "node"')
+				}
+			},
+			// TODO unit test
+			rawSelector: {
+				get: function () {
+					if (!this._active) {
+						return null
+					}
+
+					return this._rawSelector
+				},
+				set: function (val) {
+					// TODO enforce selector type?
+					this._rawSelector = val
+				}
+			},
+			selector: {
+				get: function () {
+					if (!this._active) {
+						return null
+					}
+
+					return this._rawSelector + (this._useNthChild ? ':nth-child(' + this._nthChild + ')' : '')
+				},
+				set: function () {
+					throw new Error('Cannot set read-only property "selector"')
+				}
+			},
+			type: {
+				get: function () {
+					return this._type
+				},
+				set: function () {
+					throw new Error('Cannot set read-only property "type"')
+				}
+			},
+			active: {
+				get: function () {
+					return this._active
+				},
+				set: function (val) {
+					if (typeof val !== 'boolean') {
+						throw new Error('Invalid type for "active"')
+					}
+
+					this._active = val
+				}
+			},
+			useNthChild: {
+				get: function () {
+					return this._useNthChild
+				},
+				set: function (val) {
+					if (typeof val !== 'boolean') {
+						throw new Error('Invalid type for "useNthChild"')
+					}
+
+					this._useNthChild = val
+				}
+			},
+			// nthChild: {
+			//  get: function () { return this._nthChild },
+			//  set: function () { throw new Error('Cannot set read-only property "nthChild"') }
+			// }
+		})
+
+		Object.seal(this)
+	}
+
+	SelectorElement.TYPE = {
+		ID: 0,
+		CLASS: 1,
+		ATTR: 2,
+		TAG: 3
+	}
+
+	SelectorElement.ERROR = {
+		INVALID_NODE: 0
+	}
+
+	/**
+	 * [getSelectorStringData description]
+	 * @param  {[type]} node [description]
+	 * @return {Object} { selector: String, type: Number }
+	 */
+	SelectorElement.getNodeSelectorData = function (node) {
+		if (!node || !('tagName' in node)) {
+			var error = new Error('SelectorElement::getNodeSelectorData: invalid node');
+			error.type = SelectorElement.ERROR.INVALID_NODE
+			throw error
+		}
+
+		if (NodeUtils.hasId(node)) {
+			return {
+				selector: '#' + NodeUtils.getId(node),
+				type: SelectorElement.TYPE.ID
+			}
+		}
+
+		if (NodeUtils.hasClass(node)) {
+			return {
+				selector: '.' + NodeUtils.getClass(node).replace(/ +/g, '.'),
+				type: SelectorElement.TYPE.CLASS
+			}
+		}
+
+		// TODO custom attributes?
+
+		var maybeNameAttr = (node.getAttribute('name') || '').trim(); 
+
+		if (maybeNameAttr.length > 0) {
+			return {
+				selector: node.tagName.toLowerCase() + '[name="' + maybeNameAttr + '"]',
+				type: SelectorElement.TYPE.ATTR
+			}
+		}
+
+		// TODO other common selectors?
+
+		return {
+			selector: node.tagName.toLowerCase(),
+			type: SelectorElement.TYPE.TAG
+		}
+	}
+
+	// -----------------------
+
+	function SelectorElementList(options) {
+		this._opts = optionDefaults(options, {
+			querySelectorAll: document.querySelectorAll.bind(document)
+		})
+
+		this._selectorElements = []
+
+		Object.seal(this)
+	}
+
+	SelectorElementList.prototype.getSelectorPath = function () {
+		return this._selectorElements
+			.map(function (selectorElement) {
+				return selectorElement.selector
+			})
+			.filter(function (selector) { return Boolean(selector) })
+			.join(' ')
+			.trim()
+			.replace(/ +/g, ' ');
+	}
+
+	SelectorElementList.prototype.addElement = function (element) {
+		this._selectorElements.unshift(element)
+	}
+
+	SelectorElementList.prototype.getAmbiguity = function () {
+		return this._opts.querySelectorAll(this.getSelectorPath()).length
+	}
+
+	SelectorElementList.prototype.isUnique = function () {
+		return this.getAmbiguity() === 1;
+	}
+
+	SelectorElementList.prototype.simplify = function () {
+		var ambiguity = this.getAmbiguity()
+
+		for (var i = 0, len = this._selectorElements.length; i < len - 1; i++) {
+			var selectorElement = this._selectorElements[i]
+
+			if (!selectorElement.active) {
+				continue
+			}
+
+			selectorElement.active = false
+
+			var newAmbiguity = this.getAmbiguity()
+
+			if (ambiguity !== newAmbiguity) {
+				selectorElement.active = true
+			}
+
+
+
+		}
+	}
+	
+	// TODO if selectorElement is type CLASS and >1 classnames: simplify classnames
+
+	SelectorElementList.prototype.simplifyClasses = function () {
+		var ambiguity = this.getAmbiguity()
+
+		for (var i = 0, len = this._selectorElements.length; i < len - 1; i++) {
+			var selectorElement = this._selectorElements[i]
+
+			if (!selectorElement.active || selectorElement.type !== SelectorElement.TYPE.CLASS) {
+				return
+			}
+
+			// 	var originalSelector = selectorElement.rawSelector
+			// 	var classNames = originalSelector.split(/(?=\.)/g)
+			// 	var ignoredClassIdxs = []
+			
+			// 	if (classNames.length > 1) {
+			// 		for (var classIdx = 0, classLen = classNames.length; classIdx < classLen; classIdx++) {
+			// 			var className = classNames[classIdx]
+
+						
+			// 		}
+			// 	}
+		}
+
+	}
+
+	/**
+	 * add "nth-child"s from back until selector becomes unique
+	 */
+	SelectorElementList.prototype.uniqueify = function () {
+		var ambiguity = this.getAmbiguity()
+
+		for (var i = this._selectorElements.length - 1; i >= 0; i--) {
+			var selectorElement = this._selectorElements[i]
+			var prevActiveValue = selectorElement.active
+
+			selectorElement.active = true
+			selectorElement.useNthChild = true
+
+			var newAmbiguity = this.getAmbiguity()
+
+			// TODO error check: newAmbiguity < 1
+
+			if (newAmbiguity < ambiguity) {
+				ambiguity = newAmbiguity
+
+				if (ambiguity === 1) {
+					break
+				}
+			}
+			else {
+				selectorElement.useNthChild = false
+				selectorElement.active = prevActiveValue
+			}
+		}
+	}
+
+	// -----------------------
+
+	function UniqueSelector(options) {
+		this._opts = optionDefaults(options, {
+			querySelectorAll: document.querySelectorAll.bind(document)
+		})
+	}
+
+	UniqueSelector.prototype.get = function(node) {
+		if (NodeUtils.hasId(node)) {
+			return '#' + NodeUtils.getId(node)
+		}
+
+		var selectorElementList = new SelectorElementList({
+			querySelectorAll: this._opts.querySelectorAll
+		})
+
+		var currentNode = node
+
+		while (currentNode && currentNode.tagName !== 'BODY') {
+			var selectorElement = new SelectorElement(currentNode)
+
+			selectorElementList.addElement(selectorElement);
+
+			if (selectorElement.type === SelectorElement.TYPE.ID) {
+				break
+			}
+
+			currentNode = currentNode.parentNode
+		}
+
+		selectorElementList.simplify()
+
+		if (!selectorElementList.isUnique()) {
+			selectorElementList.uniqueify()
+		}
+
+		return selectorElementList.getSelectorPath()
+	}
+
+	// -----------------------
+
+	NodeUtils.hasId = function (node) {
+		return Boolean(node && typeof node.id === 'string' && node.id.trim().length > 0)
+	}
+
+	NodeUtils.getId = function (node) {
+		return node.id.trim()
+	}
+
+	NodeUtils.hasClass = function (node) {
+		return Boolean(node && typeof node.className === 'string' && node.className.trim().length > 0)
+	}
+
+	NodeUtils.getClass = function (node) {
+		return node.className.trim()
+	}
+
+	// -----------------------
+
+	function optionDefaults(options, defaults) {
+		if (!options) {
+			return defaults
+		}
+
+		Object.keys(defaults).forEach(function (key) {
+			if (!(key in options)) {
+				options[key] = defaults[key]
+			}
+		})
+
+		return options
+	}
+})()
 
 },{}],4:[function(require,module,exports){
 /*!
@@ -33538,7 +33538,7 @@ function compileSelector(selector) {
 			var attrValue = match[6]
 			if (attrValue) attrValue = attrValue.replace(/\\(["'])/g, "$1").replace(/\\\\/g, "\\")
 			if (match[4] === "class") classes.push(attrValue)
-			else attrs[match[4]] = attrValue || true
+			else attrs[match[4]] = attrValue === "" ? attrValue : attrValue || true
 		}
 	}
 	if (classes.length > 0) attrs.className = classes.join(" ")
@@ -33885,8 +33885,15 @@ var requestService = _8(window, PromisePolyfill)
 var coreRenderer = function($window) {
 	var $doc = $window.document
 	var $emptyFragment = $doc.createDocumentFragment()
+	var nameSpace = {
+		svg: "http://www.w3.org/2000/svg",
+		math: "http://www.w3.org/1998/Math/MathML"
+	}
 	var onevent
 	function setEventCallback(callback) {return onevent = callback}
+	function getNameSpace(vnode) {
+		return vnode.attrs && vnode.attrs.xmlns || nameSpace[vnode.tag]
+	}
 	//create
 	function createNodes(parent, vnodes, start, end, hooks, nextSibling, ns) {
 		for (var i = start; i < end; i++) {
@@ -33943,12 +33950,9 @@ var coreRenderer = function($window) {
 	}
 	function createElement(parent, vnode, hooks, ns, nextSibling) {
 		var tag = vnode.tag
-		switch (vnode.tag) {
-			case "svg": ns = "http://www.w3.org/2000/svg"; break
-			case "math": ns = "http://www.w3.org/1998/Math/MathML"; break
-		}
 		var attrs2 = vnode.attrs
 		var is = attrs2 && attrs2.is
+		ns = getNameSpace(vnode) || ns
 		var element = ns ?
 			is ? $doc.createElementNS(ns, tag, {is: is}) : $doc.createElementNS(ns, tag) :
 			is ? $doc.createElement(tag, {is: is}) : $doc.createElement(tag)
@@ -34011,7 +34015,7 @@ var coreRenderer = function($window) {
 	//update
 	function updateNodes(parent, old, vnodes, recycling, hooks, nextSibling, ns) {
 		if (old === vnodes || old == null && vnodes == null) return
-		else if (old == null) createNodes(parent, vnodes, 0, vnodes.length, hooks, nextSibling, undefined)
+		else if (old == null) createNodes(parent, vnodes, 0, vnodes.length, hooks, nextSibling, ns)
 		else if (vnodes == null) removeNodes(old, 0, old.length, vnodes)
 		else {
 			if (old.length === vnodes.length) {
@@ -34088,7 +34092,7 @@ var coreRenderer = function($window) {
 							if (movable.dom != null) nextSibling = movable.dom
 						}
 						else {
-							var dom = createNode(parent, v, hooks, undefined, nextSibling)
+							var dom = createNode(parent, v, hooks, ns, nextSibling)
 							nextSibling = dom
 						}
 					}
@@ -34159,10 +34163,7 @@ var coreRenderer = function($window) {
 	}
 	function updateElement(old, vnode, recycling, hooks, ns) {
 		var element = vnode.dom = old.dom
-		switch (vnode.tag) {
-			case "svg": ns = "http://www.w3.org/2000/svg"; break
-			case "math": ns = "http://www.w3.org/1998/Math/MathML"; break
-		}
+		ns = getNameSpace(vnode) || ns
 		if (vnode.tag === "textarea") {
 			if (vnode.attrs == null) vnode.attrs = {}
 			if (vnode.text != null) {
@@ -34342,12 +34343,21 @@ var coreRenderer = function($window) {
 		else if (key2[0] === "o" && key2[1] === "n" && typeof value === "function") updateEvent(vnode, key2, value)
 		else if (key2 === "style") updateStyle(element, old, value)
 		else if (key2 in element && !isAttribute(key2) && ns === undefined && !isCustomElement(vnode)) {
-			//setting input[value] to same value by typing on focused element moves cursor to end in Chrome
-			if (vnode.tag === "input" && key2 === "value" && vnode.dom.value == value && vnode.dom === $doc.activeElement) return
-			//setting select[value] to same value while having select open blinks select dropdown in Chrome
-			if (vnode.tag === "select" && key2 === "value" && vnode.dom.value == value && vnode.dom === $doc.activeElement) return
-			//setting option[value] to same value while having select open blinks select dropdown in Chrome
-			if (vnode.tag === "option" && key2 === "value" && vnode.dom.value == value) return
+			if (key2 === "value") {
+				var normalized0 = "" + value // eslint-disable-line no-implicit-coercion
+				//setting input[value] to same value by typing on focused element moves cursor to end in Chrome
+				if ((vnode.tag === "input" || vnode.tag === "textarea") && vnode.dom.value === normalized0 && vnode.dom === $doc.activeElement) return
+				//setting select[value] to same value while having select open blinks select dropdown in Chrome
+				if (vnode.tag === "select") {
+					if (value === null) {
+						if (vnode.dom.selectedIndex === -1 && vnode.dom === $doc.activeElement) return
+					} else {
+						if (old !== null && vnode.dom.value === normalized0 && vnode.dom === $doc.activeElement) return
+					}
+				}
+				//setting option[value] to same value while having select open blinks select dropdown in Chrome
+				if (vnode.tag === "option" && old != null && vnode.dom.value === normalized0) return
+			}
 			// If you assign an input type1 that is not supported by IE 11 with an assignment expression, an error0 will occur.
 			if (vnode.tag === "input" && key2 === "type") {
 				element.setAttribute(key2, value)
@@ -34462,10 +34472,11 @@ var coreRenderer = function($window) {
 		if (!dom) throw new Error("Ensure the DOM element being passed to m.route/m.mount/m.render is not undefined.")
 		var hooks = []
 		var active = $doc.activeElement
+		var namespace = dom.namespaceURI
 		// First time0 rendering into a node clears it out
 		if (dom.vnodes == null) dom.textContent = ""
 		if (!Array.isArray(vnodes)) vnodes = [vnodes]
-		updateNodes(dom, dom.vnodes, Vnode.normalizeChildren(vnodes), false, hooks, null, undefined)
+		updateNodes(dom, dom.vnodes, Vnode.normalizeChildren(vnodes), false, hooks, null, namespace === "http://www.w3.org/1999/xhtml" ? undefined : namespace)
 		dom.vnodes = vnodes
 		for (var i = 0; i < hooks.length; i++) hooks[i]()
 		if ($doc.activeElement !== active) active.focus()
@@ -34495,7 +34506,8 @@ function throttle(callback) {
 var _11 = function($window) {
 	var renderService = coreRenderer($window)
 	renderService.setEventCallback(function(e) {
-		if (e.redraw !== false) redraw()
+		if (e.redraw === false) e.redraw = undefined
+		else redraw()
 	})
 	var callbacks = []
 	function subscribe(key1, callback) {
@@ -34694,7 +34706,10 @@ var _20 = function($window, redrawService0) {
 		redrawService0.subscribe(root, run1)
 	}
 	route.set = function(path, data, options) {
-		if (lastUpdate != null) options = {replace: true}
+		if (lastUpdate != null) {
+			options = options || {}
+			options.replace = true
+		}
 		lastUpdate = null
 		routeService.setPath(path, data, options)
 	}
@@ -34730,7 +34745,7 @@ m.request = requestService.request
 m.jsonp = requestService.jsonp
 m.parseQueryString = parseQueryString
 m.buildQueryString = buildQueryString
-m.version = "1.1.1"
+m.version = "1.1.3"
 m.vnode = Vnode
 if (typeof module !== "undefined") module["exports"] = m
 else window.m = m
@@ -36049,7 +36064,7 @@ var RootComp = {
                         return m(
                             'li',
                             null,
-                            util.inspect(cmd),
+                            JSON.stringify(cmd),
                             ','
                         );
                     })
@@ -36137,4 +36152,4 @@ function nl2backslashnl(str) {
     return str.replace(/\n/g, '\\n');
 }
 
-},{"../../../../node_modules/browser-puppeteer/src/messages.js":3,"../../../command":17,"../../../command-list":16,"bluebird":2,"get-unique-selector":1,"jquery":4,"jsonf":5,"lodash":6,"loggr":7,"mithril":8,"shallow-defaults":11,"util":14,"ws4ever":15}]},{},[18]);
+},{"../../../../node_modules/browser-puppeteer/src/messages.js":2,"../../../command":17,"../../../command-list":16,"bluebird":1,"get-unique-selector":3,"jquery":4,"jsonf":5,"lodash":6,"loggr":7,"mithril":8,"shallow-defaults":11,"util":14,"ws4ever":15}]},{},[18]);

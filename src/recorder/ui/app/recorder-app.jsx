@@ -198,7 +198,7 @@ var RootComp={
             <div>
                 <ul>{
                     app.commandList.map(function(cmd){
-                        return <li>{ util.inspect(cmd) },</li>
+                        return <li>{ JSON.stringify(cmd) },</li>
                     })
                 }</ul>
             </div>

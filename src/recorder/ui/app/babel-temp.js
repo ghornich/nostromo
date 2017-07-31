@@ -232,7 +232,7 @@ var RootComp = {
                         return m(
                             'li',
                             null,
-                            util.inspect(cmd),
+                            JSON.stringify(cmd),
                             ','
                         );
                     })
