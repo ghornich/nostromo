@@ -139,7 +139,7 @@ function TestRunner(conf){
         isVisible: this._isVisible_direct.bind(this),
         delay:this._delay.bind(this),
         comment:this._comment.bind(this),
-        assertScreenshot:this._assertScreenshot.bind(this)
+        assert:this._assert.bind(this)
     }
 
     this.sideEffectAPI={}
@@ -160,7 +160,7 @@ function TestRunner(conf){
         logger: this._log.fork('BrowserPuppeteer')
     })
 
-    this._screenshotAssertCount = 0
+    this._assertCount = 0
     this._currentTestfilePath=null
     this._currentBrowserName=null
 
@@ -194,7 +194,7 @@ TestRunner.prototype.run = Promise.method(function(){
 
             return Promise.try(_=>browser.start(this._conf.appUrl))
             .then(()=>this._browserPuppeteer.discardClients())
-            .then(()=>this._screenshotAssertCount=0)
+            .then(()=>this._assertCount=0)
             .then(()=>this._browserPuppeteer.waitForPuppet())
             .then(() => this._browserPuppeteer.sendMessage({
                 type: MESSAGES.DOWNSTREAM.SHOW_SCREENSHOT_MARKER
@@ -359,7 +359,7 @@ TestRunner.prototype._execCommand_withAPI = Promise.method(function(cmd, api){
         case 'waitForVisible': return api.waitForVisible(cmd.selector)
         case 'waitWhileVisible': return api.waitWhileVisible(cmd.selector)
         case 'focus': return api.focus(cmd.selector)
-        case 'assertScreenshot': return api.assertScreenshot()
+        case 'assert': return api.assert()
         // case 'scroll': return api.()
         case 'isVisible': return api.isVisible(cmd.selector)
         default: throw new Error('Unknown cmd.type '+cmd.type)
@@ -576,8 +576,8 @@ TestRunner.prototype._comment = Promise.method(function (comment) {
 })
 
 // TODO remove sync codes
-TestRunner.prototype._assertScreenshot = Promise.method(function(){
-    var ssCount = this._screenshotAssertCount
+TestRunner.prototype._assert = Promise.method(function(){
+    var ssCount = this._assertCount
     var refImgDir = this._getCurrentTestModuleReferenceScreenshotDir()
     var refImgName = ssCount+'.png'
     var refImgPath = pathlib.resolve(refImgDir, refImgName)
@@ -627,7 +627,7 @@ TestRunner.prototype._assertScreenshot = Promise.method(function(){
         this._tapWriter.notOk('screenshot assert: '+refImgName + ', '+ e) // TODO customizable message
     })
     .finally(_=>{
-        this._screenshotAssertCount++
+        this._assertCount++
     })
 })
 

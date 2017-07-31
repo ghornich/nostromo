@@ -44,7 +44,7 @@ Server.prototype.start=Promise.method(function(){
 
 	this._puppeteer.on(MESSAGES.UPSTREAM.SELECTOR_BECAME_VISIBLE, this._proxyMessage)
     this._puppeteer.on(MESSAGES.UPSTREAM.CAPTURED_EVENT, this._proxyMessage)
-	this._puppeteer.on(MESSAGES.UPSTREAM.INSERT_SCREENSHOT_ASSERT, this._proxyMessage)
+	this._puppeteer.on(MESSAGES.UPSTREAM.INSERT_ASSERTION, this._proxyMessage)
 
     this._puppeteer.on('puppetConnected', ()=>{
         // no return

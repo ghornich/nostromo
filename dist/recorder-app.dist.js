@@ -35443,7 +35443,7 @@ var TYPES = Command.TYPES = {
 	WAIT_FOR_VISIBLE: 'waitForVisible',
 	WAIT_WHILE_VISIBLE: 'waitWhileVisible',
 	FOCUS: 'focus',
-	ASSERT_SCREENSHOT: 'assertScreenshot',
+	ASSERT: 'assert',
 
 }
 
@@ -35527,8 +35527,8 @@ function RecorderApp(conf) {
         clearRecording: function clearRecording() {
             self.commandList.clear();
         },
-        addScreenshotAssert: function addScreenshotAssert() {
-            self.commandList.add({ type: CMD_TYPES.ASSERT_SCREENSHOT });
+        addAssertion: function addAssertion() {
+            self.commandList.add({ type: CMD_TYPES.ASSERT });
         },
         downloadTestfile: function downloadTestfile() {
             var testFileStr = renderTestfile(self.commandList);
@@ -35560,8 +35560,8 @@ RecorderApp.prototype.start = function () {
                 case MESSAGES.UPSTREAM.CAPTURED_EVENT:
                     self._onCapturedEvent(data.event);
                     break;
-                case MESSAGES.UPSTREAM.INSERT_SCREENSHOT_ASSERT:
-                    if (self._isRecording) self.commandList.add({ type: CMD_TYPES.ASSERT_SCREENSHOT });
+                case MESSAGES.UPSTREAM.INSERT_ASSERTION:
+                    if (self._isRecording) self.commandList.add({ type: CMD_TYPES.ASSERT });
                     break;
                 default:
                     throw new Error('Unknown type' + data.type);
@@ -35714,8 +35714,8 @@ var RootComp = {
             '\xA0',
             m(
                 'button',
-                { onclick: actions.addScreenshotAssert },
-                'Add screenshot assert'
+                { onclick: actions.addAssertion },
+                'Add assertion'
             ),
             '\xA0',
             m(
@@ -35787,8 +35787,8 @@ function renderCmd(cmd) {
             return 't.waitWhileVisible(' + apos(cmd.selector) + ')';
         case 'focus':
             return 't.focus(' + apos(cmd.selector) + ')';
-        case 'assertScreenshot':
-            return 't.assertScreenshot()';
+        case 'assert':
+            return 't.assert()';
         // case '': return 't.()'
         default:
             console.error('unknown cmd type ', cmd.type, cmd);return '<unknown>';

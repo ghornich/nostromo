@@ -60,7 +60,7 @@ function RecorderApp(conf){
     self.actions={
         toggleRecording:function(){self._isRecording=!self._isRecording},
         clearRecording:function(){self.commandList.clear()},
-        addScreenshotAssert:function(){self.commandList.add({ type: CMD_TYPES.ASSERT_SCREENSHOT })},
+        addAssertion:function(){self.commandList.add({ type: CMD_TYPES.ASSERT })},
         downloadTestfile:function(){
             var testFileStr=renderTestfile(self.commandList)
             var blob=new Blob([testFileStr], {type:'application/octet-stream'})
@@ -92,8 +92,8 @@ RecorderApp.prototype.start = function(){
                 case MESSAGES.UPSTREAM.CAPTURED_EVENT:
                     self._onCapturedEvent(data.event)
                     break
-                case MESSAGES.UPSTREAM.INSERT_SCREENSHOT_ASSERT:
-                    if (self._isRecording) self.commandList.add({ type: CMD_TYPES.ASSERT_SCREENSHOT })
+                case MESSAGES.UPSTREAM.INSERT_ASSERTION:
+                    if (self._isRecording) self.commandList.add({ type: CMD_TYPES.ASSERT })
                     break
                 default: throw new Error('Unknown type'+data.type)
             }
@@ -235,7 +235,7 @@ var RootComp={
         return <div>
             <button onclick={ actions.toggleRecording }>Toggle recording</button>&nbsp;
             <button onclick={ actions.clearRecording }>Clear recording</button>&nbsp;
-            <button onclick={ actions.addScreenshotAssert }>Add screenshot assert</button>&nbsp;
+            <button onclick={ actions.addAssertion }>Add assertion</button>&nbsp;
             <button onclick={ actions.downloadTestfile }>Download testfile</button>&nbsp;
             | { app._isRecording ? 'Recording': 'Not recording' }
             <div>
@@ -291,7 +291,7 @@ function renderCmd(cmd){
         case 'waitForVisible': return 't.waitForVisible('+apos(cmd.selector)+')'
         case 'waitWhileVisible': return 't.waitWhileVisible('+apos(cmd.selector)+')'
         case 'focus': return 't.focus('+apos(cmd.selector)+')'
-        case 'assertScreenshot': return 't.assertScreenshot()'
+        case 'assert': return 't.assert()'
         // case '': return 't.()'
         default:console.error('unknown cmd type ',cmd.type, cmd);return '<unknown>'
     }
