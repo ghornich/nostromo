@@ -18,6 +18,7 @@ const mkdirpAsync=Promise.promisify(require('mkdirp'))
 const PNG=require('pngjs').PNG
 const globAsync=Promise.promisify(require('glob'))
 const bufferImageSearch=rfr('modules/buffer-image-search')
+const bufferImageDiff=rfr('modules/buffer-image-diff')
 
 // TODO show error if test(...) doesn't return a promise
 
@@ -66,6 +67,11 @@ const ERRORS = {
     TIMEOUT: 0,
     NOT_EQUAL: 1,
 }
+
+const PPM=1/1000000
+
+const PIXEL_THRESHOLD=3/100
+const IMG_THRESHOLD=20*PPM
 
 exports = module.exports = TestRunner
 
@@ -575,6 +581,8 @@ TestRunner.prototype._comment = Promise.method(function (comment) {
     this._tapWriter.comment(comment)
 })
 
+
+
 // TODO remove sync codes
 TestRunner.prototype._assert = Promise.method(function(){
     var ssCount = this._assertCount
@@ -588,12 +596,17 @@ TestRunner.prototype._assert = Promise.method(function(){
         try {
             fs.statSync(refImgPath)
             var refImg = PNG.sync.read(fs.readFileSync(refImgPath))
-            if (imgcmp(img, refImg)) {
-                this._tapWriter.ok('screenshot assert: '+refImgPathRelative) // TODO customizable message
+            let imgDiffResult=bufferImageDiff(img, refImg, {pixelThreshold:PIXEL_THRESHOLD, imageThreshold:IMG_THRESHOLD})
+
+            console.log(imgDiffResult)
+
+
+            if (imgDiffResult.same) {
+                this._tapWriter.ok('screenshot assert ('+toPercent(imgDiffResult.difference)+'): '+refImgPathRelative) // TODO customizable message
             }
             else {
                 // TODO save image for later comparison
-                this._tapWriter.notOk('screenshot assert: '+refImgPathRelative) // TODO customizable message
+                this._tapWriter.notOk('screenshot assert ('+toPercent(imgDiffResult.difference)+'): '+refImgPathRelative) // TODO customizable message
                 
                 var failedImgName = ssCount + '.FAIL.png'
                 var failedImgPath = pathlib.resolve(refImgDir, failedImgName)
@@ -638,24 +651,6 @@ function __isArray(v){return __toString(v)==='[object Array]'}
 
 function createError(type,msg){var e=new Error(msg);e.type=type;return e}
 
-const PX_COLOR_DIFF_THRES = 3/100
-
-function imgcmp(a,b){
-    // TODO provide a reason for failure? move to separate module
-    if (a.width!==b.width || a.height !== b.height)return false
-    if (a.data.equals(b.data))return true
-    if (a.data.length !== b.data.length)return false
-
-    for (var i=0,len=a.data.length;i<len;i++){
-        if (a.data[i] === b.data[i])continue
-        var diffPc = (a.data[i] - b.data[i])/b.data[i]
-        if (diffPc<0)diffPc=-diffPc
-        if (diffPc > PX_COLOR_DIFF_THRES) {
-            return false
-        }
-    }
-}
-
 function slugifyPath(s){return s.replace(/[\/\\]+/g, '___').replace(/[^a-z0-9_-]/ig, '_')}
 
 function ellipsis(s,l){if (s.length<=l)return s;return s.substr(0,l-3)+'...'}
@@ -670,4 +665,8 @@ function multiGlobAsync(globs){
         })
     })
     .then(()=>paths)
+}
+
+function toPercent(v, decimals=4) {
+    return (v*100).toFixed(decimals)
 }

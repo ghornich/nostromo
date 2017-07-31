@@ -8,7 +8,7 @@ imageDiff.DIFFERENT_SIZE_ERROR = DIFFERENT_SIZE_ERROR;
 
 // Image: {width, height, data:Buffer of pixel rgba's}
 // a, b: Image
-// return {same:Boolean, imageThreshold:Number, [diffImage:Image]}
+// return {same:Boolean, similarity:Number}
 function imageDiff(a, b, options) {
     const opts = options || {};
     assert(opts.pixelThreshold!==undefined, 'pixelThreshold is missing')
@@ -25,31 +25,21 @@ function imageDiff(a, b, options) {
         return {same:true, difference: 0};
     }
 
-    const diffImage = cloneImage(b)
     let diffCount = 0
 
     const dBrightness=0.3
 
     for (let i = 0; i < a.data.length; i += 4) {
-        if (pixelSameEnough(a.data[i], a.data[i+1], a.data[i+2], a.data[i+3], b.data[i], b.data[i+1], b.data[i+2], b.data[i+3], opts.pixelThreshold)) {
-            diffImage.data[i] = clampMin(diffImage.data[i] * dBrightness, 0)
-            diffImage.data[i+1] = clampMin(diffImage.data[i+1] * dBrightness, 0)
-            diffImage.data[i+2] = clampMin(diffImage.data[i+2] * dBrightness, 0)
-        }
-        else {
-            diffImage.data[i] = 255
-            diffImage.data[i+1] = 0
-            diffImage.data[i+2] = 0
-
+        if (!pixelSameEnough(a.data[i], a.data[i+1], a.data[i+2], a.data[i+3], b.data[i], b.data[i+1], b.data[i+2], b.data[i+3], opts.pixelThreshold)) {
             diffCount++
         }
     }
 
     const totalPxs=a.width*b.width
-    const imageDiffPc=diffPc(diffCount, totalPxs)
-    const same=imageDiffPc < opts.imageThreshold
+    const imgDifference=diffPc(totalPxs-diffCount, totalPxs)
+    const same=imgDifference <= opts.imageThreshold
 
-    return {same:same, difference: imageDiffPc, diffImage:diffImage}
+    return {same:same, difference: imgDifference}
 }
 
 function pixelSameEnough(r1, g1, b1, a1, r2, g2, b2, a2, threshold) {
@@ -61,9 +51,7 @@ function pixelSameEnough(r1, g1, b1, a1, r2, g2, b2, a2, threshold) {
     const avg2=(r2+g2+b2+a2)/4
     const pixelDiffPc=diffPc(avg1, avg2)
 
-    console.log(pixelDiffPc)
-
-    return pixelDiffPc < threshold;
+    return pixelDiffPc <= threshold;
 }
 
 function diffPc(a,b){

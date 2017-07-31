@@ -10,6 +10,8 @@ var bufferImageCrop = rfr('modules/buffer-image-crop');
 var execAsync=Promise.promisify(cp.exec)
 var unlinkAsync=Promise.promisify(fs.unlink)
 
+// TODO crop is not a responsibility of this module
+
 /**
  * @typedef {Object} Image
  * @property {Number} width
@@ -34,9 +36,13 @@ module.exports=Promise.method(function(opts){
     return Promise.try(_=> {
 
         if (process.platform==='win32'){
-            var boxcutterPath=resolve(__dirname, 'platform_modules/boxcutter/boxcutter.exe')
+            // var boxcutterPath=resolve(__dirname, 'platform_modules/boxcutter/boxcutter.exe')
 
-            return execAsync(`${boxcutterPath} -f ${tempPath}`)
+            // return execAsync(`${boxcutterPath} -f ${tempPath}`)
+
+            var screenshotCmdPath = resolve(__dirname, 'platform_modules/screenshot-cmd/screenshot-cmd.exe')
+
+            return execAsync(`${screenshotCmdPath} -o ${tempPath}`)
         }
         else {
             // TODO

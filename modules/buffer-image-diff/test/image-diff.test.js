@@ -3,21 +3,36 @@ const PNG=require('pngjs').PNG
 const test=require('tape')
 const imageDiff=require('../image-diff')
 
-const testImgBuf = PNG.sync.read(fs.readFileSync('resources/wave.png'))
-const testImgBuf2 = PNG.sync.read(fs.readFileSync('resources/wave2.png'))
+const testImgBuf = PNG.sync.read(fs.readFileSync('resources/test.png'))
+const testImgBuf2 = PNG.sync.read(fs.readFileSync('resources/test2.png'))
 
-// console.log(testImgBuf)
+const waveImgBuf = PNG.sync.read(fs.readFileSync('resources/wave.png'))
+const waveImgBuf2 = PNG.sync.read(fs.readFileSync('resources/wave2.png'))
 
 test('',t=>{
-    const result = imageDiff(testImgBuf, testImgBuf2, {pixelThreshold:1/2, imageThreshold:0})
+    console.log(
+        imageDiff(waveImgBuf, waveImgBuf2, {pixelThreshold:0, imageThreshold:0})
+    )
 
-    console.log(result.same, result.difference)
+    console.log(
+        imageDiff(testImgBuf, testImgBuf2, {pixelThreshold:0, imageThreshold:0})
+    )
 
-    // console.log(imageDiff.pixelSameEnough(255,255,100,255, 250,250,100,255, 0.02))
+    console.log(
+        imageDiff(waveImgBuf, waveImgBuf2, {pixelThreshold:1/100, imageThreshold:0})
+    )
 
-    fs.writeFileSync('out.png',PNG.sync.write(result.diffImage))
+    console.log(
+        imageDiff(testImgBuf, testImgBuf2, {pixelThreshold:1/100, imageThreshold:0})
+    )
+
+    console.log(
+        imageDiff(waveImgBuf, waveImgBuf2, {pixelThreshold:1, imageThreshold:0})
+    )
+
+    console.log(
+        imageDiff(testImgBuf, testImgBuf2, {pixelThreshold:0.5, imageThreshold:0})
+    )
 
     t.end()
 })
-
-
