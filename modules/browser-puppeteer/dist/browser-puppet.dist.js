@@ -38,6 +38,9 @@ exports.DOWNSTREAM = {
 
     // { type, value }
     SET_TRANSMIT_EVENTS: 'set-transmit-events',
+
+    // { type, url }
+    REOPEN_URL: 'reopen-url',
 };
 
 },{}],3:[function(require,module,exports){
@@ -94,7 +97,8 @@ function BrowserPuppet(opts) {
         states: [],
     };
 
-
+    this._scheduleReopen = false
+    this._scheduleReopenUrl = ''
 
     this._ssMarkerTL = document.createElement('div');
     this._ssMarkerTL.setAttribute('style', 'position:absolute;top:0;left:0;width:4px;height:4px;z-index:16777000;');
@@ -158,12 +162,23 @@ BrowserPuppet.prototype._onMessage = function (data) {
             case MESSAGES.DOWNSTREAM.SET_TRANSMIT_EVENTS:
                 return self.setTransmitEvents(data.value);
 
+            case MESSAGES.DOWNSTREAM.REOPEN_URL:
+                self.reopenUrl(data.url)
+                // self._scheduleReopen = true
+                // self._scheduleReopenUrl = data.url
+                return
+
             default:
                 throw new Error('BrowserPuppet: unknown message type: ' + data.type);
         }
     })
     .then(function (result) {
         self._sendMessage({ type: MESSAGES.UPSTREAM.ACK, result: result });
+    })
+    .then(function () {
+        // if (self._scheduleReopen) {
+        //     return self.reopenUrl(self._scheduleReopenUrl)
+        // }
     })
     .catch(function (err) {
         var errorDTO = {};
@@ -523,10 +538,12 @@ BrowserPuppet.prototype._execFn = Promise.method(function (fnData) {
     return fn.apply(context, argValues);
 });
 
-
-
-
-
+BrowserPuppet.prototype.reopenUrl = Promise.method(function (url) {
+    this._wsConn.close()
+    document.cookie = ''
+    window.localStorage.clear()
+    window.location = url
+})
 
 // command
 
@@ -1213,7 +1230,7 @@ function Ws4ever(url, protocols, options){
     this._onWsError=this._onWsError.bind(this)
     this._onWsMessage=this._onWsMessage.bind(this)
 
-    setInterval(this._ensureConnection, this._opts.retryInterval)
+    this.iid = setInterval(this._ensureConnection, this._opts.retryInterval)
 }
 
 Ws4ever.prototype.isConnected=function(){
@@ -1243,6 +1260,11 @@ Ws4ever.prototype._ensureConnection=function(){
         this._isConnecting=false
         this._ws=null
     }
+}
+
+Ws4ever.prototype.close=function(){
+    clearInterval(this.iid)
+    this._ws.close()
 }
 
 Ws4ever.prototype._onWsOpen=function () {

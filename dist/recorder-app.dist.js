@@ -1,4 +1,110 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
+
+if (isNode()) {
+    module.exports=Ws4ever
+}
+else {
+    window.Ws4ever=Ws4ever
+}
+
+
+function Ws4ever(url, protocols, options){
+    this._opts=Object.assign({}, {
+        retryInterval:1000
+    }, options||{})
+
+    this._url=url
+    this._protocols=protocols
+    this._ws=null
+    this._isConnecting=false
+
+    this.onopen=noop
+    this.onclose=noop
+    this.onerror=noop
+    this.onmessage=noop
+
+    Object.defineProperties(this, {
+        readyState: {
+            get: function () { return this._ws?this._ws.readyState:WebSocket.CLOSED }
+        },
+        url: {
+            get: function () { return this._url }
+        },
+    })
+
+    this._ensureConnection=this._ensureConnection.bind(this)
+    this._onWsOpen=this._onWsOpen.bind(this)
+    this._onWsClose=this._onWsClose.bind(this)
+    // this._onWsError=this._onWsError.bind(this)
+    this._onWsMessage=this._onWsMessage.bind(this)
+
+    setInterval(this._ensureConnection, this._opts.retryInterval)
+}
+
+Ws4ever.prototype.isConnected=function(){
+    return Boolean(this._ws && this._ws.readyState === WebSocket.OPEN)
+}
+
+Ws4ever.prototype.send=function(msg){
+    if (!this.isConnected())throw new Error('cannot send message, ws closed')
+    this._ws.send(msg)
+}
+
+Ws4ever.prototype._ensureConnection=function(){
+    if (this.isConnected())return
+    if (this._isConnecting)return
+
+    try {
+        console.log('_ensureConnection: connecting')
+        this._isConnecting=true
+        this._ws=new WebSocket(this._url, this._protocols)
+        this._ws.onopen=this._onWsOpen
+        this._ws.onclose=this._onWsClose
+        this._ws.onerror=this._onWsError
+        this._ws.onmessage=this._onWsMessage
+    }
+    catch(e){
+        // TODO handle or log?
+        this._isConnecting=false
+        this._ws=null
+    }
+}
+
+Ws4ever.prototype._onWsOpen=function () {
+    console.log('_onWsOpen')
+    this.onopen.apply(null, arguments)
+    this._isConnecting=false
+}
+
+Ws4ever.prototype._onWsClose=function () {
+    console.log('_onWsClose')
+    this.onclose.apply(null, arguments)
+    this._isConnecting=false
+    this._ws=null
+}
+
+Ws4ever.prototype._onWsError=function () {
+    console.log('_onWsError')
+    this.onerror.apply(null, arguments)
+    // this._isConnecting=false
+    // this._ws=null
+}
+
+Ws4ever.prototype._onWsMessage=function () {
+    console.log('_onWsMessage')
+    this.onmessage.apply(null,arguments)
+}
+
+
+
+
+function noop(){}
+
+function isNode(){return typeof module==='object'&&typeof module.exports==='object'}
+
+
+
+},{}],2:[function(require,module,exports){
 // TODO use typedefs
 
 exports.UPSTREAM = {
@@ -35,9 +141,12 @@ exports.DOWNSTREAM = {
 
     // { type, value }
     SET_TRANSMIT_EVENTS: 'set-transmit-events',
+
+    // { type, url }
+    REOPEN_URL: 'reopen-url',
 };
 
-},{}],2:[function(require,module,exports){
+},{}],3:[function(require,module,exports){
 'use strict'
 
 // TODO tests
@@ -89,7 +198,7 @@ JSONF.parse=function(s){
     })
 }
 
-},{}],3:[function(require,module,exports){
+},{}],4:[function(require,module,exports){
 (function (process){
 var os = require('os');
 
@@ -185,7 +294,7 @@ Loggr.getLevelChar = function (level) {
 };
 
 }).call(this,require('_process'))
-},{"_process":10,"os":9}],4:[function(require,module,exports){
+},{"_process":11,"os":10}],5:[function(require,module,exports){
 'use strict'
 
 exports=module.exports=function(opts, defaults){
@@ -200,7 +309,7 @@ exports=module.exports=function(opts, defaults){
     return opts
 }
 
-},{}],5:[function(require,module,exports){
+},{}],6:[function(require,module,exports){
 (function (process,global){
 /* @preserve
  * The MIT License (MIT)
@@ -5822,7 +5931,7 @@ module.exports = ret;
 },{"./es5":13}]},{},[4])(4)
 });                    ;if (typeof window !== 'undefined' && window !== null) {                               window.P = window.Promise;                                                     } else if (typeof self !== 'undefined' && self !== null) {                             self.P = self.Promise;                                                         }
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"_process":10}],6:[function(require,module,exports){
+},{"_process":11}],7:[function(require,module,exports){
 /*!
  * jQuery JavaScript Library v3.2.1
  * https://jquery.com/
@@ -16077,7 +16186,7 @@ if ( !noGlobal ) {
 return jQuery;
 } );
 
-},{}],7:[function(require,module,exports){
+},{}],8:[function(require,module,exports){
 (function (global){
 /**
  * @license
@@ -33165,7 +33274,7 @@ return jQuery;
 }.call(this));
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],8:[function(require,module,exports){
+},{}],9:[function(require,module,exports){
 (function (global){
 ;(function() {
 "use strict"
@@ -33197,7 +33306,7 @@ function compileSelector(selector) {
 			var attrValue = match[6]
 			if (attrValue) attrValue = attrValue.replace(/\\(["'])/g, "$1").replace(/\\\\/g, "\\")
 			if (match[4] === "class") classes.push(attrValue)
-			else attrs[match[4]] = attrValue || true
+			else attrs[match[4]] = attrValue === "" ? attrValue : attrValue || true
 		}
 	}
 	if (classes.length > 0) attrs.className = classes.join(" ")
@@ -33544,8 +33653,15 @@ var requestService = _8(window, PromisePolyfill)
 var coreRenderer = function($window) {
 	var $doc = $window.document
 	var $emptyFragment = $doc.createDocumentFragment()
+	var nameSpace = {
+		svg: "http://www.w3.org/2000/svg",
+		math: "http://www.w3.org/1998/Math/MathML"
+	}
 	var onevent
 	function setEventCallback(callback) {return onevent = callback}
+	function getNameSpace(vnode) {
+		return vnode.attrs && vnode.attrs.xmlns || nameSpace[vnode.tag]
+	}
 	//create
 	function createNodes(parent, vnodes, start, end, hooks, nextSibling, ns) {
 		for (var i = start; i < end; i++) {
@@ -33602,12 +33718,9 @@ var coreRenderer = function($window) {
 	}
 	function createElement(parent, vnode, hooks, ns, nextSibling) {
 		var tag = vnode.tag
-		switch (vnode.tag) {
-			case "svg": ns = "http://www.w3.org/2000/svg"; break
-			case "math": ns = "http://www.w3.org/1998/Math/MathML"; break
-		}
 		var attrs2 = vnode.attrs
 		var is = attrs2 && attrs2.is
+		ns = getNameSpace(vnode) || ns
 		var element = ns ?
 			is ? $doc.createElementNS(ns, tag, {is: is}) : $doc.createElementNS(ns, tag) :
 			is ? $doc.createElement(tag, {is: is}) : $doc.createElement(tag)
@@ -33670,7 +33783,7 @@ var coreRenderer = function($window) {
 	//update
 	function updateNodes(parent, old, vnodes, recycling, hooks, nextSibling, ns) {
 		if (old === vnodes || old == null && vnodes == null) return
-		else if (old == null) createNodes(parent, vnodes, 0, vnodes.length, hooks, nextSibling, undefined)
+		else if (old == null) createNodes(parent, vnodes, 0, vnodes.length, hooks, nextSibling, ns)
 		else if (vnodes == null) removeNodes(old, 0, old.length, vnodes)
 		else {
 			if (old.length === vnodes.length) {
@@ -33747,7 +33860,7 @@ var coreRenderer = function($window) {
 							if (movable.dom != null) nextSibling = movable.dom
 						}
 						else {
-							var dom = createNode(parent, v, hooks, undefined, nextSibling)
+							var dom = createNode(parent, v, hooks, ns, nextSibling)
 							nextSibling = dom
 						}
 					}
@@ -33818,10 +33931,7 @@ var coreRenderer = function($window) {
 	}
 	function updateElement(old, vnode, recycling, hooks, ns) {
 		var element = vnode.dom = old.dom
-		switch (vnode.tag) {
-			case "svg": ns = "http://www.w3.org/2000/svg"; break
-			case "math": ns = "http://www.w3.org/1998/Math/MathML"; break
-		}
+		ns = getNameSpace(vnode) || ns
 		if (vnode.tag === "textarea") {
 			if (vnode.attrs == null) vnode.attrs = {}
 			if (vnode.text != null) {
@@ -34001,12 +34111,21 @@ var coreRenderer = function($window) {
 		else if (key2[0] === "o" && key2[1] === "n" && typeof value === "function") updateEvent(vnode, key2, value)
 		else if (key2 === "style") updateStyle(element, old, value)
 		else if (key2 in element && !isAttribute(key2) && ns === undefined && !isCustomElement(vnode)) {
-			//setting input[value] to same value by typing on focused element moves cursor to end in Chrome
-			if (vnode.tag === "input" && key2 === "value" && vnode.dom.value == value && vnode.dom === $doc.activeElement) return
-			//setting select[value] to same value while having select open blinks select dropdown in Chrome
-			if (vnode.tag === "select" && key2 === "value" && vnode.dom.value == value && vnode.dom === $doc.activeElement) return
-			//setting option[value] to same value while having select open blinks select dropdown in Chrome
-			if (vnode.tag === "option" && key2 === "value" && vnode.dom.value == value) return
+			if (key2 === "value") {
+				var normalized0 = "" + value // eslint-disable-line no-implicit-coercion
+				//setting input[value] to same value by typing on focused element moves cursor to end in Chrome
+				if ((vnode.tag === "input" || vnode.tag === "textarea") && vnode.dom.value === normalized0 && vnode.dom === $doc.activeElement) return
+				//setting select[value] to same value while having select open blinks select dropdown in Chrome
+				if (vnode.tag === "select") {
+					if (value === null) {
+						if (vnode.dom.selectedIndex === -1 && vnode.dom === $doc.activeElement) return
+					} else {
+						if (old !== null && vnode.dom.value === normalized0 && vnode.dom === $doc.activeElement) return
+					}
+				}
+				//setting option[value] to same value while having select open blinks select dropdown in Chrome
+				if (vnode.tag === "option" && old != null && vnode.dom.value === normalized0) return
+			}
 			// If you assign an input type1 that is not supported by IE 11 with an assignment expression, an error0 will occur.
 			if (vnode.tag === "input" && key2 === "type") {
 				element.setAttribute(key2, value)
@@ -34121,10 +34240,11 @@ var coreRenderer = function($window) {
 		if (!dom) throw new Error("Ensure the DOM element being passed to m.route/m.mount/m.render is not undefined.")
 		var hooks = []
 		var active = $doc.activeElement
+		var namespace = dom.namespaceURI
 		// First time0 rendering into a node clears it out
 		if (dom.vnodes == null) dom.textContent = ""
 		if (!Array.isArray(vnodes)) vnodes = [vnodes]
-		updateNodes(dom, dom.vnodes, Vnode.normalizeChildren(vnodes), false, hooks, null, undefined)
+		updateNodes(dom, dom.vnodes, Vnode.normalizeChildren(vnodes), false, hooks, null, namespace === "http://www.w3.org/1999/xhtml" ? undefined : namespace)
 		dom.vnodes = vnodes
 		for (var i = 0; i < hooks.length; i++) hooks[i]()
 		if ($doc.activeElement !== active) active.focus()
@@ -34154,7 +34274,8 @@ function throttle(callback) {
 var _11 = function($window) {
 	var renderService = coreRenderer($window)
 	renderService.setEventCallback(function(e) {
-		if (e.redraw !== false) redraw()
+		if (e.redraw === false) e.redraw = undefined
+		else redraw()
 	})
 	var callbacks = []
 	function subscribe(key1, callback) {
@@ -34353,7 +34474,10 @@ var _20 = function($window, redrawService0) {
 		redrawService0.subscribe(root, run1)
 	}
 	route.set = function(path, data, options) {
-		if (lastUpdate != null) options = {replace: true}
+		if (lastUpdate != null) {
+			options = options || {}
+			options.replace = true
+		}
 		lastUpdate = null
 		routeService.setPath(path, data, options)
 	}
@@ -34389,13 +34513,13 @@ m.request = requestService.request
 m.jsonp = requestService.jsonp
 m.parseQueryString = parseQueryString
 m.buildQueryString = buildQueryString
-m.version = "1.1.1"
+m.version = "1.1.3"
 m.vnode = Vnode
 if (typeof module !== "undefined") module["exports"] = m
 else window.m = m
 }());
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],9:[function(require,module,exports){
+},{}],10:[function(require,module,exports){
 exports.endianness = function () { return 'LE' };
 
 exports.hostname = function () {
@@ -34442,7 +34566,7 @@ exports.tmpdir = exports.tmpDir = function () {
 
 exports.EOL = '\n';
 
-},{}],10:[function(require,module,exports){
+},{}],11:[function(require,module,exports){
 // shim for using process in browser
 var process = module.exports = {};
 
@@ -34628,7 +34752,7 @@ process.chdir = function (dir) {
 };
 process.umask = function() { return 0; };
 
-},{}],11:[function(require,module,exports){
+},{}],12:[function(require,module,exports){
 if (typeof Object.create === 'function') {
   // implementation from standard node.js 'util' module
   module.exports = function inherits(ctor, superCtor) {
@@ -34653,14 +34777,14 @@ if (typeof Object.create === 'function') {
   }
 }
 
-},{}],12:[function(require,module,exports){
+},{}],13:[function(require,module,exports){
 module.exports = function isBuffer(arg) {
   return arg && typeof arg === 'object'
     && typeof arg.copy === 'function'
     && typeof arg.fill === 'function'
     && typeof arg.readUInt8 === 'function';
 }
-},{}],13:[function(require,module,exports){
+},{}],14:[function(require,module,exports){
 (function (process,global){
 // Copyright Joyent, Inc. and other Node contributors.
 //
@@ -35250,113 +35374,7 @@ function hasOwnProperty(obj, prop) {
 }
 
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./support/isBuffer":12,"_process":10,"inherits":11}],14:[function(require,module,exports){
-
-if (isNode()) {
-    module.exports=Ws4ever
-}
-else {
-    window.Ws4ever=Ws4ever
-}
-
-
-function Ws4ever(url, protocols, options){
-    this._opts=Object.assign({}, {
-        retryInterval:1000
-    }, options||{})
-
-    this._url=url
-    this._protocols=protocols
-    this._ws=null
-    this._isConnecting=false
-
-    this.onopen=noop
-    this.onclose=noop
-    this.onerror=noop
-    this.onmessage=noop
-
-    Object.defineProperties(this, {
-        readyState: {
-            get: function () { return this._ws?this._ws.readyState:WebSocket.CLOSED }
-        },
-        url: {
-            get: function () { return this._url }
-        },
-    })
-
-    this._ensureConnection=this._ensureConnection.bind(this)
-    this._onWsOpen=this._onWsOpen.bind(this)
-    this._onWsClose=this._onWsClose.bind(this)
-    // this._onWsError=this._onWsError.bind(this)
-    this._onWsMessage=this._onWsMessage.bind(this)
-
-    setInterval(this._ensureConnection, this._opts.retryInterval)
-}
-
-Ws4ever.prototype.isConnected=function(){
-    return Boolean(this._ws && this._ws.readyState === WebSocket.OPEN)
-}
-
-Ws4ever.prototype.send=function(msg){
-    if (!this.isConnected())throw new Error('cannot send message, ws closed')
-    this._ws.send(msg)
-}
-
-Ws4ever.prototype._ensureConnection=function(){
-    if (this.isConnected())return
-    if (this._isConnecting)return
-
-    try {
-        console.log('_ensureConnection: connecting')
-        this._isConnecting=true
-        this._ws=new WebSocket(this._url, this._protocols)
-        this._ws.onopen=this._onWsOpen
-        this._ws.onclose=this._onWsClose
-        this._ws.onerror=this._onWsError
-        this._ws.onmessage=this._onWsMessage
-    }
-    catch(e){
-        // TODO handle or log?
-        this._isConnecting=false
-        this._ws=null
-    }
-}
-
-Ws4ever.prototype._onWsOpen=function () {
-    console.log('_onWsOpen')
-    this.onopen.apply(null, arguments)
-    this._isConnecting=false
-}
-
-Ws4ever.prototype._onWsClose=function () {
-    console.log('_onWsClose')
-    this.onclose.apply(null, arguments)
-    this._isConnecting=false
-    this._ws=null
-}
-
-Ws4ever.prototype._onWsError=function () {
-    console.log('_onWsError')
-    this.onerror.apply(null, arguments)
-    // this._isConnecting=false
-    // this._ws=null
-}
-
-Ws4ever.prototype._onWsMessage=function () {
-    console.log('_onWsMessage')
-    this.onmessage.apply(null,arguments)
-}
-
-
-
-
-function noop(){}
-
-function isNode(){return typeof module==='object'&&typeof module.exports==='object'}
-
-
-
-},{}],15:[function(require,module,exports){
+},{"./support/isBuffer":13,"_process":11,"inherits":12}],15:[function(require,module,exports){
 var Command=require('./command')
 var TYPES=Command.TYPES
 
@@ -35827,4 +35845,4 @@ function nl2backslashnl(str) {
     return str.replace(/\n/g, '\\n');
 }
 
-},{"../../../../modules/browser-puppeteer/src/messages.js":1,"../../../../modules/jsonf":2,"../../../../modules/loggr":3,"../../../../modules/shallow-defaults":4,"../../../command":16,"../../../command-list":15,"bluebird":5,"jquery":6,"lodash":7,"mithril":8,"util":13,"ws4ever":14}]},{},[17]);
+},{"../../../../modules/browser-puppeteer/src/messages.js":2,"../../../../modules/jsonf":3,"../../../../modules/loggr":4,"../../../../modules/shallow-defaults":5,"../../../command":16,"../../../command-list":15,"bluebird":6,"jquery":7,"lodash":8,"mithril":9,"util":14,"ws4ever":1}]},{},[17]);

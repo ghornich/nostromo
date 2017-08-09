@@ -27,8 +27,6 @@ function imageDiff(a, b, options) {
 
     let diffCount = 0
 
-    const dBrightness=0.3
-
     for (let i = 0; i < a.data.length; i += 4) {
         if (!pixelSameEnough(a.data[i], a.data[i+1], a.data[i+2], a.data[i+3], b.data[i], b.data[i+1], b.data[i+2], b.data[i+3], opts.pixelThreshold)) {
             diffCount++

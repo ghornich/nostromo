@@ -37,7 +37,7 @@ function Ws4ever(url, protocols, options){
     this._onWsError=this._onWsError.bind(this)
     this._onWsMessage=this._onWsMessage.bind(this)
 
-    setInterval(this._ensureConnection, this._opts.retryInterval)
+    this.iid = setInterval(this._ensureConnection, this._opts.retryInterval)
 }
 
 Ws4ever.prototype.isConnected=function(){
@@ -67,6 +67,11 @@ Ws4ever.prototype._ensureConnection=function(){
         this._isConnecting=false
         this._ws=null
     }
+}
+
+Ws4ever.prototype.close=function(){
+    clearInterval(this.iid)
+    this._ws.close()
 }
 
 Ws4ever.prototype._onWsOpen=function () {

@@ -15,6 +15,15 @@ window.DiffApp = DiffApp;
 window.$ = $;
 window.m = m;
 
+var session = {
+	getDiffDescriptors: function getDiffDescriptors() {
+		return get(window.location.origin + '/get-diff-descriptors');
+	},
+	getDiffImagesById: function getDiffImagesById(id) {
+		return get(window.location.origin + '/get-diff-images-by-id?id=' + id);
+	}
+};
+
 function DiffApp(conf) {
 	if (typeof conf === 'string') conf = JSONF.parse(conf);
 
@@ -23,8 +32,9 @@ function DiffApp(conf) {
   * id: path + number
   * 
   */
-	this.diffs = [];
-	this.count = 0;
+	this._diffDescriptors = [];
+	this._currentDiffIdx = 0;
+	this._currentImages = null;
 }
 
 DiffApp.prototype.start = function () {
@@ -36,12 +46,32 @@ DiffApp.prototype.start = function () {
 		}
 
 		// no return
-	};get(window.location.origin + '/get-diffs').then(function (data) {
-		self.diffs = data;
-		m.redraw();
-	});
+	};this.initApp();
 
 	m.mount(document.querySelector('#mount'), MountComp);
+};
+
+DiffApp.prototype.initApp = function () {
+	var self = this;
+
+	// no return
+	session.getDiffDescriptors().then(function (descriptors) {
+		self._diffDescriptors = descriptors;
+	}).then(function () {
+		if (self.hasDiffs()) {
+			return session.getDiffImagesById(self._diffDescriptors[self._currentDiffIdx].id).then(function (images) {
+				self._currentImages = images;
+			});
+		}
+	}).catch(function (err) {
+		console.error(err);
+	}).finally(function () {
+		m.redraw();
+	});
+};
+
+DiffApp.prototype.hasDiffs = function () {
+	return this._diffDescriptors.length > 0;
 };
 
 var RootComp = {
@@ -55,7 +85,10 @@ var RootComp = {
 			m(
 				'div',
 				{ 'class': 'header' },
-				'0/0 \xA0 \xA0',
+				app._currentDiffIdx,
+				'/',
+				app._diffDescriptors.length,
+				'\xA0 \xA0',
 				m(
 					'button',
 					null,
@@ -71,34 +104,44 @@ var RootComp = {
 			m(
 				'div',
 				{ 'class': 'body' },
-				app.diffs.map(function (diff) {
-					return m(
+				app.hasDiffs() ? m(
+					'div',
+					{ 'class': 'diff' },
+					m(
 						'div',
-						{ 'class': 'diff' },
-						m(
-							'div',
-							{ 'class': 'diff--left' },
-							m('img', { src: 'data:url(image/png;base64,' + diff.refImg.base64 })
-						),
-						m('div', { 'class': 'diff--sep' }),
-						m(
-							'div',
-							{ 'class': 'diff--right' },
-							m('img', { src: 'data:url(image/png;base64,' + diff.failImg.base64 }),
-							diff.diffBounds.map(function (bounds) {
-								var imgW = diff.refImg.width;
-								var imgH = diff.refImg.height;
+						{ 'class': 'diff--left' },
+						app._currentImages ? m('img', { src: 'data:image/png;base64,' + app._currentImages.refImg }) : '(no image)'
+					),
+					m('div', { 'class': 'diff--sep' }),
+					m(
+						'div',
+						{ 'class': 'diff--right' },
+						app._currentImages ? m('img', { src: 'data:image/png;base64,' + app._currentImages.diffImg }) : '(no image)'
+					)
+				) : 'No diffs'
 
-								var topPc = bounds.y1 / imgH * 100;
-								var leftPc = bounds.x1 / imgW * 100;
-								var widthPc = bounds.width / imgW * 100;
-								var heightPc = bounds.height / imgH * 100;
+				/*app._diffDescriptors.map(function(diff){return <div class="diff">
+    		<div class="diff--left">
+    			<img src={'data:url(image/png;base64,'+diff.refImg.base64} />
+    		</div>
+    		<div class="diff--sep"></div>
+    		<div class="diff--right">
+    			<img src={'data:url(image/png;base64,'+diff.failImg.base64} />
+    			{
+    				diff.diffBounds.map(function(bounds){
+    					var imgW=diff.refImg.width
+    					var imgH=diff.refImg.height
+    						var topPc=bounds.y1/imgH*100
+    					var leftPc=bounds.x1/imgW*100
+    					var widthPc=bounds.width/imgW*100
+    					var heightPc=bounds.height/imgH*100
+    						return <div class="diff--bounds" style={ ['top:', topPc, '%; left:', leftPc, '%; width: ', widthPc, '%; height: ', heightPc, '%'].join('') }></div>
+    				})
+    			}
+    		</div>
+    		</div>
+    })*/
 
-								return m('div', { 'class': 'diff--bounds', style: ['top:', topPc, '%; left:', leftPc, '%; width: ', widthPc, '%; height: ', heightPc, '%'].join('') });
-							})
-						)
-					);
-				})
 			)
 		);
 	}

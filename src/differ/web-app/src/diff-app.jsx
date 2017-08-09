@@ -11,6 +11,15 @@ window.DiffApp=DiffApp
 window.$=$
 window.m=m
 
+var session={
+	getDiffDescriptors:function(){
+		return get(window.location.origin+'/get-diff-descriptors')
+	},
+	getDiffImagesById:function(id){
+		return get(window.location.origin+'/get-diff-images-by-id?id='+id)
+	}
+}
+
 function DiffApp(conf){
 	if (typeof conf ==='string')conf=JSONF.parse(conf)
 
@@ -19,8 +28,9 @@ function DiffApp(conf){
 		 * id: path + number
 		 * 
 		 */
-		this.diffs=[]
-		this.count=0
+		this._diffDescriptors=[]
+		this._currentDiffIdx=0
+		this._currentImages=null
 }
 
 DiffApp.prototype.start=function(){
@@ -34,14 +44,37 @@ DiffApp.prototype.start=function(){
     }
 
     // no return
-    get(window.location.origin+'/get-diffs')
-    .then(function(data){
-    	self.diffs=data
-    	m.redraw()
-    })
-
+	this.initApp()
 
     m.mount(document.querySelector('#mount'), MountComp)
+}
+
+DiffApp.prototype.initApp=function(){
+	var self=this
+
+    // no return
+    session.getDiffDescriptors()
+    .then(function(descriptors){
+    	self._diffDescriptors=descriptors
+    })
+    .then(function(){
+    	if (self.hasDiffs()){
+    		return session.getDiffImagesById(self._diffDescriptors[self._currentDiffIdx].id)
+    		.then(function(images){
+    			self._currentImages=images
+    		})
+    	}
+    })
+    .catch(function(err){
+    	console.error(err)
+    })
+    .finally(function(){
+    	m.redraw()
+    })
+}
+
+DiffApp.prototype.hasDiffs=function(){
+	return this._diffDescriptors.length>0
 }
 
 var RootComp = {
@@ -51,7 +84,7 @@ var RootComp = {
 
 		return <div class="page">
 			<div class="header">
-				0/0
+				{ app._currentDiffIdx }/{ app._diffDescriptors.length }
 				&nbsp;
 				&nbsp;
 				<button>Prev</button>
@@ -60,7 +93,28 @@ var RootComp = {
 			</div>
 			<div class="body">
 				{
-					app.diffs.map(function(diff){return <div class="diff">
+					app.hasDiffs()
+					? <div class="diff">
+						<div class="diff--left">
+							{
+								app._currentImages
+								? <img src={'data:image/png;base64,'+app._currentImages.refImg} />
+								: '(no image)'
+							}
+						</div>
+						<div class="diff--sep"></div>
+						<div class="diff--right">
+							{
+								app._currentImages
+								? <img src={'data:image/png;base64,'+app._currentImages.diffImg} />
+								: '(no image)'
+							}
+						</div>
+
+					</div>
+					: 'No diffs'
+
+					/*app._diffDescriptors.map(function(diff){return <div class="diff">
 							<div class="diff--left">
 								<img src={'data:url(image/png;base64,'+diff.refImg.base64} />
 							</div>
@@ -83,7 +137,7 @@ var RootComp = {
 							</div>
 
 						</div>
-					})
+					})*/
 				}
 			</div>
 		</div>

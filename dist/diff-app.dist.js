@@ -17869,7 +17869,7 @@ function compileSelector(selector) {
 			var attrValue = match[6]
 			if (attrValue) attrValue = attrValue.replace(/\\(["'])/g, "$1").replace(/\\\\/g, "\\")
 			if (match[4] === "class") classes.push(attrValue)
-			else attrs[match[4]] = attrValue || true
+			else attrs[match[4]] = attrValue === "" ? attrValue : attrValue || true
 		}
 	}
 	if (classes.length > 0) attrs.className = classes.join(" ")
@@ -18216,8 +18216,15 @@ var requestService = _8(window, PromisePolyfill)
 var coreRenderer = function($window) {
 	var $doc = $window.document
 	var $emptyFragment = $doc.createDocumentFragment()
+	var nameSpace = {
+		svg: "http://www.w3.org/2000/svg",
+		math: "http://www.w3.org/1998/Math/MathML"
+	}
 	var onevent
 	function setEventCallback(callback) {return onevent = callback}
+	function getNameSpace(vnode) {
+		return vnode.attrs && vnode.attrs.xmlns || nameSpace[vnode.tag]
+	}
 	//create
 	function createNodes(parent, vnodes, start, end, hooks, nextSibling, ns) {
 		for (var i = start; i < end; i++) {
@@ -18274,12 +18281,9 @@ var coreRenderer = function($window) {
 	}
 	function createElement(parent, vnode, hooks, ns, nextSibling) {
 		var tag = vnode.tag
-		switch (vnode.tag) {
-			case "svg": ns = "http://www.w3.org/2000/svg"; break
-			case "math": ns = "http://www.w3.org/1998/Math/MathML"; break
-		}
 		var attrs2 = vnode.attrs
 		var is = attrs2 && attrs2.is
+		ns = getNameSpace(vnode) || ns
 		var element = ns ?
 			is ? $doc.createElementNS(ns, tag, {is: is}) : $doc.createElementNS(ns, tag) :
 			is ? $doc.createElement(tag, {is: is}) : $doc.createElement(tag)
@@ -18342,7 +18346,7 @@ var coreRenderer = function($window) {
 	//update
 	function updateNodes(parent, old, vnodes, recycling, hooks, nextSibling, ns) {
 		if (old === vnodes || old == null && vnodes == null) return
-		else if (old == null) createNodes(parent, vnodes, 0, vnodes.length, hooks, nextSibling, undefined)
+		else if (old == null) createNodes(parent, vnodes, 0, vnodes.length, hooks, nextSibling, ns)
 		else if (vnodes == null) removeNodes(old, 0, old.length, vnodes)
 		else {
 			if (old.length === vnodes.length) {
@@ -18419,7 +18423,7 @@ var coreRenderer = function($window) {
 							if (movable.dom != null) nextSibling = movable.dom
 						}
 						else {
-							var dom = createNode(parent, v, hooks, undefined, nextSibling)
+							var dom = createNode(parent, v, hooks, ns, nextSibling)
 							nextSibling = dom
 						}
 					}
@@ -18490,10 +18494,7 @@ var coreRenderer = function($window) {
 	}
 	function updateElement(old, vnode, recycling, hooks, ns) {
 		var element = vnode.dom = old.dom
-		switch (vnode.tag) {
-			case "svg": ns = "http://www.w3.org/2000/svg"; break
-			case "math": ns = "http://www.w3.org/1998/Math/MathML"; break
-		}
+		ns = getNameSpace(vnode) || ns
 		if (vnode.tag === "textarea") {
 			if (vnode.attrs == null) vnode.attrs = {}
 			if (vnode.text != null) {
@@ -18673,12 +18674,21 @@ var coreRenderer = function($window) {
 		else if (key2[0] === "o" && key2[1] === "n" && typeof value === "function") updateEvent(vnode, key2, value)
 		else if (key2 === "style") updateStyle(element, old, value)
 		else if (key2 in element && !isAttribute(key2) && ns === undefined && !isCustomElement(vnode)) {
-			//setting input[value] to same value by typing on focused element moves cursor to end in Chrome
-			if (vnode.tag === "input" && key2 === "value" && vnode.dom.value == value && vnode.dom === $doc.activeElement) return
-			//setting select[value] to same value while having select open blinks select dropdown in Chrome
-			if (vnode.tag === "select" && key2 === "value" && vnode.dom.value == value && vnode.dom === $doc.activeElement) return
-			//setting option[value] to same value while having select open blinks select dropdown in Chrome
-			if (vnode.tag === "option" && key2 === "value" && vnode.dom.value == value) return
+			if (key2 === "value") {
+				var normalized0 = "" + value // eslint-disable-line no-implicit-coercion
+				//setting input[value] to same value by typing on focused element moves cursor to end in Chrome
+				if ((vnode.tag === "input" || vnode.tag === "textarea") && vnode.dom.value === normalized0 && vnode.dom === $doc.activeElement) return
+				//setting select[value] to same value while having select open blinks select dropdown in Chrome
+				if (vnode.tag === "select") {
+					if (value === null) {
+						if (vnode.dom.selectedIndex === -1 && vnode.dom === $doc.activeElement) return
+					} else {
+						if (old !== null && vnode.dom.value === normalized0 && vnode.dom === $doc.activeElement) return
+					}
+				}
+				//setting option[value] to same value while having select open blinks select dropdown in Chrome
+				if (vnode.tag === "option" && old != null && vnode.dom.value === normalized0) return
+			}
 			// If you assign an input type1 that is not supported by IE 11 with an assignment expression, an error0 will occur.
 			if (vnode.tag === "input" && key2 === "type") {
 				element.setAttribute(key2, value)
@@ -18793,10 +18803,11 @@ var coreRenderer = function($window) {
 		if (!dom) throw new Error("Ensure the DOM element being passed to m.route/m.mount/m.render is not undefined.")
 		var hooks = []
 		var active = $doc.activeElement
+		var namespace = dom.namespaceURI
 		// First time0 rendering into a node clears it out
 		if (dom.vnodes == null) dom.textContent = ""
 		if (!Array.isArray(vnodes)) vnodes = [vnodes]
-		updateNodes(dom, dom.vnodes, Vnode.normalizeChildren(vnodes), false, hooks, null, undefined)
+		updateNodes(dom, dom.vnodes, Vnode.normalizeChildren(vnodes), false, hooks, null, namespace === "http://www.w3.org/1999/xhtml" ? undefined : namespace)
 		dom.vnodes = vnodes
 		for (var i = 0; i < hooks.length; i++) hooks[i]()
 		if ($doc.activeElement !== active) active.focus()
@@ -18826,7 +18837,8 @@ function throttle(callback) {
 var _11 = function($window) {
 	var renderService = coreRenderer($window)
 	renderService.setEventCallback(function(e) {
-		if (e.redraw !== false) redraw()
+		if (e.redraw === false) e.redraw = undefined
+		else redraw()
 	})
 	var callbacks = []
 	function subscribe(key1, callback) {
@@ -19025,7 +19037,10 @@ var _20 = function($window, redrawService0) {
 		redrawService0.subscribe(root, run1)
 	}
 	route.set = function(path, data, options) {
-		if (lastUpdate != null) options = {replace: true}
+		if (lastUpdate != null) {
+			options = options || {}
+			options.replace = true
+		}
 		lastUpdate = null
 		routeService.setPath(path, data, options)
 	}
@@ -19061,7 +19076,7 @@ m.request = requestService.request
 m.jsonp = requestService.jsonp
 m.parseQueryString = parseQueryString
 m.buildQueryString = buildQueryString
-m.version = "1.1.1"
+m.version = "1.1.3"
 m.vnode = Vnode
 if (typeof module !== "undefined") module["exports"] = m
 else window.m = m
@@ -19499,6 +19514,15 @@ window.DiffApp = DiffApp;
 window.$ = $;
 window.m = m;
 
+var session = {
+	getDiffDescriptors: function getDiffDescriptors() {
+		return get(window.location.origin + '/get-diff-descriptors');
+	},
+	getDiffImagesById: function getDiffImagesById(id) {
+		return get(window.location.origin + '/get-diff-images-by-id?id=' + id);
+	}
+};
+
 function DiffApp(conf) {
 	if (typeof conf === 'string') conf = JSONF.parse(conf);
 
@@ -19507,8 +19531,9 @@ function DiffApp(conf) {
   * id: path + number
   * 
   */
-	this.diffs = [];
-	this.count = 0;
+	this._diffDescriptors = [];
+	this._currentDiffIdx = 0;
+	this._currentImages = null;
 }
 
 DiffApp.prototype.start = function () {
@@ -19520,12 +19545,32 @@ DiffApp.prototype.start = function () {
 		}
 
 		// no return
-	};get(window.location.origin + '/get-diffs').then(function (data) {
-		self.diffs = data;
-		m.redraw();
-	});
+	};this.initApp();
 
 	m.mount(document.querySelector('#mount'), MountComp);
+};
+
+DiffApp.prototype.initApp = function () {
+	var self = this;
+
+	// no return
+	session.getDiffDescriptors().then(function (descriptors) {
+		self._diffDescriptors = descriptors;
+	}).then(function () {
+		if (self.hasDiffs()) {
+			return session.getDiffImagesById(self._diffDescriptors[self._currentDiffIdx].id).then(function (images) {
+				self._currentImages = images;
+			});
+		}
+	}).catch(function (err) {
+		console.error(err);
+	}).finally(function () {
+		m.redraw();
+	});
+};
+
+DiffApp.prototype.hasDiffs = function () {
+	return this._diffDescriptors.length > 0;
 };
 
 var RootComp = {
@@ -19539,7 +19584,10 @@ var RootComp = {
 			m(
 				'div',
 				{ 'class': 'header' },
-				'0/0 \xA0 \xA0',
+				app._currentDiffIdx,
+				'/',
+				app._diffDescriptors.length,
+				'\xA0 \xA0',
 				m(
 					'button',
 					null,
@@ -19555,34 +19603,44 @@ var RootComp = {
 			m(
 				'div',
 				{ 'class': 'body' },
-				app.diffs.map(function (diff) {
-					return m(
+				app.hasDiffs() ? m(
+					'div',
+					{ 'class': 'diff' },
+					m(
 						'div',
-						{ 'class': 'diff' },
-						m(
-							'div',
-							{ 'class': 'diff--left' },
-							m('img', { src: 'data:url(image/png;base64,' + diff.refImg.base64 })
-						),
-						m('div', { 'class': 'diff--sep' }),
-						m(
-							'div',
-							{ 'class': 'diff--right' },
-							m('img', { src: 'data:url(image/png;base64,' + diff.failImg.base64 }),
-							diff.diffBounds.map(function (bounds) {
-								var imgW = diff.refImg.width;
-								var imgH = diff.refImg.height;
+						{ 'class': 'diff--left' },
+						app._currentImages ? m('img', { src: 'data:image/png;base64,' + app._currentImages.refImg }) : '(no image)'
+					),
+					m('div', { 'class': 'diff--sep' }),
+					m(
+						'div',
+						{ 'class': 'diff--right' },
+						app._currentImages ? m('img', { src: 'data:image/png;base64,' + app._currentImages.diffImg }) : '(no image)'
+					)
+				) : 'No diffs'
 
-								var topPc = bounds.y1 / imgH * 100;
-								var leftPc = bounds.x1 / imgW * 100;
-								var widthPc = bounds.width / imgW * 100;
-								var heightPc = bounds.height / imgH * 100;
+				/*app._diffDescriptors.map(function(diff){return <div class="diff">
+    		<div class="diff--left">
+    			<img src={'data:url(image/png;base64,'+diff.refImg.base64} />
+    		</div>
+    		<div class="diff--sep"></div>
+    		<div class="diff--right">
+    			<img src={'data:url(image/png;base64,'+diff.failImg.base64} />
+    			{
+    				diff.diffBounds.map(function(bounds){
+    					var imgW=diff.refImg.width
+    					var imgH=diff.refImg.height
+    						var topPc=bounds.y1/imgH*100
+    					var leftPc=bounds.x1/imgW*100
+    					var widthPc=bounds.width/imgW*100
+    					var heightPc=bounds.height/imgH*100
+    						return <div class="diff--bounds" style={ ['top:', topPc, '%; left:', leftPc, '%; width: ', widthPc, '%; height: ', heightPc, '%'].join('') }></div>
+    				})
+    			}
+    		</div>
+    		</div>
+    })*/
 
-								return m('div', { 'class': 'diff--bounds', style: ['top:', topPc, '%; left:', leftPc, '%; width: ', widthPc, '%; height: ', heightPc, '%'].join('') });
-							})
-						)
-					);
-				})
 			)
 		);
 	}

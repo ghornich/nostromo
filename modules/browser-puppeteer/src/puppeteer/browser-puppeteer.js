@@ -112,6 +112,13 @@ BrowserPuppeteer.prototype.waitForPuppet = Promise.method(function () {
     });
 });
 
+BrowserPuppeteer.prototype.reopen = function (url) {
+    return this.sendMessage({
+        type: MESSAGES.DOWNSTREAM.REOPEN_URL,
+        url: url,
+    })
+}
+
 BrowserPuppeteer.prototype._onWsConnection = function (wsConn) {
     this._log.trace('_onWsConnection');
 
@@ -125,7 +132,7 @@ BrowserPuppeteer.prototype._onMessage = function (rawData) {
     const data = JSONF.parse(rawData);
     const _cmh = this._currentMessageHandler;
 
-    this._log.trace(`_onMessage: ${ rawData}`);
+    this._log.trace(`_onMessage: ${rawData}`);
 
     if (data.type === MESSAGES.UPSTREAM.ACK) {
         _cmh.resolve(data.result);
@@ -163,7 +170,7 @@ BrowserPuppeteer.prototype.sendMessage = Promise.method(function (data) {
         throw new Error('Puppet not connected');
     }
     if (this._currentMessageHandler.resolve) {
-        throw new Error('Cannot send multiple messages');
+        throw new Error('Cannot send multiple messages - '+util.inspect(data));
     }
 
     this._log.debug('sending message');
