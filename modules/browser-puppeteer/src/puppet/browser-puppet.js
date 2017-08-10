@@ -15,6 +15,7 @@ var Ws4ever=require('../../../../modules/ws4ever');
 
 // TODO use MutationObserver if available, fallback to polling ?
 var AUTODETECT_INTERVAL_MS = 300;
+var CAPTURE_TIME_THRESHOLD = 300
 
 var DEFAULT_PORT = 47225;
 
@@ -50,6 +51,8 @@ function BrowserPuppet(opts) {
         // Array<{previousState:Boolean}>
         states: [],
     };
+
+    this._lastCaptureTimestamp=0
 
     this._scheduleReopen = false
     this._scheduleReopenUrl = ''
@@ -154,6 +157,14 @@ BrowserPuppet.prototype._onMessage = function (data) {
 };
 
 BrowserPuppet.prototype._canCapture = function () {
+    var now = Date.now()
+    var elapsed = now - this._lastCaptureTimestamp
+    this._lastCaptureTimestamp = now
+
+    if (elapsed < CAPTURE_TIME_THRESHOLD) {
+        return false
+    }
+
     return this._transmitEvents && !this._isExecuting;
 }
 
