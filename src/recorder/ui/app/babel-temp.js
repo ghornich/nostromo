@@ -12,7 +12,7 @@ var defaults = require('../../../../modules/shallow-defaults');
 var util = require('util');
 var JSONF = require('../../../../modules/jsonf');
 var m = require('mithril');
-var Ws4ever = require('ws4ever');
+var Ws4ever = require('../../../../modules/ws4ever');
 
 var CommandList = require('../../../command-list');
 var CMD_TYPES = require('../../../command').TYPES;

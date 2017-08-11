@@ -1,110 +1,4 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
-
-if (isNode()) {
-    module.exports=Ws4ever
-}
-else {
-    window.Ws4ever=Ws4ever
-}
-
-
-function Ws4ever(url, protocols, options){
-    this._opts=Object.assign({}, {
-        retryInterval:1000
-    }, options||{})
-
-    this._url=url
-    this._protocols=protocols
-    this._ws=null
-    this._isConnecting=false
-
-    this.onopen=noop
-    this.onclose=noop
-    this.onerror=noop
-    this.onmessage=noop
-
-    Object.defineProperties(this, {
-        readyState: {
-            get: function () { return this._ws?this._ws.readyState:WebSocket.CLOSED }
-        },
-        url: {
-            get: function () { return this._url }
-        },
-    })
-
-    this._ensureConnection=this._ensureConnection.bind(this)
-    this._onWsOpen=this._onWsOpen.bind(this)
-    this._onWsClose=this._onWsClose.bind(this)
-    // this._onWsError=this._onWsError.bind(this)
-    this._onWsMessage=this._onWsMessage.bind(this)
-
-    setInterval(this._ensureConnection, this._opts.retryInterval)
-}
-
-Ws4ever.prototype.isConnected=function(){
-    return Boolean(this._ws && this._ws.readyState === WebSocket.OPEN)
-}
-
-Ws4ever.prototype.send=function(msg){
-    if (!this.isConnected())throw new Error('cannot send message, ws closed')
-    this._ws.send(msg)
-}
-
-Ws4ever.prototype._ensureConnection=function(){
-    if (this.isConnected())return
-    if (this._isConnecting)return
-
-    try {
-        console.log('_ensureConnection: connecting')
-        this._isConnecting=true
-        this._ws=new WebSocket(this._url, this._protocols)
-        this._ws.onopen=this._onWsOpen
-        this._ws.onclose=this._onWsClose
-        this._ws.onerror=this._onWsError
-        this._ws.onmessage=this._onWsMessage
-    }
-    catch(e){
-        // TODO handle or log?
-        this._isConnecting=false
-        this._ws=null
-    }
-}
-
-Ws4ever.prototype._onWsOpen=function () {
-    console.log('_onWsOpen')
-    this.onopen.apply(null, arguments)
-    this._isConnecting=false
-}
-
-Ws4ever.prototype._onWsClose=function () {
-    console.log('_onWsClose')
-    this.onclose.apply(null, arguments)
-    this._isConnecting=false
-    this._ws=null
-}
-
-Ws4ever.prototype._onWsError=function () {
-    console.log('_onWsError')
-    this.onerror.apply(null, arguments)
-    // this._isConnecting=false
-    // this._ws=null
-}
-
-Ws4ever.prototype._onWsMessage=function () {
-    console.log('_onWsMessage')
-    this.onmessage.apply(null,arguments)
-}
-
-
-
-
-function noop(){}
-
-function isNode(){return typeof module==='object'&&typeof module.exports==='object'}
-
-
-
-},{}],2:[function(require,module,exports){
 // TODO use typedefs
 
 exports.UPSTREAM = {
@@ -146,7 +40,7 @@ exports.DOWNSTREAM = {
     REOPEN_URL: 'reopen-url',
 };
 
-},{}],3:[function(require,module,exports){
+},{}],2:[function(require,module,exports){
 'use strict'
 
 // TODO tests
@@ -198,7 +92,7 @@ JSONF.parse=function(s){
     })
 }
 
-},{}],4:[function(require,module,exports){
+},{}],3:[function(require,module,exports){
 (function (process){
 var os = require('os');
 
@@ -294,7 +188,7 @@ Loggr.getLevelChar = function (level) {
 };
 
 }).call(this,require('_process'))
-},{"_process":11,"os":10}],5:[function(require,module,exports){
+},{"_process":11,"os":10}],4:[function(require,module,exports){
 'use strict'
 
 exports=module.exports=function(opts, defaults){
@@ -308,6 +202,117 @@ exports=module.exports=function(opts, defaults){
 
     return opts
 }
+
+},{}],5:[function(require,module,exports){
+
+if (isNode()) {
+    module.exports=Ws4ever
+}
+else {
+    window.Ws4ever=Ws4ever
+}
+
+
+function Ws4ever(url, protocols, options){
+    this._opts=Object.assign({}, {
+        retryInterval:1000
+    }, options||{})
+
+    this._url=url
+    this._protocols=protocols
+    this._ws=null
+    this._isConnecting=false
+
+    this.onopen=noop
+    this.onclose=noop
+    this.onerror=noop
+    this.onmessage=noop
+
+    Object.defineProperties(this, {
+        readyState: {
+            get: function () { return this._ws?this._ws.readyState:WebSocket.CLOSED }
+        },
+        url: {
+            get: function () { return this._url }
+        },
+    })
+
+    this._ensureConnection=this._ensureConnection.bind(this)
+    this._onWsOpen=this._onWsOpen.bind(this)
+    this._onWsClose=this._onWsClose.bind(this)
+    this._onWsError=this._onWsError.bind(this)
+    this._onWsMessage=this._onWsMessage.bind(this)
+
+    this.iid = setInterval(this._ensureConnection, this._opts.retryInterval)
+}
+
+Ws4ever.prototype.isConnected=function(){
+    return Boolean(this._ws && this._ws.readyState === WebSocket.OPEN)
+}
+
+Ws4ever.prototype.send=function(msg){
+    if (!this.isConnected())throw new Error('cannot send message, ws closed')
+    this._ws.send(msg)
+}
+
+Ws4ever.prototype._ensureConnection=function(){
+    if (this.isConnected())return
+    if (this._isConnecting)return
+
+    try {
+        console.log('_ensureConnection: connecting')
+        this._isConnecting=true
+        this._ws=new WebSocket(this._url, this._protocols)
+        this._ws.onopen=this._onWsOpen
+        this._ws.onclose=this._onWsClose
+        this._ws.onerror=this._onWsError
+        this._ws.onmessage=this._onWsMessage
+    }
+    catch(e){
+        // TODO handle or log?
+        this._isConnecting=false
+        this._ws=null
+    }
+}
+
+Ws4ever.prototype.close=function(){
+    clearInterval(this.iid)
+    this._ws.close()
+}
+
+Ws4ever.prototype._onWsOpen=function () {
+    console.log('_onWsOpen')
+    this.onopen.apply(null, arguments)
+    this._isConnecting=false
+}
+
+Ws4ever.prototype._onWsClose=function () {
+    console.log('_onWsClose')
+    this.onclose.apply(null, arguments)
+    this._isConnecting=false
+    this._ws=null
+}
+
+Ws4ever.prototype._onWsError=function () {
+    console.log('_onWsError')
+    this.onerror.apply(null, arguments)
+    // this._isConnecting=false
+    // this._ws=null
+}
+
+Ws4ever.prototype._onWsMessage=function () {
+    console.log('_onWsMessage')
+    this.onmessage.apply(null,arguments)
+}
+
+
+
+
+function noop(){}
+
+function isNode(){return typeof module==='object'&&typeof module.exports==='object'}
+
+
 
 },{}],6:[function(require,module,exports){
 (function (process,global){
@@ -35402,11 +35407,13 @@ CommandList.prototype._compact=function(){
             newCommands.push(cmd)
         }
 
-        else if (cmd.type===TYPES.FOCUS && lastNewCmd.type===TYPES.CLICK && timestampDiff < CLICK_FOCUS_MIN_SEPARATION) {
-            continue
-        }
+        // else if (cmd.type===TYPES.FOCUS && lastNewCmd.type===TYPES.CLICK && timestampDiff < CLICK_FOCUS_MIN_SEPARATION) {
+        //     continue
+        // }
         else if (cmd.type===TYPES.CLICK && lastNewCmd.type===TYPES.FOCUS && timestampDiff < CLICK_FOCUS_MIN_SEPARATION) {
+            // exchange focus and click so click comes first
             newCommands[lastNewIdx] = cmd
+            newCommands.push(lastNewCmd)
             continue
         }
 
@@ -35503,7 +35510,7 @@ var defaults = require('../../../../modules/shallow-defaults');
 var util = require('util');
 var JSONF = require('../../../../modules/jsonf');
 var m = require('mithril');
-var Ws4ever = require('ws4ever');
+var Ws4ever = require('../../../../modules/ws4ever');
 
 var CommandList = require('../../../command-list');
 var CMD_TYPES = require('../../../command').TYPES;
@@ -35857,4 +35864,4 @@ function nl2backslashnl(str) {
     return str.replace(/\n/g, '\\n');
 }
 
-},{"../../../../modules/browser-puppeteer/src/messages.js":2,"../../../../modules/jsonf":3,"../../../../modules/loggr":4,"../../../../modules/shallow-defaults":5,"../../../command":16,"../../../command-list":15,"bluebird":6,"jquery":7,"lodash":8,"mithril":9,"util":14,"ws4ever":1}]},{},[17]);
+},{"../../../../modules/browser-puppeteer/src/messages.js":1,"../../../../modules/jsonf":2,"../../../../modules/loggr":3,"../../../../modules/shallow-defaults":4,"../../../../modules/ws4ever":5,"../../../command":16,"../../../command-list":15,"bluebird":6,"jquery":7,"lodash":8,"mithril":9,"util":14}]},{},[17]);

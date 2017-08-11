@@ -25,11 +25,13 @@ CommandList.prototype._compact=function(){
             newCommands.push(cmd)
         }
 
-        else if (cmd.type===TYPES.FOCUS && lastNewCmd.type===TYPES.CLICK && timestampDiff < CLICK_FOCUS_MIN_SEPARATION) {
-            continue
-        }
+        // else if (cmd.type===TYPES.FOCUS && lastNewCmd.type===TYPES.CLICK && timestampDiff < CLICK_FOCUS_MIN_SEPARATION) {
+        //     continue
+        // }
         else if (cmd.type===TYPES.CLICK && lastNewCmd.type===TYPES.FOCUS && timestampDiff < CLICK_FOCUS_MIN_SEPARATION) {
+            // exchange focus and click so click comes first
             newCommands[lastNewIdx] = cmd
+            newCommands.push(lastNewCmd)
             continue
         }
 
