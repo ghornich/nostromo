@@ -8,7 +8,7 @@ exports.UPSTREAM = {
     // { type, selector, [warning] }
     SELECTOR_BECAME_VISIBLE: 'selector-became-visible',
 
-    // { type, event: { type, [selector,] [target,] ... } }
+    // { type, event: { type, timestamp, [selector,] [target,] ... } }
     CAPTURED_EVENT: 'captured-event',
 
     // general acknowledgement { type, result }
@@ -61,7 +61,7 @@ var Ws4ever=require('../../../../modules/ws4ever');
 
 // TODO use MutationObserver if available, fallback to polling ?
 var AUTODETECT_INTERVAL_MS = 300;
-var CAPTURE_TIME_THRESHOLD = 300
+var INSERT_ASSERTION_DEBOUNCE = 500;
 
 var DEFAULT_PORT = 47225;
 
@@ -97,8 +97,6 @@ function BrowserPuppet(opts) {
         // Array<{previousState:Boolean}>
         states: [],
     };
-
-    this._lastCaptureTimestamp=0
 
     this._scheduleReopen = false
     this._scheduleReopenUrl = ''
@@ -203,14 +201,6 @@ BrowserPuppet.prototype._onMessage = function (data) {
 };
 
 BrowserPuppet.prototype._canCapture = function () {
-    var now = Date.now()
-    var elapsed = now - this._lastCaptureTimestamp
-    this._lastCaptureTimestamp = now
-
-    if (elapsed < CAPTURE_TIME_THRESHOLD) {
-        return false
-    }
-
     return this._transmitEvents && !this._isExecuting;
 }
 
@@ -244,6 +234,7 @@ BrowserPuppet.prototype._onClickCapture = function (event) {
         type: MESSAGES.UPSTREAM.CAPTURED_EVENT,
         event: {
             type: 'click',
+            timestamp: Date.now(),
             selector: selector,
             target: {
                 innerText: target.innerText
@@ -271,6 +262,7 @@ BrowserPuppet.prototype._onFocusCapture = function (event) {
         type: MESSAGES.UPSTREAM.CAPTURED_EVENT,
         event: {
             type: 'focus',
+            timestamp: Date.now(),
             selector: selector,
             target: {
                 innerText: target.innerText
@@ -298,6 +290,7 @@ BrowserPuppet.prototype._onInputCapture = function (event) {
         type: MESSAGES.UPSTREAM.CAPTURED_EVENT,
         event: {
             type: 'input',
+            timestamp: Date.now(),
             selector: selector,
             value: target.value,
             target: {
@@ -328,6 +321,7 @@ BrowserPuppet.prototype._onScrollCapture = debounce(function (event) {
         type: MESSAGES.UPSTREAM.CAPTURED_EVENT,
         event: {
             type: 'scroll',
+            timestamp: Date.now(),
             selector: selector,
             target: {
                 scrollTop: target.scrollTop,
@@ -363,6 +357,7 @@ BrowserPuppet.prototype._onKeydownCapture = function (event) {
         type: MESSAGES.UPSTREAM.CAPTURED_EVENT,
         event: {
             type: 'keydown',
+            timestamp: Date.now(),
             selector: selector,
             keyCode: event.keyCode || event.charCode,
             ctrlKey: event.ctrlKey,
@@ -372,8 +367,6 @@ BrowserPuppet.prototype._onKeydownCapture = function (event) {
         },
     })
 }
-
-var INSERT_ASSERTION_DEBOUNCE = 500
 
 BrowserPuppet.prototype._sendInsertAssertionDebounced = debounce(function () {
     this._sendMessage({ type: MESSAGES.UPSTREAM.INSERT_ASSERTION });

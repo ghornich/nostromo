@@ -4,7 +4,7 @@ exports.UPSTREAM = {
     // { type, selector, [warning] }
     SELECTOR_BECAME_VISIBLE: 'selector-became-visible',
 
-    // { type, event: { type, [selector,] [target,] ... } }
+    // { type, event: { type, timestamp, [selector,] [target,] ... } }
     CAPTURED_EVENT: 'captured-event',
 
     // general acknowledgement { type, result }

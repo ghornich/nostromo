@@ -111,7 +111,7 @@ exports.UPSTREAM = {
     // { type, selector, [warning] }
     SELECTOR_BECAME_VISIBLE: 'selector-became-visible',
 
-    // { type, event: { type, [selector,] [target,] ... } }
+    // { type, event: { type, timestamp, [selector,] [target,] ... } }
     CAPTURED_EVENT: 'captured-event',
 
     // general acknowledgement { type, result }
@@ -35377,6 +35377,7 @@ function hasOwnProperty(obj, prop) {
 },{"./support/isBuffer":13,"_process":11,"inherits":12}],15:[function(require,module,exports){
 var Command=require('./command')
 var TYPES=Command.TYPES
+var CLICK_FOCUS_MIN_SEPARATION = 200
 
 exports=module.exports=CommandList
 
@@ -35395,9 +35396,20 @@ CommandList.prototype._compact=function(){
     	var lastNewCmd=lastNewIdx>=0?newCommands[lastNewIdx]:null
         var cmd=this._commands[i]
 
+        var timestampDiff = Math.abs(cmd.timestamp-lastNewCmd.timestamp)
+
         if (newCommands.length===0) {
             newCommands.push(cmd)
         }
+
+        else if (cmd.type===TYPES.FOCUS && lastNewCmd.type===TYPES.CLICK && timestampDiff < CLICK_FOCUS_MIN_SEPARATION) {
+            continue
+        }
+        else if (cmd.type===TYPES.CLICK && lastNewCmd.type===TYPES.FOCUS && timestampDiff < CLICK_FOCUS_MIN_SEPARATION) {
+            newCommands[lastNewIdx] = cmd
+            continue
+        }
+
         else if (cmd.type===TYPES.SET_VALUE && lastNewCmd.type===TYPES.SET_VALUE && cmd.selector===lastNewCmd.selector) {
         	newCommands[lastNewIdx]=cmd
         }
