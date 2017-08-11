@@ -166,6 +166,7 @@ RecorderApp.prototype._onCapturedEvent=function(event){
 RecorderApp.prototype._getCommandFromInputEvent=function(event){
     return {
         type: 'setValue',
+        timestamp: event.timestamp,
         selector: event.selector,
         value: event.value,
     }
@@ -174,6 +175,7 @@ RecorderApp.prototype._getCommandFromInputEvent=function(event){
 RecorderApp.prototype._getCommandFromKeydownEvent=function(event){
     return {
         type: 'pressKey',
+        timestamp: event.timestamp,
         selector: event.selector,
         keyCode: event.keyCode,
     }
@@ -182,6 +184,7 @@ RecorderApp.prototype._getCommandFromKeydownEvent=function(event){
 RecorderApp.prototype._getCommandFromScrollEvent=function(event){
     return {
         type: 'scroll',
+        timestamp: event.timestamp,
         selector: event.selector,
         scrollTop: event.scrollTop,
     }
@@ -190,6 +193,7 @@ RecorderApp.prototype._getCommandFromScrollEvent=function(event){
 RecorderApp.prototype._getCommandFromClickEvent=function(event){
     return {
         type: 'click',
+        timestamp: event.timestamp,
         selector: event.selector,
         message: 'Click "'+ellipsis(event.target.innerText)+'" ('+event.selector+')'
     }
@@ -198,6 +202,7 @@ RecorderApp.prototype._getCommandFromClickEvent=function(event){
 RecorderApp.prototype._getCommandFromFocusEvent=function(event){
     return {
         type: 'focus',
+        timestamp: event.timestamp,
         selector: event.selector,
     }
 }

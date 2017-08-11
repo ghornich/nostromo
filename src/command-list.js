@@ -15,20 +15,18 @@ CommandList.prototype._compact=function(){
 	var newCommands=[]
 
     for (var i=0,len=this._commands.length;i<len;i++){
-    	var lastNewIdx=newCommands.length-1
-    	var lastNewCmd=lastNewIdx>=0?newCommands[lastNewIdx]:null
+        var lastNewIdx=newCommands.length-1
+        var lastNewCmd=lastNewIdx>=0?newCommands[lastNewIdx]:null
         var cmd=this._commands[i]
-
-        var timestampDiff = Math.abs(cmd.timestamp-lastNewCmd.timestamp)
 
         if (newCommands.length===0) {
             newCommands.push(cmd)
+            continue
         }
 
-        // else if (cmd.type===TYPES.FOCUS && lastNewCmd.type===TYPES.CLICK && timestampDiff < CLICK_FOCUS_MIN_SEPARATION) {
-        //     continue
-        // }
-        else if (cmd.type===TYPES.CLICK && lastNewCmd.type===TYPES.FOCUS && timestampDiff < CLICK_FOCUS_MIN_SEPARATION) {
+        var timestampDiff = Math.abs(cmd.timestamp-lastNewCmd.timestamp)
+
+        if (cmd.type===TYPES.CLICK && lastNewCmd.type===TYPES.FOCUS && timestampDiff < CLICK_FOCUS_MIN_SEPARATION) {
             // exchange focus and click so click comes first
             newCommands[lastNewIdx] = cmd
             newCommands.push(lastNewCmd)

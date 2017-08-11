@@ -35397,20 +35397,18 @@ CommandList.prototype._compact=function(){
 	var newCommands=[]
 
     for (var i=0,len=this._commands.length;i<len;i++){
-    	var lastNewIdx=newCommands.length-1
-    	var lastNewCmd=lastNewIdx>=0?newCommands[lastNewIdx]:null
+        var lastNewIdx=newCommands.length-1
+        var lastNewCmd=lastNewIdx>=0?newCommands[lastNewIdx]:null
         var cmd=this._commands[i]
-
-        var timestampDiff = Math.abs(cmd.timestamp-lastNewCmd.timestamp)
 
         if (newCommands.length===0) {
             newCommands.push(cmd)
+            continue
         }
 
-        // else if (cmd.type===TYPES.FOCUS && lastNewCmd.type===TYPES.CLICK && timestampDiff < CLICK_FOCUS_MIN_SEPARATION) {
-        //     continue
-        // }
-        else if (cmd.type===TYPES.CLICK && lastNewCmd.type===TYPES.FOCUS && timestampDiff < CLICK_FOCUS_MIN_SEPARATION) {
+        var timestampDiff = Math.abs(cmd.timestamp-lastNewCmd.timestamp)
+
+        if (cmd.type===TYPES.CLICK && lastNewCmd.type===TYPES.FOCUS && timestampDiff < CLICK_FOCUS_MIN_SEPARATION) {
             // exchange focus and click so click comes first
             newCommands[lastNewIdx] = cmd
             newCommands.push(lastNewCmd)
@@ -35671,6 +35669,7 @@ RecorderApp.prototype._onCapturedEvent = function (event) {
 RecorderApp.prototype._getCommandFromInputEvent = function (event) {
     return {
         type: 'setValue',
+        timestamp: event.timestamp,
         selector: event.selector,
         value: event.value
     };
@@ -35679,6 +35678,7 @@ RecorderApp.prototype._getCommandFromInputEvent = function (event) {
 RecorderApp.prototype._getCommandFromKeydownEvent = function (event) {
     return {
         type: 'pressKey',
+        timestamp: event.timestamp,
         selector: event.selector,
         keyCode: event.keyCode
     };
@@ -35687,6 +35687,7 @@ RecorderApp.prototype._getCommandFromKeydownEvent = function (event) {
 RecorderApp.prototype._getCommandFromScrollEvent = function (event) {
     return {
         type: 'scroll',
+        timestamp: event.timestamp,
         selector: event.selector,
         scrollTop: event.scrollTop
     };
@@ -35695,6 +35696,7 @@ RecorderApp.prototype._getCommandFromScrollEvent = function (event) {
 RecorderApp.prototype._getCommandFromClickEvent = function (event) {
     return {
         type: 'click',
+        timestamp: event.timestamp,
         selector: event.selector,
         message: 'Click "' + ellipsis(event.target.innerText) + '" (' + event.selector + ')'
     };
@@ -35703,6 +35705,7 @@ RecorderApp.prototype._getCommandFromClickEvent = function (event) {
 RecorderApp.prototype._getCommandFromFocusEvent = function (event) {
     return {
         type: 'focus',
+        timestamp: event.timestamp,
         selector: event.selector
     };
 };
