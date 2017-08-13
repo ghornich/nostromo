@@ -149,7 +149,8 @@ function TestRunner(conf){
         isVisible: this._isVisible_direct.bind(this),
         delay:this._delay.bind(this),
         comment:this._comment.bind(this),
-        assert:this._assert.bind(this)
+        assert:this._assert.bind(this),
+        pressKey:this._pressKey_direct.bind(this),
     }
 
     this.sideEffectAPI={}
@@ -558,7 +559,13 @@ TestRunner.prototype._setValue_direct = Promise.method(function (selector, value
 })
 
 TestRunner.prototype._pressKey_direct = Promise.method(function (selector, keyCode, description) {
-   throw new Error('TODO _pressKey_direct') 
+    this._log.info(`pressKey: ${ keyCode } (${ ellipsis(selector,ELLIPSIS_LIMIT) })`)
+
+    return this._browserPuppeteer.execCommand({
+        type: 'pressKey',
+        selector: selector,
+        keyCode: keyCode,
+    })
 })
 
 TestRunner.prototype._waitForVisible_direct = Promise.method(function (selector, timeout) {

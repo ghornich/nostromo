@@ -578,6 +578,7 @@ BrowserPuppet.prototype.click = function (selector) {
 };
 
 // TODO handle meta keys, arrow keys
+// TODO which event to use? keyup, keydown, keypress?
 BrowserPuppet.prototype.pressKey = function (selector, keyCode) {
     var $el = $(selector);
 
@@ -588,7 +589,8 @@ BrowserPuppet.prototype.pressKey = function (selector, keyCode) {
         throw new Error('Unable to press key ' + keyCode + ' for "' + selector + '": not unique');
     }
     else {
-        $el.trigger($.Event('keypress', { which: keyCode, keyCode: keyCode }));
+        console.log(typeof keyCode, keyCode)
+        $el.trigger($.Event('keydown', { which: Number(keyCode), keyCode: Number(keyCode) }));
     }
 };
 

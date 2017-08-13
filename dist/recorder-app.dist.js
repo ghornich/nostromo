@@ -35412,9 +35412,7 @@ CommandList.prototype._compact=function(){
             // exchange focus and click so click comes first
             newCommands[lastNewIdx] = cmd
             newCommands.push(lastNewCmd)
-            continue
         }
-
         else if (cmd.type===TYPES.SET_VALUE && lastNewCmd.type===TYPES.SET_VALUE && cmd.selector===lastNewCmd.selector) {
         	newCommands[lastNewIdx]=cmd
         }
