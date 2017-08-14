@@ -186,7 +186,7 @@ RecorderApp.prototype._getCommandFromScrollEvent=function(event){
         type: 'scroll',
         timestamp: event.timestamp,
         selector: event.selector,
-        scrollTop: event.scrollTop,
+        scrollTop: event.target.scrollTop,
     }
 }
 
@@ -195,7 +195,7 @@ RecorderApp.prototype._getCommandFromClickEvent=function(event){
         type: 'click',
         timestamp: event.timestamp,
         selector: event.selector,
-        message: 'Click "'+ellipsis(event.target.innerText)+'" ('+event.selector+')'
+        message: 'Click "'+ellipsis(event.target.innerText)+'"'
     }
 }
 
@@ -290,8 +290,8 @@ function renderTestfile(cmds, indent){
 function renderCmd(cmd){
     switch(cmd.type){
         case 'setValue': return 't.setValue('+apos(cmd.selector)+', '+apos(cmd.value)+')'
-        case 'pressKey': return 't.pressKey('+apos(cmd.selector)+', '+apos(cmd.keyCode)+')'
-        case 'scroll': return 't.scroll('+apos(cmd.selector)+', '+apos(cmd.scrollTop)+')'
+        case 'pressKey': return 't.pressKey('+apos(cmd.selector)+', '+cmd.keyCode+')'
+        case 'scroll': return 't.scroll('+apos(cmd.selector)+', '+cmd.scrollTop+')'
         case 'click': return 't.click('+apos(cmd.selector)+')'
         case 'waitForVisible': return 't.waitForVisible('+apos(cmd.selector)+')'
         case 'waitWhileVisible': return 't.waitWhileVisible('+apos(cmd.selector)+')'
