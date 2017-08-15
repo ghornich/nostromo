@@ -58,6 +58,7 @@ var Ws4ever=require('../../../../modules/ws4ever');
 
 // TODO option to transmit console?
 // TODO transmit uncaught exceptions
+// TODO throw error on incorrect argument types/values (e.g. string numbers)
 
 // TODO use MutationObserver if available, fallback to polling ?
 var AUTODETECT_INTERVAL_MS = 300;
@@ -66,8 +67,6 @@ var INSERT_ASSERTION_DEBOUNCE = 500;
 var DEFAULT_PORT = 47225;
 
 exports = module.exports = BrowserPuppet;
-
-// TODO detect scroll events and transmit them
 
 /**
  * @param {Object} opts
@@ -486,6 +485,8 @@ BrowserPuppet.prototype._onExecMessage = Promise.method(function (data) {
                 return this.focus(command.selector);
             case 'isVisible':
                 return this.isVisible(command.selector);
+            case 'scroll':
+                return this.scroll(command.selector, command.scrollTop);
             default:
                 throw new Error('Unknown command type: ' + command.type);
         }
@@ -563,7 +564,7 @@ BrowserPuppet.prototype.click = function (selector) {
     else {
         var el = $el[0];
 
-        // TODO inaccessible context !!!
+        // TODO detect inaccessible nodes !!!
 
         // if (TestToolsBase.isNodeOccluded(el)) {
         //     var occludingNode = TestToolsBase.getOccludingNode(el)
@@ -573,7 +574,8 @@ BrowserPuppet.prototype.click = function (selector) {
 
         // console.log('No occlusion detected for '+selector)
 
-        $el.trigger('click');
+        // $el.trigger('click');
+        $el[0].click();
     }
 };
 
@@ -710,6 +712,10 @@ BrowserPuppet.prototype.getValue = function (selector) {
 
 BrowserPuppet.prototype.isVisible = function (selector) {
     return $(selector).length > 0;
+};
+
+BrowserPuppet.prototype.scroll = function (selector, scrollTop) {
+    $(selector)[0].scrollTop = scrollTop;
 };
 
 BrowserPuppet.prototype.setScreenshotMarkerState = function (state) {

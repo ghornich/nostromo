@@ -195,7 +195,6 @@ RecorderApp.prototype._getCommandFromClickEvent=function(event){
         type: 'click',
         timestamp: event.timestamp,
         selector: event.selector,
-        message: 'Click "'+ellipsis(event.target.innerText)+'"'
     }
 }
 
@@ -223,7 +222,7 @@ RecorderApp.prototype.onSelectorBecameVisibleEvent=function(data){
     })
 
     if (!rule){
-        console.error('SBV rule not found for selector '+data.selector)
+        console.error('SelectorBecameVisible rule not found for selector '+data.selector)
     }
     else {
         rule.listener(this)
