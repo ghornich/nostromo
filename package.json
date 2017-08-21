@@ -26,6 +26,7 @@
     "rfr": "^1.2.3",
     "rimraf": "^2.6.1",
     "schema-inspector": "^1.6.8",
+    "serialize-javascript": "^1.4.0",
     "ws": "^3.0.0"
   },
   "license": "MIT",

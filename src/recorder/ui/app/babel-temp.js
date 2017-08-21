@@ -22,6 +22,8 @@ var MESSAGES = require('../../../../modules/browser-puppeteer/src/messages.js');
 
 var EOL = '\n';
 
+var NOSTROMO_TESTFILE_FORMATTER_NAME = 'nostromo (js)';
+
 window.RecorderApp = RecorderApp;
 
 // TODO record command times, compare to tested times?
@@ -48,6 +50,15 @@ function RecorderApp(conf) {
     };
 
     self._conf.beforeCapture = self._conf.beforeCapture || noop;
+
+    self._conf.testfileRenderers = self._conf.testfileRenderers || [];
+
+    self._conf.outputFormatters.unshift({
+        name: NOSTROMO_TESTFILE_FORMATTER_NAME,
+        fn: renderTestfile
+    });
+
+    self._conf.selectedOutputFormatter = self._conf.selectedOutputFormatter || NOSTROMO_TESTFILE_FORMATTER_NAME;
 
     self._log = new Loggr({
         logLevel: Loggr.LEVELS.ALL, // TODO logLevel
@@ -77,6 +88,9 @@ function RecorderApp(conf) {
             dlTarget.href = dlUrl;
             dlTarget.download = 'testfile.js';
             dlTarget.click();
+        },
+        selectTestfileFormatter: function selectTestfileFormatter(event) {
+            self._conf.selectedOutputFormatter = event.target.value;
         }
     };
 }
@@ -119,6 +133,22 @@ RecorderApp.prototype.start = function () {
     };
 
     m.mount($('#mount')[0], MountComp);
+};
+
+RecorderApp.prototype._getSelectedOutputFormatter = function () {
+    var conf = this._conf;
+    var filtered = conf.outputFormatters.filter(function (formatter) {
+        return formatter.name === conf.selectedOutputFormatter;
+    });
+
+    if (filtered.length !== 1) {
+        console.error('RecorderApp::_getSelectedOutputFormatter: selectedOutputFormatter "' + conf.selectedOutputFormatter + '" not found');
+        return function () {
+            return '(no formatter found)';
+        };
+    }
+
+    return filtered[0];
 };
 
 RecorderApp.prototype._onCapturedEvent = function (event) {
@@ -201,8 +231,7 @@ RecorderApp.prototype._getCommandFromClickEvent = function (event) {
     return {
         type: 'click',
         timestamp: event.timestamp,
-        selector: event.selector,
-        message: 'Click "' + ellipsis(event.target.innerText) + '"'
+        selector: event.selector
     };
 };
 
@@ -230,7 +259,7 @@ RecorderApp.prototype.onSelectorBecameVisibleEvent = function (data) {
     });
 
     if (!rule) {
-        console.error('SBV rule not found for selector ' + data.selector);
+        console.error('SelectorBecameVisible rule not found for selector ' + data.selector);
     } else {
         rule.listener(this);
     }
@@ -240,6 +269,7 @@ var RootComp = {
     view: function view(vnode) {
         var app = vnode.attrs.app;
         var actions = vnode.attrs.actions;
+        var outputFormatter = app._getSelectedOutputFormatter();
 
         return m(
             'div',
@@ -273,26 +303,27 @@ var RootComp = {
                 'div',
                 null,
                 m(
-                    'ul',
+                    'div',
                     null,
-                    app.commandList.map(function (cmd) {
-                        return m(
-                            'li',
-                            null,
-                            JSON.stringify(cmd),
-                            ','
-                        );
-                    })
-                )
-            ),
-            m('hr', null),
-            m(
-                'div',
-                null,
+                    'Output format:',
+                    m(
+                        'select',
+                        { onchange: actions.selectTestfileFormatter },
+                        app._conf.outputFormatters.map(function (formatter) {
+                            return m(
+                                'option',
+                                {
+                                    selected: formatter.name === outputFormatter.name,
+                                    value: formatter.name },
+                                formatter.name
+                            );
+                        })
+                    )
+                ),
                 m(
                     'pre',
                     null,
-                    renderTestfile(app.commandList)
+                    outputFormatter.fn(app.commandList.getList())
                 )
             ),
             m('a', { href: '#', id: 'download-target', 'class': 'hidden' })

@@ -72,7 +72,7 @@ Server.prototype._onRecRequest=function(req,resp){
 	if (req.url==='/'){
         resp.end(
             fs.readFileSync(pathlib.resolve(__dirname, 'ui/recorder-ui.html'), { encoding: 'utf-8' })
-            .replace('[[CONFIG]]', JSONF.stringify(this._conf).replace(/'/g, '\\\''))
+            .replace('[[CONFIG]]', JSONF.stringify(this._conf).replace(/\\/g, '\\\\').replace(/'/g, "\\'"))
         )
     }
     else if (req.url==='/script.js') {

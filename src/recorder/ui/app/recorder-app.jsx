@@ -20,6 +20,8 @@ var MESSAGES=require('../../../../modules/browser-puppeteer/src/messages.js')
 
 var EOL = '\n'
 
+var NOSTROMO_TESTFILE_FORMATTER_NAME = 'nostromo (js)'
+
 window.RecorderApp=RecorderApp
 
 // TODO record command times, compare to tested times?
@@ -47,6 +49,15 @@ function RecorderApp(conf){
 
     self._conf.beforeCapture = self._conf.beforeCapture||noop
 
+    self._conf.testfileRenderers=self._conf.testfileRenderers||[]
+
+    self._conf.outputFormatters.unshift({
+        name: NOSTROMO_TESTFILE_FORMATTER_NAME,
+        fn: renderTestfile
+    })
+
+    self._selectedOutputFormatter = self._conf.selectedOutputFormatter || NOSTROMO_TESTFILE_FORMATTER_NAME
+
     self._log = new Loggr({
         logLevel: Loggr.LEVELS.ALL, // TODO logLevel
         namespace: 'MacroRecorder'
@@ -62,16 +73,18 @@ function RecorderApp(conf){
         clearRecording:function(){self.commandList.clear()},
         addAssertion:function(){self.commandList.add({ type: CMD_TYPES.ASSERT })},
         downloadTestfile:function(){
-            var testFileStr=renderTestfile(self.commandList)
-            var blob=new Blob([testFileStr], {type:'application/octet-stream'})
+            var output=self._getFormattedOutput()
+            var blob=new Blob([output], {type:'application/octet-stream'})
             var dlTarget=document.getElementById('download-target')
             var dlUrl=window.URL.createObjectURL(blob)
             dlTarget.href=dlUrl
-            dlTarget.download='testfile.js'
+            dlTarget.download='output.js'
             dlTarget.click()
-        }
+        },
+        selectOutputFormatter:function(event){
+            self._selectedOutputFormatter = event.target.value
+        },
     }
-
 }
 
 // TODO promise, resolve when loaded
@@ -112,6 +125,23 @@ RecorderApp.prototype.start = function(){
     }
 
     m.mount($('#mount')[0], MountComp)
+}
+
+RecorderApp.prototype._getSelectedOutputFormatter=function(){
+    var self=this
+    var filtered=self._conf.outputFormatters.filter(function (formatter) {
+        return formatter.name===self._selectedOutputFormatter
+    })
+
+    if (filtered.length!==1){
+        return function(){return '(formatter "'+self._selectedOutputFormatter+'" not found)'}
+    }
+
+    return filtered[0]
+}
+
+RecorderApp.prototype._getFormattedOutput=function(){
+    return self._getSelectedOutputFormatter()
 }
 
 RecorderApp.prototype._onCapturedEvent=function(event){
@@ -227,8 +257,6 @@ RecorderApp.prototype.onSelectorBecameVisibleEvent=function(data){
     else {
         rule.listener(this)
     }
-
-
 }
 
 var RootComp={
@@ -243,15 +271,18 @@ var RootComp={
             <button onclick={ actions.downloadTestfile }>Download testfile</button>&nbsp;
             | { app._isRecording ? 'Recording': 'Not recording' }
             <div>
-                <ul>{
-                    app.commandList.map(function(cmd){
-                        return <li>{ JSON.stringify(cmd) },</li>
-                    })
-                }</ul>
-            </div>
-            <hr />
-            <div>
-                <pre>{ renderTestfile(app.commandList) }</pre>
+                <div>Output format:
+                    <select onchange={ actions.selectOutputFormatter }>{
+                        app._conf.outputFormatters.map(function (formatter) {
+                            return <option
+                                    selected={ formatter.name === outputFormatter.name }
+                                    value={ formatter.name }>
+                                { formatter.name }
+                            </option>
+                        })
+                    }</select>
+                </div>
+                <pre>{ app._getFormattedOutput() }</pre>
             </div>
 
             <a href="#" id="download-target" class="hidden"></a>
@@ -260,7 +291,7 @@ var RootComp={
 }
 
 
-// TODO move these to Command or CommandList?
+// TODO move to own file
 function renderTestfile(cmds, indent){
     indent = indent || '    '
 
@@ -285,7 +316,7 @@ function renderTestfile(cmds, indent){
     return res.join(EOL)
 }
 
-// TODO move these to Command or CommandList?
+// TODO move to own file
 function renderCmd(cmd){
     switch(cmd.type){
         case 'setValue': return 't.setValue('+apos(cmd.selector)+', '+apos(cmd.value)+')'
