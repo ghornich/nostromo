@@ -1,21 +1,13 @@
 'use strict'
 
-// TODO tests
 // TODO support ES6 arrow fns
 
 var JSONF=exports
 
-var FN_TYPE='JSONF:Function'
-
-
-
 JSONF.stringify=function(o){
     return JSON.stringify(o, function(key,val){
         if (typeof val==='function'){
-            return {
-                type: FN_TYPE,
-                data: val.toString().replace(/\r/g, '\\r').replace(/\n/g, '\\n')
-            }
+            return val.toString()
         }
         else {
             return val
@@ -26,25 +18,27 @@ JSONF.stringify=function(o){
 JSONF.parse=function(s){
     var i=0
     return JSON.parse(s, function(key, val){
-        if (val&&val.type===FN_TYPE){
+        if (isStringAFunction(val)){
             try {
                 return new Function(
                     // http://www.kristofdegrave.be/2012/07/json-serialize-and-deserialize.html
-                    val.data.match(/\(([^)]+?)\)/)[1],
-                    val.data.match(/\{([\s\S]+)\}/)[1]
+                    val.match(/\(([^)]+?)\)/)[1],
+                    val.match(/\{([\s\S]+)\}/)[1]
                 )
             }
             catch (e){
-                // TODO throw a big fat error
+                // TODO throw a big fat error?
+                console.log('JSONF err: '+val)
+                console.error(e)
                 return val
             }
         }
-        else {
-            return val
-        }
-        /*if (typeof val!=='string')return val
-        if (val.indexOf(FN_TYPE)<0)return val
 
-        */
+        return val
     })
+}
+
+function isStringAFunction(s){
+    return /^function\s*\(/.test(s) ||
+        /^function\s+[a-zA-Z0-9_$]+\s*\(/.test(s)
 }

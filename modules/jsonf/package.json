@@ -1,5 +1,8 @@
 {
   "main": "jsonf.js",
   "name": "jsonf",
-  "version": "1.0.0"
+  "version": "1.0.0",
+  "scripts": {
+    "test": "node test/jsonf.test.js"
+  }
 }
