@@ -31,9 +31,6 @@ function BrowserPuppet(opts) {
 
     this._opts.url = this._opts.url || 'ws://localhost:' + DEFAULT_PORT;
 
-    // TODO nem kell?
-    this._isSelectorVisible = this._opts.isSelectorVisible || this._defaultIsSelectorVisible;
-
     assert(this._opts.url && /^ws:\/\/.+/.test(this._opts.url), 'BrowserPuppet: missing or invalid url, expected "ws://..."');
 
     this._transmitEvents = false;
@@ -88,7 +85,7 @@ BrowserPuppet.prototype._sendMessage = function (data) {
     this._wsConn.send(data);
 };
 
-BrowserPuppet.prototype._defaultIsSelectorVisible = function (selector, jQuery) {
+BrowserPuppet.prototype.isSelectorVisible = function (selector) {
     return jQuery(selector).is(':visible');
 };
 
@@ -352,7 +349,7 @@ BrowserPuppet.prototype._onSelectorBecameVisiblePoll = function () {
 
         // TODO send warning in message if selector is ambiguous
 
-        var currentState = self._isSelectorVisible(selector, jQuery);
+        var currentState = self.isSelectorVisible(selector);
 
         if (state.previousState !== null && !state.previousState && currentState) {
             self._sendMessage({ type: MESSAGES.UPSTREAM.SELECTOR_BECAME_VISIBLE, selector: selector });
@@ -592,13 +589,13 @@ BrowserPuppet.prototype.waitForVisible = Promise.method(function (selector) {
     var pollInterval = 500;
     var self = this;
 
-    if (self._isSelectorVisible(selector, jQuery)) {
+    if (self.isSelectorVisible(selector)) {
         return;
     }
 
     return promiseWhile(
         function () {
-            return !self._isSelectorVisible(selector, jQuery);
+            return !self.isSelectorVisible(selector);
         },
         function () {
             return Promise.delay(pollInterval);
@@ -617,14 +614,14 @@ BrowserPuppet.prototype.waitWhileVisible = Promise.method(function (selector) {
 
     return Promise.delay(initialDelay)
     .then(function () {
-        if (!self._isSelectorVisible(selector, jQuery)) {
+        if (!self.isSelectorVisible(selector)) {
             console.log('WWV: selector wasnt visible: ' + selector);
             return;
         }
 
         return promiseWhile(
             function () {
-                var result = self._isSelectorVisible(selector, jQuery);
+                var result = self.isSelectorVisible(selector);
                 console.log('WWV: visibility: ' + selector + ', ' + result);
                 return result;
             },
