@@ -1,5 +1,3 @@
-// TODO use typedefs
-
 exports.UPSTREAM = {
     // { type, selector, [warning] }
     SELECTOR_BECAME_VISIBLE: 'selector-became-visible',

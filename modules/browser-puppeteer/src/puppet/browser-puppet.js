@@ -2,13 +2,13 @@
 
 var Promise = require('bluebird');
 var $ = require('jquery'); $.noConflict();
-var jQuery=$
+var jQuery = $;
 var MESSAGES = require('../messages');
 var JSONF = require('../../../../modules/jsonf');
 var UniqueSelector = require('../../../../modules/get-unique-selector');
 var SS_MARKER_IMG = require('../screenshot-marker').base64;
 var debounce = require('lodash.debounce');
-var Ws4ever=require('../../../../modules/ws4ever');
+var Ws4ever = require('../../../../modules/ws4ever');
 
 // TODO option to transmit console?
 // TODO transmit uncaught exceptions
@@ -51,8 +51,8 @@ function BrowserPuppet(opts) {
         states: [],
     };
 
-    this._scheduleReopen = false
-    this._scheduleReopenUrl = ''
+    this._scheduleReopen = false;
+    this._scheduleReopenUrl = '';
 
     this._ssMarkerTL = document.createElement('div');
     this._ssMarkerTL.setAttribute('style', 'position:absolute;top:0;left:0;width:4px;height:4px;z-index:16777000;');
@@ -92,12 +92,12 @@ BrowserPuppet.prototype._defaultIsSelectorVisible = function (selector, jQuery) 
     return jQuery(selector).is(':visible');
 };
 
-BrowserPuppet.prototype._onMessage = function (data) {
+BrowserPuppet.prototype._onMessage = function (rawData) {
     var self = this;
 
     // no return
     Promise.try(function () {
-        data = JSONF.parse(data);
+        var data = JSONF.parse(rawData);
 
         switch (data.type) {
             case MESSAGES.DOWNSTREAM.EXEC_COMMAND:
@@ -117,10 +117,10 @@ BrowserPuppet.prototype._onMessage = function (data) {
                 return self.setTransmitEvents(data.value);
 
             case MESSAGES.DOWNSTREAM.REOPEN_URL:
-                self.reopenUrl(data.url)
+                self.reopenUrl(data.url);
                 // self._scheduleReopen = true
                 // self._scheduleReopenUrl = data.url
-                return
+                return;
 
             default:
                 throw new Error('BrowserPuppet: unknown message type: ' + data.type);
@@ -155,7 +155,7 @@ BrowserPuppet.prototype._onMessage = function (data) {
 
 BrowserPuppet.prototype._canCapture = function () {
     return this._transmitEvents && !this._isExecuting;
-}
+};
 
 BrowserPuppet.prototype._attachCaptureEventListeners = function () {
     document.addEventListener('click', this._onClickCapture.bind(this), true);
@@ -170,7 +170,7 @@ var CTRL_KEY = 17;
 
 BrowserPuppet.prototype._onClickCapture = function (event) {
     if (!this._canCapture()) {
-        return
+        return;
     }
 
     var target = event.target;
@@ -179,8 +179,8 @@ BrowserPuppet.prototype._onClickCapture = function (event) {
         var selector = this._uniqueSelector.get(target);
     }
     catch (err) {
-        console.error(err)
-        return
+        console.error(err);
+        return;
     }
 
     this._sendMessage({
@@ -190,15 +190,15 @@ BrowserPuppet.prototype._onClickCapture = function (event) {
             timestamp: Date.now(),
             selector: selector,
             target: {
-                innerText: target.innerText
+                innerText: target.innerText,
             },
         },
     });
-}
+};
 
 BrowserPuppet.prototype._onFocusCapture = function (event) {
     if (!this._canCapture()) {
-        return
+        return;
     }
 
     var target = event.target;
@@ -207,8 +207,8 @@ BrowserPuppet.prototype._onFocusCapture = function (event) {
         var selector = this._uniqueSelector.get(target);
     }
     catch (err) {
-        console.error(err)
-        return
+        console.error(err);
+        return;
     }
 
     this._sendMessage({
@@ -218,15 +218,15 @@ BrowserPuppet.prototype._onFocusCapture = function (event) {
             timestamp: Date.now(),
             selector: selector,
             target: {
-                innerText: target.innerText
+                innerText: target.innerText,
             },
         },
     });
-}
+};
 
 BrowserPuppet.prototype._onInputCapture = function (event) {
     if (!this._canCapture()) {
-        return
+        return;
     }
 
     var target = event.target;
@@ -235,8 +235,8 @@ BrowserPuppet.prototype._onInputCapture = function (event) {
         var selector = this._uniqueSelector.get(target);
     }
     catch (err) {
-        console.error(err)
-        return
+        console.error(err);
+        return;
     }
 
     this._sendMessage({
@@ -247,17 +247,17 @@ BrowserPuppet.prototype._onInputCapture = function (event) {
             selector: selector,
             value: target.value,
             target: {
-                innerText: target.innerText
+                innerText: target.innerText,
             },
         },
     });
-}
+};
 
 var SCROLL_DEBOUNCE = 500;
 
 BrowserPuppet.prototype._onScrollCapture = debounce(function (event) {
     if (!this._canCapture()) {
-        return
+        return;
     }
 
     var target = event.target;
@@ -266,8 +266,8 @@ BrowserPuppet.prototype._onScrollCapture = debounce(function (event) {
         var selector = this._uniqueSelector.get(target);
     }
     catch (err) {
-        console.error(err)
-        return
+        console.error(err);
+        return;
     }
 
     this._sendMessage({
@@ -282,18 +282,18 @@ BrowserPuppet.prototype._onScrollCapture = debounce(function (event) {
             },
         },
     });
-}, SCROLL_DEBOUNCE)
+}, SCROLL_DEBOUNCE);
 
 BrowserPuppet.prototype._onKeydownCapture = function (event) {
     if (!this._canCapture()) {
-        return
+        return;
     }
 
     if (event.keyCode === SHIFT_KEY && event.ctrlKey === true ||
         event.keyCode === CTRL_KEY && event.shiftKey === true) {
 
-        this._sendInsertAssertionDebounced()
-        return
+        this._sendInsertAssertionDebounced();
+        return;
     }
 
     var target = event.target;
@@ -302,8 +302,8 @@ BrowserPuppet.prototype._onKeydownCapture = function (event) {
         var selector = this._uniqueSelector.get(target);
     }
     catch (err) {
-        console.error(err)
-        return
+        console.error(err);
+        return;
     }
 
     this._sendMessage({
@@ -318,12 +318,12 @@ BrowserPuppet.prototype._onKeydownCapture = function (event) {
             altKey: event.altKey,
             target: cleanTarget(target),
         },
-    })
-}
+    });
+};
 
 BrowserPuppet.prototype._sendInsertAssertionDebounced = debounce(function () {
     this._sendMessage({ type: MESSAGES.UPSTREAM.INSERT_ASSERTION });
-}, INSERT_ASSERTION_DEBOUNCE)
+}, INSERT_ASSERTION_DEBOUNCE);
 
 BrowserPuppet.prototype.setOnSelectorBecameVisibleSelectors = function (selectors) {
     this._onSelectorBecameVisibleData.selectors = deepCopy(selectors);
@@ -377,8 +377,8 @@ BrowserPuppet.prototype._onCaptureEvent = function (eventType, event) {
         var selector = this._uniqueSelector.get(target);
     }
     catch (err) {
-        console.error(err)
-        return
+        console.error(err);
+        return;
     }
 
     var response = {
@@ -410,6 +410,7 @@ BrowserPuppet.prototype._onCaptureEvent = function (eventType, event) {
             break;
         case 'scroll':
             response.event.target.scrollTop = target.scrollTop;
+            break;
         default:
             // no op
             break;
@@ -478,8 +479,8 @@ BrowserPuppet.prototype._execFn = Promise.method(function (fnData) {
             break;
         case 6: fn = new Function(argNames[0], argNames[1], argNames[2], argNames[3], argNames[4], argNames[5], fnBody);
             break;
-        default: throw new Error('Too many args');
-            break;
+        default:
+            throw new Error('Too many args');
     }
 
     /* eslint-enable no-new-func */
@@ -498,11 +499,11 @@ BrowserPuppet.prototype._execFn = Promise.method(function (fnData) {
 });
 
 BrowserPuppet.prototype.reopenUrl = Promise.method(function (url) {
-    this._wsConn.close()
-    document.cookie = ''
-    window.localStorage.clear()
-    window.location = url
-})
+    this._wsConn.close();
+    document.cookie = '';
+    window.localStorage.clear();
+    window.location = url;
+});
 
 // command
 
@@ -545,7 +546,8 @@ BrowserPuppet.prototype.pressKey = function (selector, keyCode) {
         throw new Error('Unable to press key ' + keyCode + ' for "' + selector + '": not unique');
     }
     else {
-        console.log(typeof keyCode, keyCode)
+        console.log(typeof keyCode, keyCode);
+        // eslint-disable-next-line new-cap
         $el.trigger($.Event('keydown', { which: Number(keyCode), keyCode: Number(keyCode) }));
     }
 };
@@ -700,13 +702,13 @@ BrowserPuppet.prototype.setScreenshotMarkerState = function (state) {
 
 
 
-function cleanTarget(target){
+function cleanTarget(target) {
     return {
         className: target.className,
         id: target.id,
         innerText: target.innerText,
         tagName: target.tagName,
-    }
+    };
 }
 
 
