@@ -1,11 +1,10 @@
-var rfr=require('rfr')
 var cp=require('child_process')
 var fs=require('fs')
 var resolve=require('path').resolve
 var Promise=require('bluebird')
 var pngjs=require('pngjs')
-var bufferImageSearch=rfr('modules/buffer-image-search')
-var bufferImageCrop = rfr('modules/buffer-image-crop');
+var bufferImageSearch=require('../buffer-image-search')
+var bufferImageCrop = require('../buffer-image-crop');
 
 var execAsync=Promise.promisify(cp.exec)
 var unlinkAsync=Promise.promisify(fs.unlink)

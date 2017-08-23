@@ -1,11 +1,10 @@
 'use strict';
 
-const rfr=require('rfr')
 const resolvePath = require('path').resolve;
 const EventEmitter = require('events').EventEmitter;
 const util = require('util');
 const rimraf = require('rimraf');
-const Loggr = rfr('modules/loggr');
+const Loggr = require('../loggr');
 
 const TEMP_DELETE_RETRIES = BrowserSpawnerBase.TEMP_DELETE_RETRIES = 3;
 const TEMP_DELETE_TIMEOUT = BrowserSpawnerBase.TEMP_DELETE_TIMEOUT = 1000;

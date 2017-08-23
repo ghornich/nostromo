@@ -1,5 +1,5 @@
+const MODULES_PATH = '../../modules/'
 const assert=require('assert')
-var rfr=require('rfr')
 var Promise=require('bluebird')
 var fs=require('fs')
 var fsAsync=Promise.promisifyAll(fs)
@@ -8,11 +8,11 @@ var pathlib=require('path')
 var http=require('http')
 var urllib=require('url')
 var qs=require('querystring')
-var JSONF=rfr('modules/jsonf')
+var JSONF=require(MODULES_PATH + 'jsonf')
 var pngjs=require('pngjs')
 var PNG=pngjs.PNG
 var glob=require('glob')
-var visualImgDiff=rfr('modules/buffer-image-visual-diff')
+var visualImgDiff=require(MODULES_PATH + 'buffer-image-visual-diff')
 const mkdirpAsync=Promise.promisify(require('mkdirp'))
 const globAsync=Promise.promisify(require('glob'))
 

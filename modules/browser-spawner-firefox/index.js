@@ -1,11 +1,10 @@
 'use strict';
 
-const rfr=require('rfr')
 const util = require('util');
 const spawn = require('child_process').spawn;
 const Promise = require('bluebird');
 const fs = Promise.promisifyAll(require('fs'));
-const BrowserSpanwerBase = rfr('modules/browser-spawner-base');
+const BrowserSpanwerBase = require('../browser-spawner-base');
 const resolvePath = require('path').resolve;
 const mkdirpAsync = Promise.promisify(require('mkdirp'));
 

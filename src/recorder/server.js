@@ -1,14 +1,13 @@
+var MODULES_PATH='../../modules/'
 var Promise=require('bluebird')
-var rfr=require('rfr')
-var BrowserPuppeteer=rfr('modules/browser-puppeteer').BrowserPuppeteer
-var MESSAGES=rfr('modules/browser-puppeteer').MESSAGES
+var BrowserPuppeteer=require(MODULES_PATH + 'browser-puppeteer').BrowserPuppeteer
+var MESSAGES=require(MODULES_PATH + 'browser-puppeteer').MESSAGES
 var WS=require('ws')
 var http=require('http')
 var fs=require('fs')
-var rfr=require('rfr')
-var JSONF=rfr('modules/jsonf')
+var JSONF=require(MODULES_PATH + 'jsonf')
 var pathlib=require('path')
-var Loggr=rfr('modules/loggr')
+var Loggr=require(MODULES_PATH + 'loggr')
 
 module.exports=Server
 
