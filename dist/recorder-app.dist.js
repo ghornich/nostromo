@@ -63,8 +63,8 @@ JSONF.parse=function(s){
             try {
                 return new Function(
                     // http://www.kristofdegrave.be/2012/07/json-serialize-and-deserialize.html
-                    val.match(/\(([^)]+?)\)/)[1],
-                    val.match(/\{([\s\S]+)\}/)[1]
+                    val.match(/\(([^)]*)\)/)[1],
+                    val.match(/\{([\s\S]*)\}/)[1]
                 )
             }
             catch (e){
