@@ -20,13 +20,11 @@ var MESSAGES=require('../../../../modules/browser-puppeteer/src/messages.js')
 
 var EOL = '\n'
 
-var NOSTROMO_TESTFILE_FORMATTER_NAME = 'nostromo (js)'
+var JSON_OUTPUT_FORMATTER_NAME = 'json (built-in)'
+var NOSTROMO_OUTPUT_FORMATTER_NAME = 'nostromo (built-in)'
+var DEFAULT_OUTPUT_FILENAME = 'output'
 
 window.RecorderApp=RecorderApp
-
-// TODO record command times, compare to tested times?
-
-// TODO handle if connection was lost?
 
 // TODO beforeCommand: provide raw data AND next command as param
 // TODO support touch events
@@ -41,22 +39,27 @@ function RecorderApp(conf){
         conf=JSONF.parse(conf)
     }
 
-    self._conf = conf||{}
-
-    self._conf.pressKeyFilter=self._conf.pressKeyFilter||function (command) {
-        return [13, 27].indexOf(command.keyCode) >= 0;
-    }
-
-    self._conf.beforeCapture = self._conf.beforeCapture||noop
-
-    self._conf.testfileRenderers=self._conf.testfileRenderers||[]
-
-    self._conf.outputFormatters.unshift({
-        name: NOSTROMO_TESTFILE_FORMATTER_NAME,
-        fn: renderTestfile
+    self._conf = defaults({}, conf, {
+        pressKeyFilter: function (command) {
+            return [13, 27].indexOf(command.keyCode) >= 0;
+        },
+        beforeCapture: noop,
+        outputFormatters: [],
+        selectedOutputFormatter: JSON_OUTPUT_FORMATTER_NAME
     })
 
-    self._selectedOutputFormatter = self._conf.selectedOutputFormatter || NOSTROMO_TESTFILE_FORMATTER_NAME
+    self._conf.outputFormatters.unshift(
+        {
+            name: JSON_OUTPUT_FORMATTER_NAME,
+            filename: 'recorder_output.json',
+            fn: jsonOutputFormatter
+        },
+        {
+            name: NOSTROMO_OUTPUT_FORMATTER_NAME,
+            filename: 'recorder_output.js',
+            fn: renderTestfile
+        }
+    )
 
     self._log = new Loggr({
         logLevel: Loggr.LEVELS.ALL, // TODO logLevel
@@ -72,17 +75,19 @@ function RecorderApp(conf){
         toggleRecording:function(){self._isRecording=!self._isRecording},
         clearRecording:function(){self.commandList.clear()},
         addAssertion:function(){self.commandList.add({ type: CMD_TYPES.ASSERT })},
-        downloadTestfile:function(){
+        downloadOutput:function(){
+            var formatter = self._getSelectedOutputFormatter();
             var output=self._getFormattedOutput()
             var blob=new Blob([output], {type:'application/octet-stream'})
             var dlTarget=document.getElementById('download-target')
             var dlUrl=window.URL.createObjectURL(blob)
+
             dlTarget.href=dlUrl
-            dlTarget.download='output.js'
+            dlTarget.download=formatter.filename || DEFAULT_OUTPUT_FILENAME
             dlTarget.click()
         },
         selectOutputFormatter:function(event){
-            self._selectedOutputFormatter = event.target.value
+            self._conf.selectedOutputFormatter = event.target.value
         },
     }
 }
@@ -130,18 +135,18 @@ RecorderApp.prototype.start = function(){
 RecorderApp.prototype._getSelectedOutputFormatter=function(){
     var self=this
     var filtered=self._conf.outputFormatters.filter(function (formatter) {
-        return formatter.name===self._selectedOutputFormatter
+        return formatter.name===self._conf.selectedOutputFormatter
     })
 
     if (filtered.length!==1){
-        return function(){return '(formatter "'+self._selectedOutputFormatter+'" not found)'}
+        return function(){return '(formatter "'+self._conf.selectedOutputFormatter+'" not found)'}
     }
 
     return filtered[0]
 }
 
 RecorderApp.prototype._getFormattedOutput=function(){
-    return self._getSelectedOutputFormatter()
+    return this._getSelectedOutputFormatter().fn(this.commandList.getList())
 }
 
 RecorderApp.prototype._onCapturedEvent=function(event){
@@ -268,14 +273,15 @@ var RootComp={
             <button onclick={ actions.toggleRecording }>Toggle recording</button>&nbsp;
             <button onclick={ actions.clearRecording }>Clear recording</button>&nbsp;
             <button onclick={ actions.addAssertion }>Add assertion</button>&nbsp;
-            <button onclick={ actions.downloadTestfile }>Download testfile</button>&nbsp;
+            <button onclick={ actions.downloadOutput }>Download output</button>&nbsp;
             | { app._isRecording ? 'Recording': 'Not recording' }
             <div>
+                <br />
                 <div>Output format:
                     <select onchange={ actions.selectOutputFormatter }>{
                         app._conf.outputFormatters.map(function (formatter) {
                             return <option
-                                    selected={ formatter.name === outputFormatter.name }
+                                    selected={ formatter.name === app._conf.selectedOutputFormatter }
                                     value={ formatter.name }>
                                 { formatter.name }
                             </option>
@@ -290,6 +296,17 @@ var RootComp={
     }
 }
 
+function jsonOutputFormatter(cmds, indent) {
+    indent = indent || '    '
+
+    if (cmds.length===0){return '[]'}
+
+    return '[' + EOL +
+        cmds.map(function (cmd) {
+            return indent + JSON.stringify(cmd)
+        }).join(','+EOL) + EOL +
+        ']' + EOL;
+}
 
 // TODO move to own file
 function renderTestfile(cmds, indent){

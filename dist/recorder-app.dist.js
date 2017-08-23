@@ -36163,13 +36163,11 @@ var MESSAGES = require('../../../../modules/browser-puppeteer/src/messages.js');
 
 var EOL = '\n';
 
-var NOSTROMO_TESTFILE_FORMATTER_NAME = 'nostromo (js)';
+var JSON_OUTPUT_FORMATTER_NAME = 'json (built-in)';
+var NOSTROMO_OUTPUT_FORMATTER_NAME = 'nostromo (built-in)';
+var DEFAULT_OUTPUT_FILENAME = 'output';
 
 window.RecorderApp = RecorderApp;
-
-// TODO record command times, compare to tested times?
-
-// TODO handle if connection was lost?
 
 // TODO beforeCommand: provide raw data AND next command as param
 // TODO support touch events
@@ -36184,22 +36182,24 @@ function RecorderApp(conf) {
         conf = JSONF.parse(conf);
     }
 
-    self._conf = conf || {};
-
-    self._conf.pressKeyFilter = self._conf.pressKeyFilter || function (command) {
-        return [13, 27].indexOf(command.keyCode) >= 0;
-    };
-
-    self._conf.beforeCapture = self._conf.beforeCapture || noop;
-
-    self._conf.testfileRenderers = self._conf.testfileRenderers || [];
-
-    self._conf.outputFormatters.unshift({
-        name: NOSTROMO_TESTFILE_FORMATTER_NAME,
-        fn: renderTestfile
+    self._conf = defaults({}, conf, {
+        pressKeyFilter: function pressKeyFilter(command) {
+            return [13, 27].indexOf(command.keyCode) >= 0;
+        },
+        beforeCapture: noop,
+        outputFormatters: [],
+        selectedOutputFormatter: JSON_OUTPUT_FORMATTER_NAME
     });
 
-    self._selectedOutputFormatter = self._conf.selectedOutputFormatter || NOSTROMO_TESTFILE_FORMATTER_NAME;
+    self._conf.outputFormatters.unshift({
+        name: JSON_OUTPUT_FORMATTER_NAME,
+        filename: 'recorder_output.json',
+        fn: jsonOutputFormatter
+    }, {
+        name: NOSTROMO_OUTPUT_FORMATTER_NAME,
+        filename: 'recorder_output.js',
+        fn: renderTestfile
+    });
 
     self._log = new Loggr({
         logLevel: Loggr.LEVELS.ALL, // TODO logLevel
@@ -36221,17 +36221,19 @@ function RecorderApp(conf) {
         addAssertion: function addAssertion() {
             self.commandList.add({ type: CMD_TYPES.ASSERT });
         },
-        downloadTestfile: function downloadTestfile() {
+        downloadOutput: function downloadOutput() {
+            var formatter = self._getSelectedOutputFormatter();
             var output = self._getFormattedOutput();
             var blob = new Blob([output], { type: 'application/octet-stream' });
             var dlTarget = document.getElementById('download-target');
             var dlUrl = window.URL.createObjectURL(blob);
+
             dlTarget.href = dlUrl;
-            dlTarget.download = 'output.js';
+            dlTarget.download = formatter.filename || DEFAULT_OUTPUT_FILENAME;
             dlTarget.click();
         },
         selectOutputFormatter: function selectOutputFormatter(event) {
-            self._selectedOutputFormatter = event.target.value;
+            self._conf.selectedOutputFormatter = event.target.value;
         }
     };
 }
@@ -36279,12 +36281,12 @@ RecorderApp.prototype.start = function () {
 RecorderApp.prototype._getSelectedOutputFormatter = function () {
     var self = this;
     var filtered = self._conf.outputFormatters.filter(function (formatter) {
-        return formatter.name === self._selectedOutputFormatter;
+        return formatter.name === self._conf.selectedOutputFormatter;
     });
 
     if (filtered.length !== 1) {
         return function () {
-            return '(formatter "' + self._selectedOutputFormatter + '" not found)';
+            return '(formatter "' + self._conf.selectedOutputFormatter + '" not found)';
         };
     }
 
@@ -36292,7 +36294,7 @@ RecorderApp.prototype._getSelectedOutputFormatter = function () {
 };
 
 RecorderApp.prototype._getFormattedOutput = function () {
-    return self._getSelectedOutputFormatter();
+    return this._getSelectedOutputFormatter().fn(this.commandList.getList());
 };
 
 RecorderApp.prototype._onCapturedEvent = function (event) {
@@ -36437,14 +36439,15 @@ var RootComp = {
             '\xA0',
             m(
                 'button',
-                { onclick: actions.downloadTestfile },
-                'Download testfile'
+                { onclick: actions.downloadOutput },
+                'Download output'
             ),
             '\xA0 | ',
             app._isRecording ? 'Recording' : 'Not recording',
             m(
                 'div',
                 null,
+                m('br', null),
                 m(
                     'div',
                     null,
@@ -36456,7 +36459,7 @@ var RootComp = {
                             return m(
                                 'option',
                                 {
-                                    selected: formatter.name === outputFormatter.name,
+                                    selected: formatter.name === app._conf.selectedOutputFormatter,
                                     value: formatter.name },
                                 formatter.name
                             );
@@ -36472,9 +36475,22 @@ var RootComp = {
             m('a', { href: '#', id: 'download-target', 'class': 'hidden' })
         );
     }
+};
 
-    // TODO move to own file
-};function renderTestfile(cmds, indent) {
+function jsonOutputFormatter(cmds, indent) {
+    indent = indent || '    ';
+
+    if (cmds.length === 0) {
+        return '[]';
+    }
+
+    return '[' + EOL + cmds.map(function (cmd) {
+        return indent + JSON.stringify(cmd);
+    }).join(',' + EOL) + EOL + ']' + EOL;
+}
+
+// TODO move to own file
+function renderTestfile(cmds, indent) {
     indent = indent || '    ';
 
     var res = ['\'use strict\';', '', 'exports = module.exports = function (test) {', indent + 'test(\'\', t => {'];
