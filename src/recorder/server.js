@@ -72,6 +72,7 @@ Server.prototype._onRecRequest=function(req,resp){
         resp.end(
             fs.readFileSync(pathlib.resolve(__dirname, 'ui/recorder-ui.html'), { encoding: 'utf-8' })
             .replace('[[CONFIG]]', JSONF.stringify(this._conf).replace(/\\/g, '\\\\').replace(/'/g, "\\'"))
+            .replace('[[STYLE]]', fs.readFileSync(pathlib.resolve(__dirname, 'ui/app/style.css')))
         )
     }
     else if (req.url==='/script.js') {

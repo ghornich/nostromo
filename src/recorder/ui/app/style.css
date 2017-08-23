@@ -1,0 +1,28 @@
+/* reset */
+html, body {
+	margin: 0;
+}
+
+button {
+	border: 0;
+	background: transparent;
+	padding: 0;
+}
+
+/* util */
+
+.hidden {display:none;}
+
+/* */
+
+nav {
+	padding: 0 2em;
+	background: #525252;
+
+}
+
+
+
+.clear-recording-btn {
+	margin-left: auto;
+}

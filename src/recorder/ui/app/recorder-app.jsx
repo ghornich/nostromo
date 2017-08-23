@@ -270,11 +270,13 @@ var RootComp={
         var actions=vnode.attrs.actions
 
         return <div>
-            <button onclick={ actions.toggleRecording }>Toggle recording</button>&nbsp;
-            <button onclick={ actions.clearRecording }>Clear recording</button>&nbsp;
-            <button onclick={ actions.addAssertion }>Add assertion</button>&nbsp;
-            <button onclick={ actions.downloadOutput }>Download output</button>&nbsp;
-            | { app._isRecording ? 'Recording': 'Not recording' }
+            <nav>
+                <button class="button--light" onclick={ actions.toggleRecording }>Toggle recording</button>&nbsp;
+                <button class="button--light" onclick={ actions.addAssertion }>Add assertion</button>&nbsp;
+                <button class="button--light" onclick={ actions.downloadOutput }>Download output</button>&nbsp;
+                | { app._isRecording ? 'Recording': 'Not recording' }
+                <button class="clear-recording-btn" onclick={ actions.clearRecording }>Clear recording</button>&nbsp;
+            </nav>
             <div>
                 <br />
                 <div>Output format:

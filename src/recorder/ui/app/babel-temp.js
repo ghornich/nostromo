@@ -279,30 +279,34 @@ var RootComp = {
             'div',
             null,
             m(
-                'button',
-                { onclick: actions.toggleRecording },
-                'Toggle recording'
+                'nav',
+                null,
+                m(
+                    'button',
+                    { 'class': 'button--light', onclick: actions.toggleRecording },
+                    'Toggle recording'
+                ),
+                '\xA0',
+                m(
+                    'button',
+                    { 'class': 'button--light', onclick: actions.addAssertion },
+                    'Add assertion'
+                ),
+                '\xA0',
+                m(
+                    'button',
+                    { 'class': 'button--light', onclick: actions.downloadOutput },
+                    'Download output'
+                ),
+                '\xA0 | ',
+                app._isRecording ? 'Recording' : 'Not recording',
+                m(
+                    'button',
+                    { 'class': 'clear-recording-btn', onclick: actions.clearRecording },
+                    'Clear recording'
+                ),
+                '\xA0'
             ),
-            '\xA0',
-            m(
-                'button',
-                { onclick: actions.clearRecording },
-                'Clear recording'
-            ),
-            '\xA0',
-            m(
-                'button',
-                { onclick: actions.addAssertion },
-                'Add assertion'
-            ),
-            '\xA0',
-            m(
-                'button',
-                { onclick: actions.downloadOutput },
-                'Download output'
-            ),
-            '\xA0 | ',
-            app._isRecording ? 'Recording' : 'Not recording',
             m(
                 'div',
                 null,
