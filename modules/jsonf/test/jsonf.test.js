@@ -16,7 +16,8 @@ test(function(t){
 		},
 		e: function (x) {
 			return x + '\r\n';
-		}
+		},
+		f: function(){}
 	}
 
 	var stringified=JSONF.stringify(o)
@@ -24,16 +25,8 @@ test(function(t){
 	var expectedStringified='{"a":[1,2,3,"function (a,b) {\\n\\t\\t\\t/*          */\\n\\t\\t\\treturn a*b\\n\\t\\t}"],\
 "b":"function (a){return a*a/*\\n\\n\\n\\t\\t*/}",\
 "c":{"d":5},\
-"e":"function (x) {\\n\\t\\t\\treturn x + \'\\\\r\\\\n\';\\n\\t\\t}"}'
-
-
-// '{"a":[1,2,3,{"type":"JSONF:Function","data":"function (a,b) {\\n\\t\\t\\t/*          */\\n\\t\\t\\treturn a*b\\n\\t\\t}"}],\
-// "b":{"type":"JSONF:Function","data":"function (a){return a*a/*\\n\\n\\n\\t\\t*/}"},\
-// "c":{"d":5}}"'
-
-
-
-
+"e":"function (x) {\\n\\t\\t\\treturn x + \'\\\\r\\\\n\';\\n\\t\\t}",\
+"f":"function (){}"}'
 
 	t.equal(stringified, expectedStringified)
 
