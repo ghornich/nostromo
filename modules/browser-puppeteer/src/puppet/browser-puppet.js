@@ -9,6 +9,7 @@ var UniqueSelector = require('../../../../modules/get-unique-selector');
 var SS_MARKER_IMG = require('../screenshot-marker').base64;
 var debounce = require('lodash.debounce');
 var Ws4ever = require('../../../../modules/ws4ever');
+var defaults = require('lodash.defaults');
 
 // TODO option to transmit console?
 // TODO transmit uncaught exceptions
@@ -18,20 +19,20 @@ var Ws4ever = require('../../../../modules/ws4ever');
 var AUTODETECT_INTERVAL_MS = 300;
 var INSERT_ASSERTION_DEBOUNCE = 500;
 
-var DEFAULT_PORT = 47225;
+var DEFAULT_SERVER_URL = 'ws://localhost:47225';
 
 exports = module.exports = BrowserPuppet;
 
 /**
- * @param {Object} opts
- * @param {String} opts.url
+ * @param {Object} [opts]
+ * @param {String} [opts.serverUrl=DEFAULT_SERVER_URL] - BrowserPuppeteer websocket server URL
  */
 function BrowserPuppet(opts) {
-    this._opts = opts || {};
+    this._opts = defaults({}, opts, {
+        serverUrl: DEFAULT_SERVER_URL,
+    });
 
-    this._opts.url = this._opts.url || 'ws://localhost:' + DEFAULT_PORT;
-
-    assert(this._opts.url && /^ws:\/\/.+/.test(this._opts.url), 'BrowserPuppet: missing or invalid url, expected "ws://..."');
+    assert(/^ws:\/\/.+/.test(this._opts.serverUrl), 'BrowserPuppet: missing or invalid serverUrl, expected "ws://..."');
 
     this._transmitEvents = false;
     this._isExecuting = false;
@@ -69,7 +70,7 @@ BrowserPuppet.prototype.start = function () {
 BrowserPuppet.prototype._startWs = function () {
     var self = this;
 
-    self._wsConn = new Ws4ever(self._opts.url);
+    self._wsConn = new Ws4ever(self._opts.serverUrl);
     self._wsConn.onmessage = function (e) {
         self._onMessage(e.data);
     };

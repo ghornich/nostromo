@@ -7,7 +7,7 @@ var Promise = require('bluebird');
 // var views=require('./views.msx')
 // var utils = require('./utils')
 var Loggr = require('../../../../modules/loggr');
-var defaults = require('../../../../modules/shallow-defaults');
+var defaults = require('lodash.defaults');
 // var EventEmitter=require('events').EventEmitter
 var util = require('util');
 var JSONF = require('../../../../modules/jsonf');
@@ -58,7 +58,7 @@ function RecorderApp(conf) {
         fn: renderTestfile
     });
 
-    self._conf.selectedOutputFormatter = self._conf.selectedOutputFormatter || NOSTROMO_TESTFILE_FORMATTER_NAME;
+    self._selectedOutputFormatter = self._conf.selectedOutputFormatter || NOSTROMO_TESTFILE_FORMATTER_NAME;
 
     self._log = new Loggr({
         logLevel: Loggr.LEVELS.ALL, // TODO logLevel
@@ -81,16 +81,16 @@ function RecorderApp(conf) {
             self.commandList.add({ type: CMD_TYPES.ASSERT });
         },
         downloadTestfile: function downloadTestfile() {
-            var testFileStr = renderTestfile(self.commandList);
-            var blob = new Blob([testFileStr], { type: 'application/octet-stream' });
+            var output = self._getFormattedOutput();
+            var blob = new Blob([output], { type: 'application/octet-stream' });
             var dlTarget = document.getElementById('download-target');
             var dlUrl = window.URL.createObjectURL(blob);
             dlTarget.href = dlUrl;
-            dlTarget.download = 'testfile.js';
+            dlTarget.download = 'output.js';
             dlTarget.click();
         },
-        selectTestfileFormatter: function selectTestfileFormatter(event) {
-            self._conf.selectedOutputFormatter = event.target.value;
+        selectOutputFormatter: function selectOutputFormatter(event) {
+            self._selectedOutputFormatter = event.target.value;
         }
     };
 }
@@ -136,19 +136,22 @@ RecorderApp.prototype.start = function () {
 };
 
 RecorderApp.prototype._getSelectedOutputFormatter = function () {
-    var conf = this._conf;
-    var filtered = conf.outputFormatters.filter(function (formatter) {
-        return formatter.name === conf.selectedOutputFormatter;
+    var self = this;
+    var filtered = self._conf.outputFormatters.filter(function (formatter) {
+        return formatter.name === self._selectedOutputFormatter;
     });
 
     if (filtered.length !== 1) {
-        console.error('RecorderApp::_getSelectedOutputFormatter: selectedOutputFormatter "' + conf.selectedOutputFormatter + '" not found');
         return function () {
-            return '(no formatter found)';
+            return '(formatter "' + self._selectedOutputFormatter + '" not found)';
         };
     }
 
     return filtered[0];
+};
+
+RecorderApp.prototype._getFormattedOutput = function () {
+    return self._getSelectedOutputFormatter();
 };
 
 RecorderApp.prototype._onCapturedEvent = function (event) {
@@ -269,7 +272,6 @@ var RootComp = {
     view: function view(vnode) {
         var app = vnode.attrs.app;
         var actions = vnode.attrs.actions;
-        var outputFormatter = app._getSelectedOutputFormatter();
 
         return m(
             'div',
@@ -308,7 +310,7 @@ var RootComp = {
                     'Output format:',
                     m(
                         'select',
-                        { onchange: actions.selectTestfileFormatter },
+                        { onchange: actions.selectOutputFormatter },
                         app._conf.outputFormatters.map(function (formatter) {
                             return m(
                                 'option',
@@ -323,14 +325,14 @@ var RootComp = {
                 m(
                     'pre',
                     null,
-                    outputFormatter.fn(app.commandList.getList())
+                    app._getFormattedOutput()
                 )
             ),
             m('a', { href: '#', id: 'download-target', 'class': 'hidden' })
         );
     }
 
-    // TODO move these to Command or CommandList?
+    // TODO move to own file
 };function renderTestfile(cmds, indent) {
     indent = indent || '    ';
 
@@ -345,7 +347,7 @@ var RootComp = {
     return res.join(EOL);
 }
 
-// TODO move these to Command or CommandList?
+// TODO move to own file
 function renderCmd(cmd) {
     switch (cmd.type) {
         case 'setValue':

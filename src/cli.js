@@ -3,10 +3,10 @@
 var rfr=require('rfr')
 var fs=require('fs')
 var pathlib = require('path')
-var defaults = rfr('modules/shallow-defaults')
+var defaults = require('lodash.defaults');
 var args = require('minimist')(process.argv.slice(2))
-var BrowserSpawners = rfr('modules/browser-spawners')
-var Loggr=rfr('modules/loggr')
+var BrowserSpawners = require('../modules/browser-spawners')
+var Loggr=require('../modules/loggr')
 
 /*
 args:
@@ -37,7 +37,7 @@ if (args.record || args.rec) {
         console.log('Using default conf')
     }
 
-    var conf = defaults(baseConf, {
+    var conf = defaults({}, baseConf, {
         recorderAppPort: 7700,
         logLevel: Loggr.LEVELS.OFF
     })
@@ -53,7 +53,7 @@ else if (args.diff) {
     
     var baseConf = configFn()
 
-    var conf = defaults(baseConf, {
+    var conf = defaults({}, baseConf, {
     })
 
     var DiffServer=require('./differ/diff-server')
@@ -71,7 +71,7 @@ else if (args.run) { // run
         LOG_LEVELS: Loggr.LEVELS
     })
 
-    var conf = defaults(baseConf, {
+    var conf = defaults({}, baseConf, {
         
     })
 

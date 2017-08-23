@@ -2,7 +2,7 @@ const Promise=require('bluebird')
 Promise.config({ longStackTraces: true })
 const rfr=require('rfr')
 const Loggr=rfr('modules/loggr')
-const defaults=rfr('modules/shallow-defaults')
+const defaults=require('lodash.defaults')
 const Schema=require('schema-inspector')
 const http=require('http')
 const fs=require('fs')
@@ -80,7 +80,7 @@ exports = module.exports = TestRunner
 function TestRunner(conf){
     EventEmitter.call(this)
 
-    this._conf=defaults(conf, {
+    this._conf=defaults({}, conf, {
         testPort: DEFAULT_TEST_PORT,
         waitForConnectionTimeout: 5000,
         logLevel: Loggr.LEVELS.INFO,

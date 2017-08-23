@@ -1,7 +1,7 @@
 'use strict'
 
 var os=require('os')
-var defaults=require('../../modules/shallow-defaults')
+var defaults=require('lodash.defaults')
 
 var TAP_VERSION = 13
 
@@ -36,7 +36,7 @@ doesNotThrow -------
 exports = module.exports = TAPWriter
 
 function TAPWriter(conf) {
-    this._conf = defaults(conf, {
+    this._conf = defaults({}, conf, {
         eol: os.EOL,
         indent: '  ',
         outStream: process.stdout

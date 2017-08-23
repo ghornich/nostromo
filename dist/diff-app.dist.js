@@ -1,22 +1,14 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
 'use strict'
 
-// TODO tests
 // TODO support ES6 arrow fns
 
 var JSONF=exports
 
-var FN_TYPE='JSONF:Function'
-
-
-
 JSONF.stringify=function(o){
     return JSON.stringify(o, function(key,val){
         if (typeof val==='function'){
-            return {
-                type: FN_TYPE,
-                data: val.toString().replace(/\r/g, '\\r').replace(/\n/g, '\\n')
-            }
+            return val.toString()
         }
         else {
             return val
@@ -27,27 +19,29 @@ JSONF.stringify=function(o){
 JSONF.parse=function(s){
     var i=0
     return JSON.parse(s, function(key, val){
-        if (val&&val.type===FN_TYPE){
+        if (isStringAFunction(val)){
             try {
                 return new Function(
                     // http://www.kristofdegrave.be/2012/07/json-serialize-and-deserialize.html
-                    val.data.match(/\(([^)]+?)\)/)[1],
-                    val.data.match(/\{([\s\S]+)\}/)[1]
+                    val.match(/\(([^)]+?)\)/)[1],
+                    val.match(/\{([\s\S]+)\}/)[1]
                 )
             }
             catch (e){
-                // TODO throw a big fat error
+                // TODO throw a big fat error?
+                console.log('JSONF err: '+val)
+                console.error(e)
                 return val
             }
         }
-        else {
-            return val
-        }
-        /*if (typeof val!=='string')return val
-        if (val.indexOf(FN_TYPE)<0)return val
 
-        */
+        return val
     })
+}
+
+function isStringAFunction(s){
+    return /^function\s*\(/.test(s) ||
+        /^function\s+[a-zA-Z0-9_$]+\s*\(/.test(s)
 }
 
 },{}],2:[function(require,module,exports){
@@ -5895,7 +5889,7 @@ function from (value, encodingOrOffset, length) {
     throw new TypeError('"value" argument must not be a number')
   }
 
-  if (value instanceof ArrayBuffer) {
+  if (isArrayBuffer(value)) {
     return fromArrayBuffer(value, encodingOrOffset, length)
   }
 
@@ -6155,7 +6149,7 @@ function byteLength (string, encoding) {
   if (Buffer.isBuffer(string)) {
     return string.length
   }
-  if (isArrayBufferView(string) || string instanceof ArrayBuffer) {
+  if (isArrayBufferView(string) || isArrayBuffer(string)) {
     return string.byteLength
   }
   if (typeof string !== 'string') {
@@ -7485,6 +7479,14 @@ function blitBuffer (src, dst, offset, length) {
     dst[i + offset] = src[i]
   }
   return i
+}
+
+// ArrayBuffers from another context (i.e. an iframe) do not pass the `instanceof` check
+// but they should be treated as valid. See: https://github.com/feross/buffer/issues/166
+function isArrayBuffer (obj) {
+  return obj instanceof ArrayBuffer ||
+    (obj != null && obj.constructor != null && obj.constructor.name === 'ArrayBuffer' &&
+      typeof obj.byteLength === 'number')
 }
 
 // Node 0.10 supports `ArrayBuffer` but lacks `ArrayBuffer.isView`
