@@ -275,49 +275,45 @@ var RootComp = {
         var app = vnode.attrs.app;
         var actions = vnode.attrs.actions;
 
+        var toggleBtnClass = app._isRecording ? 'button--toggle-on' : 'button--toggle-off';
+
         return m(
-            'div',
+            'main',
             null,
             m(
                 'nav',
                 null,
                 m(
                     'button',
-                    { 'class': 'button--light', onclick: actions.toggleRecording },
+                    { 'class': toggleBtnClass, onclick: actions.toggleRecording },
                     'Toggle recording'
                 ),
-                '\xA0',
                 m(
                     'button',
-                    { 'class': 'button--light', onclick: actions.addAssertion },
+                    { onclick: actions.addAssertion },
                     'Add assertion'
                 ),
-                '\xA0',
                 m(
                     'button',
-                    { 'class': 'button--light', onclick: actions.downloadOutput },
+                    { onclick: actions.downloadOutput },
                     'Download output'
                 ),
-                '\xA0 | ',
-                app._isRecording ? 'Recording' : 'Not recording',
                 m(
                     'button',
-                    { 'class': 'clear-recording-btn', onclick: actions.clearRecording },
+                    { 'class': 'button--danger clear-recording-btn', onclick: actions.clearRecording },
                     'Clear recording'
-                ),
-                '\xA0'
+                )
             ),
             m(
-                'div',
+                'section',
                 null,
-                m('br', null),
                 m(
-                    'div',
-                    null,
+                    'p',
+                    { 'class': 'flex-row' },
                     'Output format:',
                     m(
                         'select',
-                        { onchange: actions.selectOutputFormatter },
+                        { 'class': 'output-format-dropdown', onchange: actions.selectOutputFormatter },
                         app._conf.outputFormatters.map(function (formatter) {
                             return m(
                                 'option',
@@ -328,10 +324,14 @@ var RootComp = {
                             );
                         })
                     )
-                ),
+                )
+            ),
+            m(
+                'section',
+                null,
                 m(
                     'pre',
-                    null,
+                    { 'class': 'output' },
                     app._getFormattedOutput()
                 )
             ),
