@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 
-var rfr=require('rfr')
 var fs=require('fs')
 var pathlib = require('path')
 var defaults = require('lodash.defaults');

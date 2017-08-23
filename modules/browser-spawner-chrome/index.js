@@ -1,9 +1,8 @@
 'use strict';
 
-const rfr=require('rfr')
 const util = require('util');
 const spawn = require('child_process').spawn;
-const BrowserSpanwerBase = rfr('modules/browser-spawner-base');
+const BrowserSpanwerBase = require('../browser-spawner-base');
 
 exports = module.exports = BrowserSpawnerChrome;
 

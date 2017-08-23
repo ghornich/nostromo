@@ -1,14 +1,14 @@
-var rfr=require('rfr')
+const MODULES_PATH = '../../../';
 const fs = require('fs');
 const pathlib = require('path');
 const urllib = require('url');
 const http = require('http');
 const util = require('util');
 const EventEmitter = require('events').EventEmitter;
-const JSONF = rfr('modules/jsonf');
+const JSONF = require(MODULES_PATH + 'jsonf');
 const WS = require('ws');
 const Promise = require('bluebird');
-const Loggr = rfr('modules/loggr');
+const Loggr = require(MODULES_PATH + 'loggr');
 const MESSAGES = require('../messages');
 
 // TODO transparent settings for puppet? (same function interface here & there)
