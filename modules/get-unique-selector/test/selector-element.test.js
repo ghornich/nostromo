@@ -35,7 +35,7 @@ test('SelectorElement::ctor 2', t => {
     var mockNode = {
         tagName: 'INPUT',
         className: '  ',
-        name: 'password'
+        name: 'password',
         parentNode: {
             tagName: 'FORM',
             children: []
@@ -46,7 +46,7 @@ test('SelectorElement::ctor 2', t => {
         'dummy1',
         'dummy2',
         'dummy3',
-        mockNode
+        mockNode,
         'dummy4',
     )
 

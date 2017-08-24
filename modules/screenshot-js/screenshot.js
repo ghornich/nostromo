@@ -35,10 +35,6 @@ module.exports=Promise.method(function(opts){
     return Promise.try(_=> {
 
         if (process.platform==='win32'){
-            // var boxcutterPath=resolve(__dirname, 'platform_modules/boxcutter/boxcutter.exe')
-
-            // return execAsync(`${boxcutterPath} -f ${tempPath}`)
-
             var screenshotCmdPath = resolve(__dirname, 'platform_modules/screenshot-cmd/screenshot-cmd.exe')
 
             return execAsync(`${screenshotCmdPath} -o ${tempPath}`)
