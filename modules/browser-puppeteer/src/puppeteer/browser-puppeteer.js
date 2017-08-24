@@ -208,6 +208,13 @@ BrowserPuppeteer.prototype.setSelectorBecameVisibleSelectors = Promise.method(fu
     });
 });
 
+BrowserPuppeteer.prototype.setMouseoverSelectors = Promise.method(function (selectors) {
+    return this.sendMessage({
+        type: MESSAGES.DOWNSTREAM.SET_MOUSEOVER_SELECTORS,
+        selectors: selectors,
+    });
+});
+
 // TODO promise, resolve when closed
 BrowserPuppeteer.prototype.stop = function () {
     this._httpServer.close();

@@ -49,6 +49,9 @@ exports.DOWNSTREAM = {
 
     // { type, url }
     REOPEN_URL: 'reopen-url',
+
+    // { type, selectors }
+    SET_MOUSEOVER_SELECTORS: 'set-mouseover-selectors',
 };
 
 },{}],3:[function(require,module,exports){
@@ -102,6 +105,8 @@ function BrowserPuppet(opts) {
         // Array<{previousState:Boolean}>
         states: [],
     };
+
+    this._mouseoverSelectors = null;
 
     this._scheduleReopen = false;
     this._scheduleReopenUrl = '';
@@ -215,6 +220,10 @@ BrowserPuppet.prototype._attachCaptureEventListeners = function () {
     document.addEventListener('input', this._onInputCapture.bind(this), true);
     document.addEventListener('scroll', this._onScrollCapture.bind(this), true);
     document.addEventListener('keydown', this._onKeydownCapture.bind(this), true);
+};
+
+BrowserPuppet.prototype._attachMouseoverEventListener = function () {
+    $(document.body).on('mouseover', this._mouseoverSelectors.join(', '), this._onMouseoverCapture.bind(this));
 };
 
 var SHIFT_KEY = 16;
@@ -373,6 +382,10 @@ BrowserPuppet.prototype._onKeydownCapture = function (event) {
     });
 };
 
+BrowserPuppet.prototype._onMouseoverCapture = function (event) {
+
+};
+
 BrowserPuppet.prototype._sendInsertAssertionDebounced = debounce(function () {
     this._sendMessage({ type: MESSAGES.UPSTREAM.INSERT_ASSERTION });
 }, INSERT_ASSERTION_DEBOUNCE);
@@ -382,6 +395,11 @@ BrowserPuppet.prototype.setOnSelectorBecameVisibleSelectors = function (selector
     this._onSelectorBecameVisibleData.states = selectors.map(function () {
         return { previousState: null };
     });
+};
+
+BrowserPuppet.prototype.setMouseoverSelectors = function (selectors) {
+    this._mouseoverSelectors = selectors;
+    this._attachMouseoverEventListener();
 };
 
 BrowserPuppet.prototype.setTransmitEvents = function (value) {
@@ -412,63 +430,6 @@ BrowserPuppet.prototype._onSelectorBecameVisiblePoll = function () {
 
         state.previousState = currentState;
     });
-};
-
-BrowserPuppet.prototype._onCaptureEvent = function (eventType, event) {
-    if (!this._transmitEvents || this._isExecuting) {
-        return;
-    }
-
-    var target = event.target;
-
-    // if (eventType === 'keypress' && target.tagName === 'INPUT') {
-    //     return;
-    // }
-
-    try {
-        var selector = this._uniqueSelector.get(target);
-    }
-    catch (err) {
-        console.error(err);
-        return;
-    }
-
-    var response = {
-        type: MESSAGES.UPSTREAM.CAPTURED_EVENT,
-        event: {
-            type: eventType,
-            selector: selector,
-            target: {
-                tagName: target.tagName,
-                id: target.id,
-                className: target.className,
-            },
-        },
-    };
-
-    // click focus keypress input scroll
-
-    if (/click/.test(eventType)) {
-        response.event.target.innerText = target.innerText;
-    }
-
-    switch (eventType) {
-        case 'keypress':
-            // TODO handle contenteditable fields, textarea, etc
-            response.event.keyCode = event.keyCode || event.charCode;
-            break;
-        case 'input':
-            response.event.value = target.value;
-            break;
-        case 'scroll':
-            response.event.target.scrollTop = target.scrollTop;
-            break;
-        default:
-            // no op
-            break;
-    }
-
-    this._sendMessage(response);
 };
 
 BrowserPuppet.prototype._onExecMessage = Promise.method(function (data) {
@@ -764,7 +725,7 @@ BrowserPuppet.prototype.setScreenshotMarkerState = function (state) {
 
 
 
-
+function noop(){}
 
 function cleanTarget(target) {
     return {

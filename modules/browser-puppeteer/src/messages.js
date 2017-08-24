@@ -35,4 +35,7 @@ exports.DOWNSTREAM = {
 
     // { type, url }
     REOPEN_URL: 'reopen-url',
+
+    // { type, selectors }
+    SET_MOUSEOVER_SELECTORS: 'set-mouseover-selectors',
 };
