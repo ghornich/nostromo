@@ -26,14 +26,18 @@ CommandList.prototype._compact=function(){
 
         var timestampDiff = Math.abs(cmd.timestamp-lastNewCmd.timestamp)
 
-        if (cmd.type===TYPES.CLICK && lastNewCmd.type===TYPES.FOCUS && timestampDiff < CLICK_FOCUS_MIN_SEPARATION) {
-            // exchange focus and click so click comes first
-            newCommands[lastNewIdx] = cmd
-            newCommands.push(lastNewCmd)
+        if ((cmd.type===TYPES.CLICK && lastNewCmd.type===TYPES.FOCUS || cmd.type===TYPES.FOCUS && lastNewCmd.type===TYPES.CLICK) &&
+                timestampDiff < CLICK_FOCUS_MIN_SEPARATION && stringsSimilar(cmd.selector, lastNewCmd.selector)) {
+            // insert composite command
+            newCommands[lastNewIdx] = {
+                type: TYPES.COMPOSITE,
+                commands: [lastNewCmd, cmd]
+            }
         }
         else if (cmd.type===TYPES.SET_VALUE && lastNewCmd.type===TYPES.SET_VALUE && cmd.selector===lastNewCmd.selector) {
         	newCommands[lastNewIdx]=cmd
         }
+
         else if (cmd.type===TYPES.FOCUS && lastNewCmd.type===TYPES.FOCUS && cmd.selector===lastNewCmd.selector) {
         	newCommands[lastNewIdx]=cmd
         }
@@ -78,6 +82,8 @@ CommandList.prototype.clear=function(){
 	this._commands=[]
 }
 
-
+function stringsSimilar(a, b) {
+    return a.indexOf(b) >= 0 || b.indexOf(a) >= 0;
+}
 
 

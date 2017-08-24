@@ -36055,14 +36055,18 @@ CommandList.prototype._compact=function(){
 
         var timestampDiff = Math.abs(cmd.timestamp-lastNewCmd.timestamp)
 
-        if (cmd.type===TYPES.CLICK && lastNewCmd.type===TYPES.FOCUS && timestampDiff < CLICK_FOCUS_MIN_SEPARATION) {
-            // exchange focus and click so click comes first
-            newCommands[lastNewIdx] = cmd
-            newCommands.push(lastNewCmd)
+        if ((cmd.type===TYPES.CLICK && lastNewCmd.type===TYPES.FOCUS || cmd.type===TYPES.FOCUS && lastNewCmd.type===TYPES.CLICK) &&
+                timestampDiff < CLICK_FOCUS_MIN_SEPARATION && stringsSimilar(cmd.selector, lastNewCmd.selector)) {
+            // insert composite command
+            newCommands[lastNewIdx] = {
+                type: TYPES.COMPOSITE,
+                commands: [lastNewCmd, cmd]
+            }
         }
         else if (cmd.type===TYPES.SET_VALUE && lastNewCmd.type===TYPES.SET_VALUE && cmd.selector===lastNewCmd.selector) {
         	newCommands[lastNewIdx]=cmd
         }
+
         else if (cmd.type===TYPES.FOCUS && lastNewCmd.type===TYPES.FOCUS && cmd.selector===lastNewCmd.selector) {
         	newCommands[lastNewIdx]=cmd
         }
@@ -36107,7 +36111,9 @@ CommandList.prototype.clear=function(){
 	this._commands=[]
 }
 
-
+function stringsSimilar(a, b) {
+    return a.indexOf(b) >= 0 || b.indexOf(a) >= 0;
+}
 
 
 
@@ -36124,7 +36130,7 @@ var TYPES = Command.TYPES = {
 	WAIT_WHILE_VISIBLE: 'waitWhileVisible',
 	FOCUS: 'focus',
 	ASSERT: 'assert',
-
+	COMPOSITE: 'composite',
 }
 
 function Command(data){
@@ -36140,6 +36146,8 @@ function Command(data){
 }
 },{}],17:[function(require,module,exports){
 'use strict';
+
+var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
 
 var _ = require('lodash');
 var $ = require('jquery');
@@ -36489,7 +36497,13 @@ function jsonOutputFormatter(cmds, indent) {
     }
 
     return '[' + EOL + cmds.map(function (cmd) {
-        return indent + JSON.stringify(cmd);
+        if (cmd.type === CMD_TYPES.COMPOSITE) {
+            return indent + '{"type":"' + CMD_TYPES.COMPOSITE + '","commands":[' + EOL + cmd.commands.map(function (subcmd) {
+                return indent + indent + JSON.stringify(subcmd);
+            }).join(',' + EOL) + EOL + indent + ']}';
+        } else {
+            return indent + JSON.stringify(cmd);
+        }
     }).join(',' + EOL) + EOL + ']' + EOL;
 }
 
@@ -36500,7 +36514,7 @@ function renderTestfile(cmds, indent) {
     var res = ['\'use strict\';', '', 'exports = module.exports = function (test) {', indent + 'test(\'\', t => {'];
 
     cmds.forEach(function (cmd, i) {
-        if (i === 0) res.push(indent + indent + 'return ' + renderCmd(cmd));else res.push(indent + indent + '.then(() => ' + renderCmd(cmd) + ')');
+        if (i === 0) res.push(indent + indent + 'return ' + renderCmd(cmd, indent));else res.push(indent + indent + '.then(() => ' + renderCmd(cmd, indent) + ')');
     });
 
     res.push(indent + '});', '};', '');
@@ -36509,7 +36523,7 @@ function renderTestfile(cmds, indent) {
 }
 
 // TODO move to own file
-function renderCmd(cmd) {
+function renderCmd(cmd, indent) {
     switch (cmd.type) {
         case 'setValue':
             return 't.setValue(' + apos(cmd.selector) + ', ' + apos(cmd.value) + ')';
@@ -36527,6 +36541,10 @@ function renderCmd(cmd) {
             return 't.focus(' + apos(cmd.selector) + ')';
         case 'assert':
             return 't.assert()';
+        case 'composite':
+            return 't.composite([' + EOL + cmd.commands.map(function (subcmd) {
+                return indent + indent + indent + inspectObj(subcmd);
+            }).join(',' + EOL) + EOL + indent + indent + '])';
         // case '': return 't.()'
         default:
             console.error('unknown cmd type ', cmd.type, cmd);return '<unknown>';
@@ -36563,6 +36581,23 @@ function noop() {}
 
 function nl2backslashnl(str) {
     return str.replace(/\n/g, '\\n');
+}
+
+function inspectObj(o) {
+    return '{ ' + Object.keys(o).map(function (k) {
+        return k + ': ' + inspectVal(o[k]);
+    }).join(', ') + ' }';
+}
+
+function inspectVal(v) {
+    switch (typeof v === 'undefined' ? 'undefined' : _typeof(v)) {
+        case 'string':
+            return "'" + v + "'";
+        case 'boolean':
+            return v ? 'true' : 'false';
+        default:
+            return v;
+    }
 }
 
 },{"../../../../modules/browser-puppeteer/src/messages.js":1,"../../../../modules/jsonf":2,"../../../../modules/loggr":3,"../../../../modules/ws4ever":4,"../../../command":16,"../../../command-list":15,"bluebird":5,"jquery":6,"lodash":8,"lodash.defaults":7,"mithril":9,"util":14}]},{},[17]);

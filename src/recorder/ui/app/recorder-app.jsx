@@ -312,7 +312,14 @@ function jsonOutputFormatter(cmds, indent) {
 
     return '[' + EOL +
         cmds.map(function (cmd) {
-            return indent + JSON.stringify(cmd)
+            if (cmd.type===CMD_TYPES.COMPOSITE) {
+                return indent + '{"type":"'+CMD_TYPES.COMPOSITE+'","commands":[' + EOL +
+                    cmd.commands.map(function (subcmd){ return indent + indent + JSON.stringify(subcmd) }).join(','+EOL) + EOL +
+                indent + ']}'
+            }
+            else {
+                return indent + JSON.stringify(cmd)
+            }
         }).join(','+EOL) + EOL +
         ']' + EOL;
 }
@@ -329,8 +336,8 @@ function renderTestfile(cmds, indent){
     ]
 
     cmds.forEach(function(cmd, i){
-        if (i===0) res.push(indent + indent + 'return '+renderCmd(cmd))
-        else res.push(indent + indent + '.then(() => '+renderCmd(cmd)+')')
+        if (i===0) res.push(indent + indent + 'return '+renderCmd(cmd, indent))
+        else res.push(indent + indent + '.then(() => '+renderCmd(cmd, indent)+')')
     })
 
     res.push(
@@ -343,7 +350,7 @@ function renderTestfile(cmds, indent){
 }
 
 // TODO move to own file
-function renderCmd(cmd){
+function renderCmd(cmd, indent){
     switch(cmd.type){
         case 'setValue': return 't.setValue('+apos(cmd.selector)+', '+apos(cmd.value)+')'
         case 'pressKey': return 't.pressKey('+apos(cmd.selector)+', '+cmd.keyCode+')'
@@ -353,6 +360,9 @@ function renderCmd(cmd){
         case 'waitWhileVisible': return 't.waitWhileVisible('+apos(cmd.selector)+')'
         case 'focus': return 't.focus('+apos(cmd.selector)+')'
         case 'assert': return 't.assert()'
+        case 'composite': return 't.composite(['+ EOL +
+            cmd.commands.map(function (subcmd){ return indent + indent + indent + inspectObj(subcmd) }).join(','+EOL) + EOL +
+        indent + indent + '])'
         // case '': return 't.()'
         default:console.error('unknown cmd type ',cmd.type, cmd);return '<unknown>'
     }
@@ -381,4 +391,16 @@ function noop(){}
 
 function nl2backslashnl(str){
     return str.replace(/\n/g, '\\n')
+}
+
+function inspectObj(o){
+    return '{ ' + Object.keys(o).map(function(k){ return k+': '+inspectVal(o[k]) }).join(', ') + ' }'
+}
+
+function inspectVal(v){
+    switch (typeof v) {
+        case 'string':return "'"+v+"'"
+        case 'boolean':return v?'true':'false'
+        default:return v
+    }
 }

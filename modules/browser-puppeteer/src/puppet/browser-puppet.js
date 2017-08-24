@@ -419,30 +419,7 @@ BrowserPuppet.prototype._onCaptureEvent = function (eventType, event) {
 
 BrowserPuppet.prototype._onExecMessage = Promise.method(function (data) {
     if (data.type === MESSAGES.DOWNSTREAM.EXEC_COMMAND) {
-        var command = data.command;
-
-        switch (command.type) {
-            case 'click':
-                return this.click(command.selector);
-            case 'setValue':
-                return this.setValue(command.selector, command.value);
-            case 'getValue':
-                return this.getValue(command.selector);
-            case 'pressKey':
-                return this.pressKey(command.selector, command.keyCode);
-            case 'waitForVisible':
-                return this.waitForVisible(command.selector);
-            case 'waitWhileVisible':
-                return this.waitWhileVisible(command.selector);
-            case 'focus':
-                return this.focus(command.selector);
-            case 'isVisible':
-                return this.isVisible(command.selector);
-            case 'scroll':
-                return this.scroll(command.selector, command.scrollTop);
-            default:
-                throw new Error('Unknown command type: ' + command.type);
-        }
+        return this.execCommand(data.command);
     }
     else if (data.type === MESSAGES.DOWNSTREAM.EXEC_FUNCTION) {
         // TODO
@@ -451,6 +428,41 @@ BrowserPuppet.prototype._onExecMessage = Promise.method(function (data) {
     else {
         throw new Error('Unknown exec type: ' + data.type);
     }
+});
+
+BrowserPuppet.prototype.execCommand=Promise.method(function(command){
+    switch (command.type) {
+        case 'click':
+            return this.click(command.selector);
+        case 'setValue':
+            return this.setValue(command.selector, command.value);
+        case 'getValue':
+            return this.getValue(command.selector);
+        case 'pressKey':
+            return this.pressKey(command.selector, command.keyCode);
+        case 'waitForVisible':
+            return this.waitForVisible(command.selector);
+        case 'waitWhileVisible':
+            return this.waitWhileVisible(command.selector);
+        case 'focus':
+            return this.focus(command.selector);
+        case 'isVisible':
+            return this.isVisible(command.selector);
+        case 'scroll':
+            return this.scroll(command.selector, command.scrollTop);
+        case 'composite':
+            return this.execCompositeCommand(command.commands);
+        default:
+            throw new Error('Unknown command type: ' + command.type);
+    }
+});
+
+BrowserPuppet.prototype.execCompositeCommand=Promise.method(function (commands) {
+    var self = this;
+
+    return Promise.each(commands, function (command) {
+        return self.execCommand(command);
+    });
 });
 
 BrowserPuppet.prototype._execFn = Promise.method(function (fnData) {

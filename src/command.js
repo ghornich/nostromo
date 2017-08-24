@@ -10,7 +10,7 @@ var TYPES = Command.TYPES = {
 	WAIT_WHILE_VISIBLE: 'waitWhileVisible',
 	FOCUS: 'focus',
 	ASSERT: 'assert',
-
+	COMPOSITE: 'composite',
 }
 
 function Command(data){

@@ -151,6 +151,7 @@ function TestRunner(conf){
         comment:this._comment.bind(this),
         assert:this._assert.bind(this),
         pressKey:this._pressKey_direct.bind(this),
+        composite:this._composite_direct.bind(this),
     }
 
     this.sideEffectAPI={}
@@ -643,6 +644,22 @@ TestRunner.prototype._scroll_direct = Promise.method(function(selector, scrollTo
 
 TestRunner.prototype._isVisible_direct = Promise.method(function (selector, description) {
    throw new Error('TODO _isVisible_direct') 
+})
+
+TestRunner.prototype._composite_direct = Promise.method(function (commands) {
+    this._log.info('composite: '+commands.map(cmd=>cmd.type).join(', '))
+
+    return this._browserPuppeteer.execCommand({
+        type: 'composite',
+        commands: commands
+    })
+    .catch(e=>{
+        this._tapWriter.notOk('composite - ' + e.message)
+
+        if (this._conf.bailout) {
+            throw createError('BailoutError', e.message)
+        }
+    })
 })
 
 TestRunner.prototype._delay = Promise.method(function (ms, description) {
