@@ -1,5 +1,6 @@
 var Command=require('./command')
 var TYPES=Command.TYPES
+var CLICK_FOCUS_MIN_SEPARATION = 200
 
 exports=module.exports=CommandList
 
@@ -14,12 +15,21 @@ CommandList.prototype._compact=function(){
 	var newCommands=[]
 
     for (var i=0,len=this._commands.length;i<len;i++){
-    	var lastNewIdx=newCommands.length-1
-    	var lastNewCmd=lastNewIdx>=0?newCommands[lastNewIdx]:null
+        var lastNewIdx=newCommands.length-1
+        var lastNewCmd=lastNewIdx>=0?newCommands[lastNewIdx]:null
         var cmd=this._commands[i]
 
         if (newCommands.length===0) {
             newCommands.push(cmd)
+            continue
+        }
+
+        var timestampDiff = Math.abs(cmd.timestamp-lastNewCmd.timestamp)
+
+        if (cmd.type===TYPES.CLICK && lastNewCmd.type===TYPES.FOCUS && timestampDiff < CLICK_FOCUS_MIN_SEPARATION) {
+            // exchange focus and click so click comes first
+            newCommands[lastNewIdx] = cmd
+            newCommands.push(lastNewCmd)
         }
         else if (cmd.type===TYPES.SET_VALUE && lastNewCmd.type===TYPES.SET_VALUE && cmd.selector===lastNewCmd.selector) {
         	newCommands[lastNewIdx]=cmd

@@ -1,21 +1,25 @@
+const MODULES_PATH='../../modules/'
 const Promise=require('bluebird')
 Promise.config({ longStackTraces: true })
-const Loggr=require('loggr')
-const defaults=require('shallow-defaults')
+const Loggr=require(MODULES_PATH + 'loggr')
+const defaults=require('lodash.defaults')
 const Schema=require('schema-inspector')
 const http=require('http')
 const fs=require('fs')
 const pathlib=require('path')
 const util = require('util')
-const TapWriter=require('tap-writer')
+const TapWriter=require(MODULES_PATH + 'tap-writer')
 const EventEmitter=require('events').EventEmitter
-const BrowserPuppeteer=require('browser-puppeteer').BrowserPuppeteer
-const MESSAGES=require('browser-puppeteer').MESSAGES
-const cropMarkerImg=require('browser-puppeteer').SCREENSHOT_MARKER
-const screenshotjs=require('screenshot-js')
+const BrowserPuppeteer=require(MODULES_PATH + 'browser-puppeteer').BrowserPuppeteer
+const MESSAGES=require(MODULES_PATH + 'browser-puppeteer').MESSAGES
+const cropMarkerImg=require(MODULES_PATH + 'browser-puppeteer').SCREENSHOT_MARKER
+const screenshotjs=require(MODULES_PATH + 'screenshot-js')
 const mkdirpAsync=Promise.promisify(require('mkdirp'))
 const PNG=require('pngjs').PNG
 const globAsync=Promise.promisify(require('glob'))
+const bufferImageSearch=require(MODULES_PATH + 'buffer-image-search')
+const bufferImageDiff=require(MODULES_PATH + 'buffer-image-diff')
+const rimrafAsync=Promise.promisify(require('rimraf'))
 
 // TODO show error if test(...) doesn't return a promise
 
@@ -59,22 +63,28 @@ const ELLIPSIS_LIMIT = 60
 
 // TODO customizable dir for different screen resolution tests
 const REF_SCREENSHOT_BASE_DIR = 'referenceScreenshots'
+const ERRORS_SCREENSHOT_BASE_DIR = 'referenceErrors'
 
 const ERRORS = {
     TIMEOUT: 0,
     NOT_EQUAL: 1,
 }
 
+const PPM=1/1000000
+
+const PIXEL_THRESHOLD=3/100
+const IMG_THRESHOLD=20*PPM
+
 exports = module.exports = TestRunner
 
 function TestRunner(conf){
     EventEmitter.call(this)
 
-    this._conf=defaults(conf, {
+    this._conf=defaults({}, conf, {
         testPort: DEFAULT_TEST_PORT,
         waitForConnectionTimeout: 5000,
-        logLevel: 0,//Loggr.LEVELS.INFO,
-        bailout: true,
+        logLevel: Loggr.LEVELS.INFO,
+        bailout: false,
         keepalive: false,
         referenceScreenshotDir: REF_SCREENSHOT_BASE_DIR,
         beforeTest: noop,
@@ -82,7 +92,7 @@ function TestRunner(conf){
     })
 
     this._log=new Loggr({
-        level: 100,//this._conf.logLevel,
+        level: this._conf.logLevel,
         showTime:true,
         namespace:'TestRunner',
         outStream: {
@@ -101,6 +111,8 @@ function TestRunner(conf){
     // -------------------
 
     // TODO ensure browser names are unique (for reference images)
+
+    var browserNames = this._conf.browsers
 
     var validationResult = Schema.validate(CONF_SCHEMA, this._conf)
 
@@ -137,7 +149,8 @@ function TestRunner(conf){
         isVisible: this._isVisible_direct.bind(this),
         delay:this._delay.bind(this),
         comment:this._comment.bind(this),
-        assertScreenshot:this._assertScreenshot.bind(this)
+        assert:this._assert.bind(this),
+        pressKey:this._pressKey_direct.bind(this),
     }
 
     this.sideEffectAPI={}
@@ -158,7 +171,7 @@ function TestRunner(conf){
         logger: this._log.fork('BrowserPuppeteer')
     })
 
-    this._screenshotAssertCount = 0
+    this._assertCount = 0
     this._currentTestfilePath=null
     this._currentBrowserName=null
 
@@ -182,47 +195,95 @@ TestRunner.prototype.run = Promise.method(function(){
         testFilePaths=paths
     })
 
+    .then(()=>rimrafAsync(ERRORS_SCREENSHOT_BASE_DIR))
+
     .then(()=>this._startServers())
 
     .then(() => {
-        return Promise.each(this._conf.browsers, browser=>{
-            this._currentBrowserName = browser.name
+        return Promise.each(this._conf.browsers, async (browser)=>{
 
-            // TODO beforeBrowser, afterBrowser
+            try {
 
-            return Promise.try(_=>browser.start(this._conf.appUrl))
-            .then(()=>this._browserPuppeteer.discardClients())
-            .then(()=>this._screenshotAssertCount=0)
-            .then(()=>this._browserPuppeteer.waitForPuppet())
-            .then(() => this._browserPuppeteer.sendMessage({
-                type: MESSAGES.DOWNSTREAM.SHOW_SCREENSHOT_MARKER
-            }))
-            .then(() => this._runTestFiles(testFilePaths))
-            .catch(err => {
+                this._currentBrowserName = browser.name
+
+                // TODO beforeBrowser, afterBrowser
+
+                this._tapWriter.version()
+
+                await mkdirpAsync(this._getCurrentBrowserReferenceScreenshotDir())
+                await mkdirpAsync(this._getCurrentBrowserReferenceErrorDir())
+
+                await browser.start(this._conf.appUrl)
+
+                for (const [pathIdx, testFilePath] of testFilePaths.entries()) {
+                    // await this._browserPuppeteer.discardClients()
+                    // this._assertCount=0
+
+                    await this._browserPuppeteer.waitForPuppet()
+
+                    await this._browserPuppeteer.sendMessage({
+                        type: MESSAGES.DOWNSTREAM.SHOW_SCREENSHOT_MARKER
+                    })
+
+                    this._log.info('Ensuring browser is visible...')
+
+                    while(true){
+                        var screenshot = await screenshotjs()
+                        var markerPositions = bufferImageSearch(screenshot, cropMarkerImg)
+                        if (markerPositions.length === 2){
+                            this._log.info('Browser is visible')
+                            break
+                        }
+                        else {
+                            this._log.debug(`Screenshot marker count invalid (count: ${ markerPositions.length })`)
+                        }
+                        await Promise.delay(2000)
+                    }
+
+                    await this._runTestFile(testFilePath)
+
+                    if (pathIdx < testFilePaths.length - 1) {
+                        this._log.info('sending reopen signal')
+
+                        this._browserPuppeteer._wsConn.send(JSON.stringify({
+                            type: MESSAGES.DOWNSTREAM.REOPEN_URL,
+                            url: this._conf.appUrl,
+                        }))
+                        this._browserPuppeteer.discardClients()
+                        // await this._browserPuppeteer.reopen(this._conf.appUrl)
+                    }
+                }
+
+            }
+            catch (err) {
                 // TODO better error handling
                 console.error(err)
                 console.error(err.stack)
-            })
-            .finally(()=>{
-                this._tapWriter.diagnostic('tests ' + this._tapWriter.testCount)
-                this._tapWriter.diagnostic('pass ' + this._tapWriter.passCount)
-                this._tapWriter.diagnostic('fail ' + this._tapWriter.failCount)
-
-                // TODO optionally keep browser open for debugging (detach process & exit? OR wait for manual closing?)
-                if (!this._conf.keepalive) {
-                    return browser.stop()
-                }
-            })
+            }
+            finally {
+                // TODO optionally keep browser open for debugging (wait for manual closing?)
+                // if (!this._conf.keepalive) {
+                    await browser.stop()
+                // }
+            }
         })
-        .then(()=>this._stopServers())
         .catch(err => {
             // TODO better error handling
             console.error(err)
             console.error(err.stack)
         })
+        .finally(async ()=>{
+            this._tapWriter.plan()
+
+            await this._stopServers()
+
+            this._tapWriter.diagnostic('tests ' + this._tapWriter.testCount)
+            this._tapWriter.diagnostic('pass ' + this._tapWriter.passCount)
+            this._tapWriter.diagnostic('fail ' + this._tapWriter.failCount)
+        })
     })
     .catch(error => {
-        this._log('ERROR: '+error.toString())
+        this._log.info('ERROR: '+error.toString())
     })
 })
 
@@ -244,14 +305,35 @@ TestRunner.prototype._startServers = Promise.method(function(){
 TestRunner.prototype._stopServers = function(){
     // this._httpServer.close()
     this._browserPuppeteer.stop()
-},
+}
 
-TestRunner.prototype._runTestFiles = function(testFilePaths){
+TestRunner.prototype._runTestFile = async function(testFilePath){
+    try {
+        this._currentTestfilePath=testFilePath
+        var absPath = pathlib.resolve(testFilePath)
+        this._log.debug(`Requiring testFile "${testFilePath}"`)
+        var testModule = require(absPath)
+
+        await this._runTestModule(testModule)
+    }
+    catch (err) {
+        if (err.type==='BailoutError') {
+            console.log(err.stack)
+            this._tapWriter.bailout(err.message)
+        }
+        else {
+            console.log('_runTestFile err:',err)
+        }
+    }
+}
+
+/*TestRunner.prototype._runTestFiles = function(testFilePaths){
     var testCount = 0
 
     this._tapWriter.version()
 
     return mkdirpAsync(this._getCurrentBrowserReferenceScreenshotDir())
+    .then(()=>mkdirpAsync(this._getCurrentBrowserReferenceErrorDir()))
     .then(() => {
         return Promise.each(testFilePaths, path => {
             this._currentTestfilePath=path
@@ -272,22 +354,33 @@ TestRunner.prototype._runTestFiles = function(testFilePaths){
             console.log('_runTestFiles err:',err)
         }
     })
-},
+}*/
 
 TestRunner.prototype._getCurrentBrowserReferenceScreenshotDir = function(){
     return pathlib.resolve(REF_SCREENSHOT_BASE_DIR, this._currentBrowserName)
-},
+}
 
 TestRunner.prototype._getCurrentTestModuleReferenceScreenshotDir = function(){
     var testfilePathSlug = slugifyPath(this._currentTestfilePath)
 
     return pathlib.resolve(this._getCurrentBrowserReferenceScreenshotDir(), testfilePathSlug)
-},
+}
+
+TestRunner.prototype._getCurrentBrowserReferenceErrorDir = function(){
+    return pathlib.resolve(ERRORS_SCREENSHOT_BASE_DIR, this._currentBrowserName)
+}
+
+TestRunner.prototype._getCurrentTestModuleReferenceErrorDir=function(){
+    var testfilePathSlug=slugifyPath(this._currentTestfilePath)
+
+    return pathlib.resolve(this._getCurrentBrowserReferenceErrorDir(), testfilePathSlug)
+}
 
 TestRunner.prototype._runTestModule = function(fn){
     this._log.trace('_runTestModule')
 
     return mkdirpAsync(this._getCurrentTestModuleReferenceScreenshotDir())
+    .then(()=>mkdirpAsync(this._getCurrentTestModuleReferenceErrorDir()))
     .then(()=>{
         var testDatas = []
 
@@ -321,7 +414,7 @@ TestRunner.prototype._runTestModule = function(fn){
             
         })
     })
-},
+}
 
 // TODO add next/prev command as param in before/after calls
 TestRunner.prototype._wrapFunctionWithSideEffects = function(fn, cmdType){
@@ -330,7 +423,7 @@ TestRunner.prototype._wrapFunctionWithSideEffects = function(fn, cmdType){
         .then(_=>fn(...args))
         .then(_=>this._afterCommand(this.directAPI, {type:cmdType}))
     }
-},
+}
 
 TestRunner.prototype._execCommand_withAPI = Promise.method(function(cmd, api){
     switch(cmd.type){
@@ -339,7 +432,7 @@ TestRunner.prototype._execCommand_withAPI = Promise.method(function(cmd, api){
         case 'waitForVisible': return api.waitForVisible(cmd.selector)
         case 'waitWhileVisible': return api.waitWhileVisible(cmd.selector)
         case 'focus': return api.focus(cmd.selector)
-        case 'assertScreenshot': return api.assertScreenshot()
+        case 'assert': return api.assert()
         // case 'scroll': return api.()
         case 'isVisible': return api.isVisible(cmd.selector)
         default: throw new Error('Unknown cmd.type '+cmd.type)
@@ -466,7 +559,13 @@ TestRunner.prototype._setValue_direct = Promise.method(function (selector, value
 })
 
 TestRunner.prototype._pressKey_direct = Promise.method(function (selector, keyCode, description) {
-   throw new Error('TODO _pressKey_direct') 
+    this._log.info(`pressKey: ${ keyCode } (${ ellipsis(selector,ELLIPSIS_LIMIT) })`)
+
+    return this._browserPuppeteer.execCommand({
+        type: 'pressKey',
+        selector: selector,
+        keyCode: keyCode,
+    })
 })
 
 TestRunner.prototype._waitForVisible_direct = Promise.method(function (selector, timeout) {
@@ -480,7 +579,7 @@ TestRunner.prototype._waitForVisible_direct = Promise.method(function (selector,
     // TODO don't use Promise timeouts
     // .timeout(timeout || DEFAULT_WAITXVISIBLE_TIMEOUT)
     .catch(e=>{
-        this._tapWriter.notOk({ type: 'waitForVisible', message: e.message })
+        this._tapWriter.notOk('waitForVisible - ' + e.message)
 
         if (this._conf.bailout) {
             throw createError('BailoutError', e.message)
@@ -496,7 +595,7 @@ TestRunner.prototype._waitWhileVisible_direct = Promise.method(function (selecto
         selector: selector
     })
     .catch(e=>{
-        this._tapWriter.notOk({ type: 'waitWhileVisible', message: e.message })
+        this._tapWriter.notOk('waitWhileVisible - ' + e.message)
 
         if (this._conf.bailout) {
             throw createError('BailoutError', e.message)
@@ -506,13 +605,18 @@ TestRunner.prototype._waitWhileVisible_direct = Promise.method(function (selecto
 
 TestRunner.prototype._focus_direct = Promise.method(function (selector, description) {
     this._log.info('focus: '+selector)
+    description=description||'focus - selector: '+selector
 
     return this._browserPuppeteer.execCommand({
         type: 'focus',
         selector: selector
     })
+    .then(()=>{
+        // this._tapWriter.pass({type:'focus',message:description})
+    })
     .catch(e=>{
-        this._tapWriter.notOk({ type: 'focus', message: e.message })
+        // this._tapWriter.notOk('focus - '+ e.message)
+        this._tapWriter.diagnostic('WARNING - focus - '+e.message)
 
         if (this._conf.bailout) {
             throw createError('BailoutError', e.message)
@@ -529,7 +633,7 @@ TestRunner.prototype._scroll_direct = Promise.method(function(selector, scrollTo
         scrollTop: scrollTop
     })
     .catch(e=>{
-        this._tapWriter.notOk({ type: 'scroll', message: e.message })
+        this._tapWriter.notOk('scroll - ' + e.message)
 
         if (this._conf.bailout) {
             throw createError('BailoutError', e.message)
@@ -550,10 +654,13 @@ TestRunner.prototype._comment = Promise.method(function (comment) {
     this._tapWriter.comment(comment)
 })
 
+
+
 // TODO remove sync codes
-TestRunner.prototype._assertScreenshot = Promise.method(function(){
-    var ssCount = this._screenshotAssertCount
+TestRunner.prototype._assert = Promise.method(function(){
+    var ssCount = this._assertCount
     var refImgDir = this._getCurrentTestModuleReferenceScreenshotDir()
+    var failedImgDir = this._getCurrentTestModuleReferenceErrorDir()
     var refImgName = ssCount+'.png'
     var refImgPath = pathlib.resolve(refImgDir, refImgName)
     var refImgPathRelative = pathlib.relative(pathlib.resolve(REF_SCREENSHOT_BASE_DIR), refImgPath)
@@ -563,16 +670,18 @@ TestRunner.prototype._assertScreenshot = Promise.method(function(){
         try {
             fs.statSync(refImgPath)
             var refImg = PNG.sync.read(fs.readFileSync(refImgPath))
-            if (imgcmp(img, refImg)) {
-                this._tapWriter.ok('screenshot assert: '+refImgPathRelative) // TODO customizable message
+            let imgDiffResult=bufferImageDiff(img, refImg, {pixelThreshold:PIXEL_THRESHOLD, imageThreshold:IMG_THRESHOLD})
+
+            if (imgDiffResult.same) {
+                this._tapWriter.ok('screenshot assert ('+toPercent(imgDiffResult.difference)+'): '+refImgPathRelative) // TODO customizable message
             }
             else {
                 // TODO save image for later comparison
-                this._tapWriter.notOk('screenshot assert: '+refImgPathRelative) // TODO customizable message
-                
-                var failedImgName = ssCount + '.FAIL.png'
-                var failedImgPath = pathlib.resolve(refImgDir, failedImgName)
-                var failedImgPathRelative = pathlib.relative(pathlib.resolve(REF_SCREENSHOT_BASE_DIR), failedImgPath)
+                this._tapWriter.notOk('screenshot assert ('+toPercent(imgDiffResult.difference)+'): '+refImgPathRelative) // TODO customizable message
+
+                var failedImgName = ssCount + '.png'
+                var failedImgPath = pathlib.resolve(failedImgDir, failedImgName)
+                var failedImgPathRelative = pathlib.relative(pathlib.resolve(ERRORS_SCREENSHOT_BASE_DIR), failedImgPath)
 
                 var failedPng = new PNG(img)
                 failedPng.data=img.data
@@ -602,7 +711,7 @@ TestRunner.prototype._assertScreenshot = Promise.method(function(){
         this._tapWriter.notOk('screenshot assert: '+refImgName + ', '+ e) // TODO customizable message
     })
     .finally(_=>{
-        this._screenshotAssertCount++
+        this._assertCount++
     })
 })
 
@@ -612,24 +721,6 @@ function __toString(v){return Object.prototype.toString.call(v)}
 function __isArray(v){return __toString(v)==='[object Array]'}
 
 function createError(type,msg){var e=new Error(msg);e.type=type;return e}
-
-const PX_COLOR_DIFF_THRES = 3/100
-
-function imgcmp(a,b){
-    // TODO provide a reason for failure? move to separate module
-    if (a.width!==b.width || a.height !== b.height)return false
-    if (a.data.equals(b.data))return true
-    if (a.data.length !== b.data.length)return false
-
-    for (var i=0,len=a.data.length;i<len;i++){
-        if (a.data[i] === b.data[i])continue
-        var diffPc = (a.data[i] - b.data[i])/b.data[i]
-        if (diffPc<0)diffPc=-diffPc
-        if (diffPc > PX_COLOR_DIFF_THRES) {
-            return false
-        }
-    }
-}
 
 function slugifyPath(s){return s.replace(/[\/\\]+/g, '___').replace(/[^a-z0-9_-]/ig, '_')}
 
@@ -645,4 +736,8 @@ function multiGlobAsync(globs){
         })
     })
     .then(()=>paths)
+}
+
+function toPercent(v, decimals=4) {
+    return (v*100).toFixed(decimals)
 }

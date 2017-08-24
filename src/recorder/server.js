@@ -1,12 +1,13 @@
+var MODULES_PATH='../../modules/'
 var Promise=require('bluebird')
-var BrowserPuppeteer=require('browser-puppeteer').BrowserPuppeteer
-var MESSAGES=require('browser-puppeteer').MESSAGES
+var BrowserPuppeteer=require(MODULES_PATH + 'browser-puppeteer').BrowserPuppeteer
+var MESSAGES=require(MODULES_PATH + 'browser-puppeteer').MESSAGES
 var WS=require('ws')
 var http=require('http')
 var fs=require('fs')
-var JSONF=require('jsonf')
+var JSONF=require(MODULES_PATH + 'jsonf')
 var pathlib=require('path')
-var Loggr=require('loggr')
+var Loggr=require(MODULES_PATH + 'loggr')
 
 module.exports=Server
 
@@ -42,7 +43,7 @@ Server.prototype.start=Promise.method(function(){
 
 	this._puppeteer.on(MESSAGES.UPSTREAM.SELECTOR_BECAME_VISIBLE, this._proxyMessage)
     this._puppeteer.on(MESSAGES.UPSTREAM.CAPTURED_EVENT, this._proxyMessage)
-	this._puppeteer.on(MESSAGES.UPSTREAM.INSERT_SCREENSHOT_ASSERT, this._proxyMessage)
+	this._puppeteer.on(MESSAGES.UPSTREAM.INSERT_ASSERTION, this._proxyMessage)
 
     this._puppeteer.on('puppetConnected', ()=>{
         // no return
@@ -70,7 +71,8 @@ Server.prototype._onRecRequest=function(req,resp){
 	if (req.url==='/'){
         resp.end(
             fs.readFileSync(pathlib.resolve(__dirname, 'ui/recorder-ui.html'), { encoding: 'utf-8' })
-            .replace('[[CONFIG]]', JSONF.stringify(this._conf).replace(/'/g, '\\\''))
+            .replace('[[CONFIG]]', JSONF.stringify(this._conf).replace(/\\/g, '\\\\').replace(/'/g, "\\'"))
+            .replace('[[STYLE]]', fs.readFileSync(pathlib.resolve(__dirname, 'ui/app/style.css')))
         )
     }
     else if (req.url==='/script.js') {

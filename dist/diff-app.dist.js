@@ -1,6 +1,52 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
 'use strict'
 
+// TODO support ES6 arrow fns
+
+var JSONF=exports
+
+JSONF.stringify=function(o){
+    return JSON.stringify(o, function(key,val){
+        if (typeof val==='function'){
+            return val.toString()
+        }
+        else {
+            return val
+        }
+    })
+}
+
+JSONF.parse=function(s){
+    var i=0
+    return JSON.parse(s, function(key, val){
+        if (isStringAFunction(val)){
+            try {
+                return new Function(
+                    // http://www.kristofdegrave.be/2012/07/json-serialize-and-deserialize.html
+                    val.match(/\(([^)]*)\)/)[1],
+                    val.match(/\{([\s\S]*)\}/)[1]
+                )
+            }
+            catch (e){
+                // TODO throw a big fat error?
+                console.log('JSONF err: '+val)
+                console.error(e)
+                return val
+            }
+        }
+
+        return val
+    })
+}
+
+function isStringAFunction(s){
+    return /^function\s*\(/.test(s) ||
+        /^function\s+[a-zA-Z0-9_$]+\s*\(/.test(s)
+}
+
+},{}],2:[function(require,module,exports){
+'use strict'
+
 exports.byteLength = byteLength
 exports.toByteArray = toByteArray
 exports.fromByteArray = fromByteArray
@@ -114,7 +160,7 @@ function fromByteArray (uint8) {
   return parts.join('')
 }
 
-},{}],2:[function(require,module,exports){
+},{}],3:[function(require,module,exports){
 (function (process,global){
 /* @preserve
  * The MIT License (MIT)
@@ -5736,7 +5782,7 @@ module.exports = ret;
 },{"./es5":13}]},{},[4])(4)
 });                    ;if (typeof window !== 'undefined' && window !== null) {                               window.P = window.Promise;                                                     } else if (typeof self !== 'undefined' && self !== null) {                             self.P = self.Promise;                                                         }
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"_process":9}],3:[function(require,module,exports){
+},{"_process":9}],4:[function(require,module,exports){
 /*!
  * The buffer module from node.js, for the browser.
  *
@@ -5843,7 +5889,7 @@ function from (value, encodingOrOffset, length) {
     throw new TypeError('"value" argument must not be a number')
   }
 
-  if (value instanceof ArrayBuffer) {
+  if (isArrayBuffer(value)) {
     return fromArrayBuffer(value, encodingOrOffset, length)
   }
 
@@ -6103,7 +6149,7 @@ function byteLength (string, encoding) {
   if (Buffer.isBuffer(string)) {
     return string.length
   }
-  if (isArrayBufferView(string) || string instanceof ArrayBuffer) {
+  if (isArrayBufferView(string) || isArrayBuffer(string)) {
     return string.byteLength
   }
   if (typeof string !== 'string') {
@@ -7435,6 +7481,14 @@ function blitBuffer (src, dst, offset, length) {
   return i
 }
 
+// ArrayBuffers from another context (i.e. an iframe) do not pass the `instanceof` check
+// but they should be treated as valid. See: https://github.com/feross/buffer/issues/166
+function isArrayBuffer (obj) {
+  return obj instanceof ArrayBuffer ||
+    (obj != null && obj.constructor != null && obj.constructor.name === 'ArrayBuffer' &&
+      typeof obj.byteLength === 'number')
+}
+
 // Node 0.10 supports `ArrayBuffer` but lacks `ArrayBuffer.isView`
 function isArrayBufferView (obj) {
   return (typeof ArrayBuffer.isView === 'function') && ArrayBuffer.isView(obj)
@@ -7444,7 +7498,7 @@ function numberIsNaN (obj) {
   return obj !== obj // eslint-disable-line no-self-compare
 }
 
-},{"base64-js":1,"ieee754":4}],4:[function(require,module,exports){
+},{"base64-js":2,"ieee754":5}],5:[function(require,module,exports){
 exports.read = function (buffer, offset, isLE, mLen, nBytes) {
   var e, m
   var eLen = nBytes * 8 - mLen - 1
@@ -7530,7 +7584,7 @@ exports.write = function (buffer, value, offset, isLE, mLen, nBytes) {
   buffer[offset + i - d] |= s * 128
 }
 
-},{}],5:[function(require,module,exports){
+},{}],6:[function(require,module,exports){
 /*!
  * jQuery JavaScript Library v3.2.1
  * https://jquery.com/
@@ -17785,58 +17839,6 @@ if ( !noGlobal ) {
 return jQuery;
 } );
 
-},{}],6:[function(require,module,exports){
-'use strict'
-
-// TODO tests
-// TODO support ES6 arrow fns
-
-var JSONF=exports
-
-var FN_TYPE='JSONF:Function'
-
-
-
-JSONF.stringify=function(o){
-    return JSON.stringify(o, function(key,val){
-        if (typeof val==='function'){
-            return {
-                type: FN_TYPE,
-                data: val.toString().replace(/\r/g, '\\r').replace(/\n/g, '\\n')
-            }
-        }
-        else {
-            return val
-        }
-    })
-}
-
-JSONF.parse=function(s){
-    var i=0
-    return JSON.parse(s, function(key, val){
-        if (val&&val.type===FN_TYPE){
-            try {
-                return new Function(
-                    // http://www.kristofdegrave.be/2012/07/json-serialize-and-deserialize.html
-                    val.data.match(/\(([^)]+?)\)/)[1],
-                    val.data.match(/\{([\s\S]+)\}/)[1]
-                )
-            }
-            catch (e){
-                // TODO throw a big fat error
-                return val
-            }
-        }
-        else {
-            return val
-        }
-        /*if (typeof val!=='string')return val
-        if (val.indexOf(FN_TYPE)<0)return val
-
-        */
-    })
-}
-
 },{}],7:[function(require,module,exports){
 (function (global){
 ;(function() {
@@ -19501,7 +19503,7 @@ process.umask = function() { return 0; };
 
 var $ = require('jquery');
 var m = require('mithril');
-var JSONF = require('jsonf');
+var JSONF = require('../../../../modules/jsonf');
 var Buffer = require('buffer');
 var pathlib = require('path');
 var Promise = require('bluebird');
@@ -19514,6 +19516,15 @@ window.DiffApp = DiffApp;
 window.$ = $;
 window.m = m;
 
+var session = {
+	getDiffDescriptors: function getDiffDescriptors() {
+		return get(window.location.origin + '/get-diff-descriptors');
+	},
+	getDiffImagesById: function getDiffImagesById(id) {
+		return get(window.location.origin + '/get-diff-images-by-id?id=' + id);
+	}
+};
+
 function DiffApp(conf) {
 	if (typeof conf === 'string') conf = JSONF.parse(conf);
 
@@ -19522,8 +19533,9 @@ function DiffApp(conf) {
   * id: path + number
   * 
   */
-	this.diffs = [];
-	this.count = 0;
+	this._diffDescriptors = [];
+	this._currentDiffIdx = 0;
+	this._currentImages = null;
 }
 
 DiffApp.prototype.start = function () {
@@ -19535,12 +19547,32 @@ DiffApp.prototype.start = function () {
 		}
 
 		// no return
-	};get(window.location.origin + '/get-diffs').then(function (data) {
-		self.diffs = data;
-		m.redraw();
-	});
+	};this.initApp();
 
 	m.mount(document.querySelector('#mount'), MountComp);
+};
+
+DiffApp.prototype.initApp = function () {
+	var self = this;
+
+	// no return
+	session.getDiffDescriptors().then(function (descriptors) {
+		self._diffDescriptors = descriptors;
+	}).then(function () {
+		if (self.hasDiffs()) {
+			return session.getDiffImagesById(self._diffDescriptors[self._currentDiffIdx].id).then(function (images) {
+				self._currentImages = images;
+			});
+		}
+	}).catch(function (err) {
+		console.error(err);
+	}).finally(function () {
+		m.redraw();
+	});
+};
+
+DiffApp.prototype.hasDiffs = function () {
+	return this._diffDescriptors.length > 0;
 };
 
 var RootComp = {
@@ -19554,7 +19586,10 @@ var RootComp = {
 			m(
 				'div',
 				{ 'class': 'header' },
-				'0/0 \xA0 \xA0',
+				app._currentDiffIdx,
+				'/',
+				app._diffDescriptors.length,
+				'\xA0 \xA0',
 				m(
 					'button',
 					null,
@@ -19570,37 +19605,47 @@ var RootComp = {
 			m(
 				'div',
 				{ 'class': 'body' },
-				app.diffs.map(function (diff) {
-					return m(
+				app.hasDiffs() ? m(
+					'div',
+					{ 'class': 'diff' },
+					m(
 						'div',
-						{ 'class': 'diff' },
-						m(
-							'div',
-							{ 'class': 'diff--left' },
-							m('img', { src: 'data:url(image/png;base64,' + diff.refImg.base64 })
-						),
-						m('div', { 'class': 'diff--sep' }),
-						m(
-							'div',
-							{ 'class': 'diff--right' },
-							m('img', { src: 'data:url(image/png;base64,' + diff.failImg.base64 }),
-							diff.diffBounds.map(function (bounds) {
-								var imgW = diff.refImg.width;
-								var imgH = diff.refImg.height;
+						{ 'class': 'diff--left' },
+						app._currentImages ? m('img', { src: 'data:image/png;base64,' + app._currentImages.refImg }) : '(no image)'
+					),
+					m('div', { 'class': 'diff--sep' }),
+					m(
+						'div',
+						{ 'class': 'diff--right' },
+						app._currentImages ? m('img', { src: 'data:image/png;base64,' + app._currentImages.diffImg }) : '(no image)'
+					)
+				) : 'No diffs'
 
-								var topPc = bounds.y1 / imgH * 100;
-								var leftPc = bounds.x1 / imgW * 100;
-								var widthPc = bounds.width / imgW * 100;
-								var heightPc = bounds.height / imgH * 100;
+				/*app._diffDescriptors.map(function(diff){return <div class="diff">
+    		<div class="diff--left">
+    			<img src={'data:url(image/png;base64,'+diff.refImg.base64} />
+    		</div>
+    		<div class="diff--sep"></div>
+    		<div class="diff--right">
+    			<img src={'data:url(image/png;base64,'+diff.failImg.base64} />
+    			{
+    				diff.diffBounds.map(function(bounds){
+    					var imgW=diff.refImg.width
+    					var imgH=diff.refImg.height
+    						var topPc=bounds.y1/imgH*100
+    					var leftPc=bounds.x1/imgW*100
+    					var widthPc=bounds.width/imgW*100
+    					var heightPc=bounds.height/imgH*100
+    						return <div class="diff--bounds" style={ ['top:', topPc, '%; left:', leftPc, '%; width: ', widthPc, '%; height: ', heightPc, '%'].join('') }></div>
+    				})
+    			}
+    		</div>
+    		</div>
+    })*/
 
-								return m('div', { 'class': 'diff--bounds', style: ['top:', topPc, '%; left:', leftPc, '%; width: ', widthPc, '%; height: ', heightPc, '%'].join('') });
-							})
-						)
-					);
-				})
 			)
 		);
 	}
 };
 
-},{"bluebird":2,"buffer":3,"jquery":5,"jsonf":6,"mithril":7,"path":8}]},{},[10]);
+},{"../../../../modules/jsonf":1,"bluebird":3,"buffer":4,"jquery":6,"mithril":7,"path":8}]},{},[10]);

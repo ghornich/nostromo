@@ -1,0 +1,7 @@
+{
+    "extends": "../../../../node_modules/eslint-config-ghornich-es5/eslintrc.js",
+    "env": {
+    	"node": true,
+    	"browser": true
+    }
+}

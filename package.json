@@ -4,9 +4,10 @@
   "description": "",
   "main": "src/cli.js",
   "scripts": {
-    "build": "npm run build-ui && npm run build-diff-app",
+    "build": "npm run build-ui && npm run build-diff-app && npm run build-browser-puppet",
     "build-ui": "babel src/recorder/ui/app/recorder-app.jsx -o src/recorder/ui/app/babel-temp.js && browserify src/recorder/ui/app/babel-temp.js -o dist/recorder-app.dist.js",
     "build-diff-app": "babel src/differ/web-app/src/diff-app.jsx -o src/differ/web-app/build/babel-temp.js && browserify src/differ/web-app/build/babel-temp.js -o dist/diff-app.dist.js",
+    "build-browser-puppet": "node modules/browser-puppeteer/build/build.js",
     "watch": "watchmen \"npm run build\" src",
     "watch-ui": "watchmen \"npm run build-ui\" src/recorder/ui",
     "watch-diff-app": "watchmen \"npm run build-diff-app\" src/differ/web-app/src"
@@ -14,24 +15,20 @@
   "author": "ghornich",
   "dependencies": {
     "bluebird": "^3.5.0",
-    "browser-puppeteer": "github:ghornich/browser-puppeteer",
-    "browser-spawners": "github:ghornich/browser-spawners",
-    "buffer-image-diff": "github:ghornich/buffer-image-diff",
     "glob": "^7.1.2",
     "jquery": "^3.2.1",
-    "jsonf": "github:ghornich/jsonf",
     "lodash": "^4.17.4",
-    "loggr": "github:ghornich/loggr",
+    "lodash.debounce": "^4.0.8",
+    "lodash.defaults": "^4.2.0",
     "minimist": "^1.2.0",
     "mithril": "^1.1.1",
     "mkdirp": "^0.5.1",
     "pngjs": "^3.2.0",
+    "rfr": "^1.2.3",
+    "rimraf": "^2.6.1",
     "schema-inspector": "^1.6.8",
-    "screenshot-js": "github:ghornich/screenshot-js",
-    "shallow-defaults": "github:ghornich/shallow-defaults",
-    "tap-writer": "github:ghornich/tap-writer",
-    "ws": "^3.0.0",
-    "ws4ever": "github:ghornich/ws4ever"
+    "serialize-javascript": "^1.4.0",
+    "ws": "^3.0.0"
   },
   "license": "MIT",
   "bin": "src/cli.js",
@@ -41,6 +38,9 @@
     "babel-preset-es2015": "^6.24.1",
     "babel-preset-react": "^6.24.1",
     "browserify": "^14.3.0",
+    "eslint": "^4.2.0",
+    "eslint-config-ghornich": "github:ghornich/eslint-config-ghornich",
+    "eslint-config-ghornich-es5": "github:ghornich/eslint-config-ghornich-es5",
     "tape": "^4.7.0",
     "watchmen": "github:ghornich/watchmen"
   }

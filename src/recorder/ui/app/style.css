@@ -1,0 +1,90 @@
+/* reset */
+html, body {
+    margin: 0;
+    font-family: 'Open Sans', sans-serif;
+    font-size: 90%;
+}
+
+p, pre {
+    margin: 0;
+    padding: 0;
+}
+
+select, button {
+    font-family: inherit;
+    font-size: inherit;
+}
+
+select:focus, button:focus {
+    outline: none;
+}
+
+/* util */
+
+.hidden {display:none;}
+
+/* layout */
+
+nav {
+    padding: 0.3em 2em;
+    background: #525252;
+    display: flex;
+}
+
+section {
+    padding: 1em 2em;
+}
+
+.flex-row {
+    display: flex;
+    align-items: center;
+}
+
+/* components */
+
+button {
+    border: 1px solid black;
+    background: rgb(173, 229, 243);
+    padding: 0.5em;
+    color: #000;
+    border-radius: 0.3em;
+    cursor: pointer;
+    margin: 0 0.5em;
+}
+
+button:active {
+    background: #fff;
+    color: #000;
+}
+
+.button--danger {
+    background: #f15050;
+    color: #fff;
+}
+
+.button--toggle-on {
+    background: #80f780;
+}
+
+.button--toggle-off {
+    background: #e4e4e4;
+}
+
+.clear-recording-btn {
+    margin-left: auto;
+}
+
+.output-format-dropdown {
+    margin-left: 0.5em;
+    border: 1px #d8d8d8 solid;
+    padding: 0.2em 0.4em;
+}
+
+.output {
+    display: inline-block;
+    background: #fff9ee;
+    border: 1px solid #ceb68b;
+    padding: 1em;
+    font-size: 125%;
+    min-width: 30%;
+}

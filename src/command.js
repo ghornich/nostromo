@@ -9,7 +9,7 @@ var TYPES = Command.TYPES = {
 	WAIT_FOR_VISIBLE: 'waitForVisible',
 	WAIT_WHILE_VISIBLE: 'waitWhileVisible',
 	FOCUS: 'focus',
-	ASSERT_SCREENSHOT: 'assertScreenshot',
+	ASSERT: 'assert',
 
 }
 

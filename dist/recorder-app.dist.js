@@ -1,4 +1,297 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
+exports.UPSTREAM = {
+    // { type, selector, [warning] }
+    SELECTOR_BECAME_VISIBLE: 'selector-became-visible',
+
+    // { type, event: { type, timestamp, [selector,] [target,] ... } }
+    CAPTURED_EVENT: 'captured-event',
+
+    // general acknowledgement { type, result }
+    ACK: 'ack',
+
+    // general failure { type, error }
+    NAK: 'nak',
+
+    // insert assertion
+    INSERT_ASSERTION: 'insert-assertion',
+};
+
+exports.DOWNSTREAM = {
+    // { type, execId, command: { type, ... } }
+    EXEC_COMMAND: 'exec-command',
+
+    // { type, ??? }
+    EXEC_FUNCTION: 'exec-function',
+
+    // { type, selectors }
+    SET_SELECTOR_BECAME_VISIBLE_DATA: 'set-selector-became-visible-data',
+
+    // TODO use SET_*
+    // { type }
+    SHOW_SCREENSHOT_MARKER: 'show-screenshot-marker',
+    HIDE_SCREENSHOT_MARKER: 'hide-screenshot-marker',
+
+    // { type, value }
+    SET_TRANSMIT_EVENTS: 'set-transmit-events',
+
+    // { type, url }
+    REOPEN_URL: 'reopen-url',
+};
+
+},{}],2:[function(require,module,exports){
+'use strict'
+
+// TODO support ES6 arrow fns
+
+var JSONF=exports
+
+JSONF.stringify=function(o){
+    return JSON.stringify(o, function(key,val){
+        if (typeof val==='function'){
+            return val.toString()
+        }
+        else {
+            return val
+        }
+    })
+}
+
+JSONF.parse=function(s){
+    var i=0
+    return JSON.parse(s, function(key, val){
+        if (isStringAFunction(val)){
+            try {
+                return new Function(
+                    // http://www.kristofdegrave.be/2012/07/json-serialize-and-deserialize.html
+                    val.match(/\(([^)]*)\)/)[1],
+                    val.match(/\{([\s\S]*)\}/)[1]
+                )
+            }
+            catch (e){
+                // TODO throw a big fat error?
+                console.log('JSONF err: '+val)
+                console.error(e)
+                return val
+            }
+        }
+
+        return val
+    })
+}
+
+function isStringAFunction(s){
+    return /^function\s*\(/.test(s) ||
+        /^function\s+[a-zA-Z0-9_$]+\s*\(/.test(s)
+}
+
+},{}],3:[function(require,module,exports){
+(function (process){
+var os = require('os');
+
+module.exports = Loggr;
+
+var LEVELS = Loggr.LEVELS = {
+    OFF: 0,
+    INFO: 1,
+    DEBUG: 2,
+    TRACE: 3,
+    ALL: Number.POSITIVE_INFINITY,
+};
+
+// TODO accept string levels, normalize internally to numbers
+
+// TODO more/optional outputs
+// TODO string substitution, multiple params, etc
+
+function Loggr(config) {
+    var c = config || {};
+
+    c.level = c.level || c.logLevel || LEVELS.INFO;
+    c.showTime = 'showTime' in c ? Boolean(c.showTime) : true;
+    c.namespace = c.namespace || null;
+    c.outStream = c.outStream || process.stdout;
+    c.eol = c.eol || os.EOL;
+
+    this.config = c;
+}
+
+Loggr.prototype.fork = function (newNamespace) {
+    var conf = this.config;
+
+    return new Loggr({
+        level: conf.level,
+        showTime: conf.showTime,
+        namespace: newNamespace,
+        outStream: conf.outStream,
+        eol: conf.eol,
+    });
+};
+
+Loggr.prototype._log = function (lvl, messages) {
+    if (lvl <= this.config.level) {
+        var time = '';
+        var namespace = '';
+
+        if (this.config.showTime) {
+            var d = new Date();
+            var h = ('0' + d.getHours()).slice(-2);
+            var m = ('0' + d.getMinutes()).slice(-2);
+            var s = ('0' + d.getSeconds()).slice(-2);
+            var ms = ('00' + d.getMilliseconds()).slice(-3);
+
+            time = '[' + h + ':' + m + ':' + s + '.' + ms + '] ';
+        }
+
+        if (this.config.namespace) {
+            namespace = '[' + this.config.namespace + '] ';
+        }
+
+        var message = messages
+            .map(function (msg) {
+                return String(msg);
+            })
+            .join(' ');
+
+        var levelStr = Loggr.getLevelChar(lvl) + ' ';
+
+        this.config.outStream.write(time + levelStr + namespace + message + this.config.eol);
+    }
+};
+
+Loggr.prototype.info = function () {
+    this._log(LEVELS.INFO, Array.prototype.slice.call(arguments));
+};
+
+Loggr.prototype.debug = function () {
+    this._log(LEVELS.DEBUG, Array.prototype.slice.call(arguments));
+};
+
+Loggr.prototype.trace = function () {
+    this._log(LEVELS.TRACE, Array.prototype.slice.call(arguments));
+};
+
+Loggr.getLevelChar = function (level) {
+    switch (level) {
+        case Loggr.LEVELS.INFO: return 'I';
+        case Loggr.LEVELS.DEBUG: return 'D';
+        case Loggr.LEVELS.TRACE: return 'T';
+        default: return '?';
+    }
+};
+
+}).call(this,require('_process'))
+},{"_process":11,"os":10}],4:[function(require,module,exports){
+
+if (isNode()) {
+    module.exports=Ws4ever
+}
+else {
+    window.Ws4ever=Ws4ever
+}
+
+
+function Ws4ever(url, protocols, options){
+    this._opts=Object.assign({}, {
+        retryInterval:1000
+    }, options||{})
+
+    this._url=url
+    this._protocols=protocols
+    this._ws=null
+    this._isConnecting=false
+
+    this.onopen=noop
+    this.onclose=noop
+    this.onerror=noop
+    this.onmessage=noop
+
+    Object.defineProperties(this, {
+        readyState: {
+            get: function () { return this._ws?this._ws.readyState:WebSocket.CLOSED }
+        },
+        url: {
+            get: function () { return this._url }
+        },
+    })
+
+    this._ensureConnection=this._ensureConnection.bind(this)
+    this._onWsOpen=this._onWsOpen.bind(this)
+    this._onWsClose=this._onWsClose.bind(this)
+    this._onWsError=this._onWsError.bind(this)
+    this._onWsMessage=this._onWsMessage.bind(this)
+
+    this.iid = setInterval(this._ensureConnection, this._opts.retryInterval)
+}
+
+Ws4ever.prototype.isConnected=function(){
+    return Boolean(this._ws && this._ws.readyState === WebSocket.OPEN)
+}
+
+Ws4ever.prototype.send=function(msg){
+    if (!this.isConnected())throw new Error('cannot send message, ws closed')
+    this._ws.send(msg)
+}
+
+Ws4ever.prototype._ensureConnection=function(){
+    if (this.isConnected())return
+    if (this._isConnecting)return
+
+    try {
+        console.log('_ensureConnection: connecting')
+        this._isConnecting=true
+        this._ws=new WebSocket(this._url, this._protocols)
+        this._ws.onopen=this._onWsOpen
+        this._ws.onclose=this._onWsClose
+        this._ws.onerror=this._onWsError
+        this._ws.onmessage=this._onWsMessage
+    }
+    catch(e){
+        // TODO handle or log?
+        this._isConnecting=false
+        this._ws=null
+    }
+}
+
+Ws4ever.prototype.close=function(){
+    clearInterval(this.iid)
+    this._ws.close()
+}
+
+Ws4ever.prototype._onWsOpen=function () {
+    console.log('_onWsOpen')
+    this.onopen.apply(null, arguments)
+    this._isConnecting=false
+}
+
+Ws4ever.prototype._onWsClose=function () {
+    console.log('_onWsClose')
+    this.onclose.apply(null, arguments)
+    this._isConnecting=false
+    this._ws=null
+}
+
+Ws4ever.prototype._onWsError=function () {
+    console.log('_onWsError')
+    this.onerror.apply(null, arguments)
+    // this._isConnecting=false
+    // this._ws=null
+}
+
+Ws4ever.prototype._onWsMessage=function () {
+    console.log('_onWsMessage')
+    this.onmessage.apply(null,arguments)
+}
+
+
+
+
+function noop(){}
+
+function isNode(){return typeof module==='object'&&typeof module.exports==='object'}
+
+
+
+},{}],5:[function(require,module,exports){
 (function (process,global){
 /* @preserve
  * The MIT License (MIT)
@@ -5620,402 +5913,7 @@ module.exports = ret;
 },{"./es5":13}]},{},[4])(4)
 });                    ;if (typeof window !== 'undefined' && window !== null) {                               window.P = window.Promise;                                                     } else if (typeof self !== 'undefined' && self !== null) {                             self.P = self.Promise;                                                         }
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"_process":10}],2:[function(require,module,exports){
-// TODO use typedefs
-
-exports.UPSTREAM = {
-    // { type, selector, [warning] }
-    SELECTOR_BECAME_VISIBLE: 'selector-became-visible',
-
-    // { type, event: { type, selector, target, ... } }
-    CAPTURED_EVENT: 'captured-event',
-
-    // general acknowledgement { type, result }
-    ACK: 'ack',
-
-    // general failure { type, error }
-    NAK: 'nak',
-
-    // insert screenshot assert
-    INSERT_SCREENSHOT_ASSERT: 'insert-screenshot-assert',
-};
-
-exports.DOWNSTREAM = {
-    // { type, execId, command: { type, ... } }
-    EXEC_COMMAND: 'exec-command',
-
-    // { type, ??? }
-    EXEC_FUNCTION: 'exec-function',
-
-    // { type, selectors }
-    SET_SELECTOR_BECAME_VISIBLE_DATA: 'set-selector-became-visible-data',
-
-    // TODO use SET_*
-    // { type }
-    SHOW_SCREENSHOT_MARKER: 'show-screenshot-marker',
-    HIDE_SCREENSHOT_MARKER: 'hide-screenshot-marker',
-
-    // { type, value }
-    SET_TRANSMIT_EVENTS: 'set-transmit-events',
-};
-
-},{}],3:[function(require,module,exports){
-(function () {
-	'use strict';
-
-	// TODO preferred selectors?
-
-	var NodeUtils = {}
-
-	UniqueSelector._SelectorElement = SelectorElement
-	UniqueSelector._SelectorElementList = SelectorElementList
-	UniqueSelector._NodeUtils = NodeUtils
-
-	// -----------------------
-
-	if (typeof module === 'object' && typeof module.exports === 'object' && typeof exports === 'object') {
-		exports = module.exports = UniqueSelector
-	}
-	else {
-		window.UniqueSelector = UniqueSelector
-	}
-
-	// -----------------------
-
-	function SelectorElement(node) {
-		var nodeSelectorData = SelectorElement.getNodeSelectorData(node)
-
-		this._node = node
-		this._rawSelector = nodeSelectorData.selector,
-		this._type = nodeSelectorData.type,
-		this._active = true,
-		this._useNthChild = false,
-		this._nthChild = Array.prototype.indexOf.call(node.parentNode.children, node) + 1
-
-		Object.defineProperties(this, {
-			node: {
-				get: function () {
-					return this._node
-				},
-				set: function () {
-					throw new Error('Cannot set read-only property "node"')
-				}
-			},
-			// TODO unit test
-			rawSelector: {
-				get: function () {
-					if (!this._active) {
-						return null
-					}
-
-					return this._rawSelector
-				},
-				set: function (val) {
-					// TODO enforce selector type?
-					this._rawSelector = val
-				}
-			},
-			selector: {
-				get: function () {
-					if (!this._active) {
-						return null
-					}
-
-					return this._rawSelector + (this._useNthChild ? ':nth-child(' + this._nthChild + ')' : '')
-				},
-				set: function () {
-					throw new Error('Cannot set read-only property "selector"')
-				}
-			},
-			type: {
-				get: function () {
-					return this._type
-				},
-				set: function () {
-					throw new Error('Cannot set read-only property "type"')
-				}
-			},
-			active: {
-				get: function () {
-					return this._active
-				},
-				set: function (val) {
-					if (typeof val !== 'boolean') {
-						throw new Error('Invalid type for "active"')
-					}
-
-					this._active = val
-				}
-			},
-			useNthChild: {
-				get: function () {
-					return this._useNthChild
-				},
-				set: function (val) {
-					if (typeof val !== 'boolean') {
-						throw new Error('Invalid type for "useNthChild"')
-					}
-
-					this._useNthChild = val
-				}
-			},
-			// nthChild: {
-			//  get: function () { return this._nthChild },
-			//  set: function () { throw new Error('Cannot set read-only property "nthChild"') }
-			// }
-		})
-
-		Object.seal(this)
-	}
-
-	SelectorElement.TYPE = {
-		ID: 0,
-		CLASS: 1,
-		ATTR: 2,
-		TAG: 3
-	}
-
-	SelectorElement.ERROR = {
-		INVALID_NODE: 0
-	}
-
-	/**
-	 * [getSelectorStringData description]
-	 * @param  {[type]} node [description]
-	 * @return {Object} { selector: String, type: Number }
-	 */
-	SelectorElement.getNodeSelectorData = function (node) {
-		if (!node || !('tagName' in node)) {
-			var error = new Error('SelectorElement::getNodeSelectorData: invalid node');
-			error.type = SelectorElement.ERROR.INVALID_NODE
-			throw error
-		}
-
-		if (NodeUtils.hasId(node)) {
-			return {
-				selector: '#' + NodeUtils.getId(node),
-				type: SelectorElement.TYPE.ID
-			}
-		}
-
-		if (NodeUtils.hasClass(node)) {
-			return {
-				selector: '.' + NodeUtils.getClass(node).replace(/ +/g, '.'),
-				type: SelectorElement.TYPE.CLASS
-			}
-		}
-
-		// TODO custom attributes?
-
-		var maybeNameAttr = (node.getAttribute('name') || '').trim(); 
-
-		if (maybeNameAttr.length > 0) {
-			return {
-				selector: node.tagName.toLowerCase() + '[name="' + maybeNameAttr + '"]',
-				type: SelectorElement.TYPE.ATTR
-			}
-		}
-
-		// TODO other common selectors?
-
-		return {
-			selector: node.tagName.toLowerCase(),
-			type: SelectorElement.TYPE.TAG
-		}
-	}
-
-	// -----------------------
-
-	function SelectorElementList(options) {
-		this._opts = optionDefaults(options, {
-			querySelectorAll: document.querySelectorAll.bind(document)
-		})
-
-		this._selectorElements = []
-
-		Object.seal(this)
-	}
-
-	SelectorElementList.prototype.getSelectorPath = function () {
-		return this._selectorElements
-			.map(function (selectorElement) {
-				return selectorElement.selector
-			})
-			.filter(function (selector) { return Boolean(selector) })
-			.join(' ')
-			.trim()
-			.replace(/ +/g, ' ');
-	}
-
-	SelectorElementList.prototype.addElement = function (element) {
-		this._selectorElements.unshift(element)
-	}
-
-	SelectorElementList.prototype.getAmbiguity = function () {
-		return this._opts.querySelectorAll(this.getSelectorPath()).length
-	}
-
-	SelectorElementList.prototype.isUnique = function () {
-		return this.getAmbiguity() === 1;
-	}
-
-	SelectorElementList.prototype.simplify = function () {
-		var ambiguity = this.getAmbiguity()
-
-		for (var i = 0, len = this._selectorElements.length; i < len - 1; i++) {
-			var selectorElement = this._selectorElements[i]
-
-			if (!selectorElement.active) {
-				continue
-			}
-
-			selectorElement.active = false
-
-			var newAmbiguity = this.getAmbiguity()
-
-			if (ambiguity !== newAmbiguity) {
-				selectorElement.active = true
-			}
-
-
-
-		}
-	}
-	
-	// TODO if selectorElement is type CLASS and >1 classnames: simplify classnames
-
-	SelectorElementList.prototype.simplifyClasses = function () {
-		var ambiguity = this.getAmbiguity()
-
-		for (var i = 0, len = this._selectorElements.length; i < len - 1; i++) {
-			var selectorElement = this._selectorElements[i]
-
-			if (!selectorElement.active || selectorElement.type !== SelectorElement.TYPE.CLASS) {
-				return
-			}
-
-			// 	var originalSelector = selectorElement.rawSelector
-			// 	var classNames = originalSelector.split(/(?=\.)/g)
-			// 	var ignoredClassIdxs = []
-			
-			// 	if (classNames.length > 1) {
-			// 		for (var classIdx = 0, classLen = classNames.length; classIdx < classLen; classIdx++) {
-			// 			var className = classNames[classIdx]
-
-						
-			// 		}
-			// 	}
-		}
-
-	}
-
-	/**
-	 * add "nth-child"s from back until selector becomes unique
-	 */
-	SelectorElementList.prototype.uniqueify = function () {
-		var ambiguity = this.getAmbiguity()
-
-		for (var i = this._selectorElements.length - 1; i >= 0; i--) {
-			var selectorElement = this._selectorElements[i]
-			var prevActiveValue = selectorElement.active
-
-			selectorElement.active = true
-			selectorElement.useNthChild = true
-
-			var newAmbiguity = this.getAmbiguity()
-
-			// TODO error check: newAmbiguity < 1
-
-			if (newAmbiguity < ambiguity) {
-				ambiguity = newAmbiguity
-
-				if (ambiguity === 1) {
-					break
-				}
-			}
-			else {
-				selectorElement.useNthChild = false
-				selectorElement.active = prevActiveValue
-			}
-		}
-	}
-
-	// -----------------------
-
-	function UniqueSelector(options) {
-		this._opts = optionDefaults(options, {
-			querySelectorAll: document.querySelectorAll.bind(document)
-		})
-	}
-
-	UniqueSelector.prototype.get = function(node) {
-		if (NodeUtils.hasId(node)) {
-			return '#' + NodeUtils.getId(node)
-		}
-
-		var selectorElementList = new SelectorElementList({
-			querySelectorAll: this._opts.querySelectorAll
-		})
-
-		var currentNode = node
-
-		while (currentNode && currentNode.tagName !== 'BODY') {
-			var selectorElement = new SelectorElement(currentNode)
-
-			selectorElementList.addElement(selectorElement);
-
-			if (selectorElement.type === SelectorElement.TYPE.ID) {
-				break
-			}
-
-			currentNode = currentNode.parentNode
-		}
-
-		selectorElementList.simplify()
-
-		if (!selectorElementList.isUnique()) {
-			selectorElementList.uniqueify()
-		}
-
-		return selectorElementList.getSelectorPath()
-	}
-
-	// -----------------------
-
-	NodeUtils.hasId = function (node) {
-		return Boolean(node && typeof node.id === 'string' && node.id.trim().length > 0)
-	}
-
-	NodeUtils.getId = function (node) {
-		return node.id.trim()
-	}
-
-	NodeUtils.hasClass = function (node) {
-		return Boolean(node && typeof node.className === 'string' && node.className.trim().length > 0)
-	}
-
-	NodeUtils.getClass = function (node) {
-		return node.className.trim()
-	}
-
-	// -----------------------
-
-	function optionDefaults(options, defaults) {
-		if (!options) {
-			return defaults
-		}
-
-		Object.keys(defaults).forEach(function (key) {
-			if (!(key in options)) {
-				options[key] = defaults[key]
-			}
-		})
-
-		return options
-	}
-})()
-
-},{}],4:[function(require,module,exports){
+},{"_process":11}],6:[function(require,module,exports){
 /*!
  * jQuery JavaScript Library v3.2.1
  * https://jquery.com/
@@ -16270,59 +16168,677 @@ if ( !noGlobal ) {
 return jQuery;
 } );
 
-},{}],5:[function(require,module,exports){
-'use strict'
+},{}],7:[function(require,module,exports){
+/**
+ * lodash (Custom Build) <https://lodash.com/>
+ * Build: `lodash modularize exports="npm" -o ./`
+ * Copyright jQuery Foundation and other contributors <https://jquery.org/>
+ * Released under MIT license <https://lodash.com/license>
+ * Based on Underscore.js 1.8.3 <http://underscorejs.org/LICENSE>
+ * Copyright Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
+ */
 
-// TODO tests
-// TODO support ES6 arrow fns
+/** Used as references for various `Number` constants. */
+var MAX_SAFE_INTEGER = 9007199254740991;
 
-var JSONF=exports
+/** `Object#toString` result references. */
+var argsTag = '[object Arguments]',
+    funcTag = '[object Function]',
+    genTag = '[object GeneratorFunction]';
 
-var FN_TYPE='JSONF:Function'
+/** Used to detect unsigned integer values. */
+var reIsUint = /^(?:0|[1-9]\d*)$/;
 
-
-
-JSONF.stringify=function(o){
-    return JSON.stringify(o, function(key,val){
-        if (typeof val==='function'){
-            return {
-                type: FN_TYPE,
-                data: val.toString().replace(/\r/g, '\\r').replace(/\n/g, '\\n')
-            }
-        }
-        else {
-            return val
-        }
-    })
+/**
+ * A faster alternative to `Function#apply`, this function invokes `func`
+ * with the `this` binding of `thisArg` and the arguments of `args`.
+ *
+ * @private
+ * @param {Function} func The function to invoke.
+ * @param {*} thisArg The `this` binding of `func`.
+ * @param {Array} args The arguments to invoke `func` with.
+ * @returns {*} Returns the result of `func`.
+ */
+function apply(func, thisArg, args) {
+  switch (args.length) {
+    case 0: return func.call(thisArg);
+    case 1: return func.call(thisArg, args[0]);
+    case 2: return func.call(thisArg, args[0], args[1]);
+    case 3: return func.call(thisArg, args[0], args[1], args[2]);
+  }
+  return func.apply(thisArg, args);
 }
 
-JSONF.parse=function(s){
-    var i=0
-    return JSON.parse(s, function(key, val){
-        if (val&&val.type===FN_TYPE){
-            try {
-                return new Function(
-                    // http://www.kristofdegrave.be/2012/07/json-serialize-and-deserialize.html
-                    val.data.match(/\(([^)]+?)\)/)[1],
-                    val.data.match(/\{([\s\S]+)\}/)[1]
-                )
-            }
-            catch (e){
-                // TODO throw a big fat error
-                return val
-            }
-        }
-        else {
-            return val
-        }
-        /*if (typeof val!=='string')return val
-        if (val.indexOf(FN_TYPE)<0)return val
+/**
+ * The base implementation of `_.times` without support for iteratee shorthands
+ * or max array length checks.
+ *
+ * @private
+ * @param {number} n The number of times to invoke `iteratee`.
+ * @param {Function} iteratee The function invoked per iteration.
+ * @returns {Array} Returns the array of results.
+ */
+function baseTimes(n, iteratee) {
+  var index = -1,
+      result = Array(n);
 
-        */
-    })
+  while (++index < n) {
+    result[index] = iteratee(index);
+  }
+  return result;
 }
 
-},{}],6:[function(require,module,exports){
+/** Used for built-in method references. */
+var objectProto = Object.prototype;
+
+/** Used to check objects for own properties. */
+var hasOwnProperty = objectProto.hasOwnProperty;
+
+/**
+ * Used to resolve the
+ * [`toStringTag`](http://ecma-international.org/ecma-262/7.0/#sec-object.prototype.tostring)
+ * of values.
+ */
+var objectToString = objectProto.toString;
+
+/** Built-in value references. */
+var propertyIsEnumerable = objectProto.propertyIsEnumerable;
+
+/* Built-in method references for those with the same name as other `lodash` methods. */
+var nativeMax = Math.max;
+
+/**
+ * Creates an array of the enumerable property names of the array-like `value`.
+ *
+ * @private
+ * @param {*} value The value to query.
+ * @param {boolean} inherited Specify returning inherited property names.
+ * @returns {Array} Returns the array of property names.
+ */
+function arrayLikeKeys(value, inherited) {
+  // Safari 8.1 makes `arguments.callee` enumerable in strict mode.
+  // Safari 9 makes `arguments.length` enumerable in strict mode.
+  var result = (isArray(value) || isArguments(value))
+    ? baseTimes(value.length, String)
+    : [];
+
+  var length = result.length,
+      skipIndexes = !!length;
+
+  for (var key in value) {
+    if ((inherited || hasOwnProperty.call(value, key)) &&
+        !(skipIndexes && (key == 'length' || isIndex(key, length)))) {
+      result.push(key);
+    }
+  }
+  return result;
+}
+
+/**
+ * Used by `_.defaults` to customize its `_.assignIn` use.
+ *
+ * @private
+ * @param {*} objValue The destination value.
+ * @param {*} srcValue The source value.
+ * @param {string} key The key of the property to assign.
+ * @param {Object} object The parent object of `objValue`.
+ * @returns {*} Returns the value to assign.
+ */
+function assignInDefaults(objValue, srcValue, key, object) {
+  if (objValue === undefined ||
+      (eq(objValue, objectProto[key]) && !hasOwnProperty.call(object, key))) {
+    return srcValue;
+  }
+  return objValue;
+}
+
+/**
+ * Assigns `value` to `key` of `object` if the existing value is not equivalent
+ * using [`SameValueZero`](http://ecma-international.org/ecma-262/7.0/#sec-samevaluezero)
+ * for equality comparisons.
+ *
+ * @private
+ * @param {Object} object The object to modify.
+ * @param {string} key The key of the property to assign.
+ * @param {*} value The value to assign.
+ */
+function assignValue(object, key, value) {
+  var objValue = object[key];
+  if (!(hasOwnProperty.call(object, key) && eq(objValue, value)) ||
+      (value === undefined && !(key in object))) {
+    object[key] = value;
+  }
+}
+
+/**
+ * The base implementation of `_.keysIn` which doesn't treat sparse arrays as dense.
+ *
+ * @private
+ * @param {Object} object The object to query.
+ * @returns {Array} Returns the array of property names.
+ */
+function baseKeysIn(object) {
+  if (!isObject(object)) {
+    return nativeKeysIn(object);
+  }
+  var isProto = isPrototype(object),
+      result = [];
+
+  for (var key in object) {
+    if (!(key == 'constructor' && (isProto || !hasOwnProperty.call(object, key)))) {
+      result.push(key);
+    }
+  }
+  return result;
+}
+
+/**
+ * The base implementation of `_.rest` which doesn't validate or coerce arguments.
+ *
+ * @private
+ * @param {Function} func The function to apply a rest parameter to.
+ * @param {number} [start=func.length-1] The start position of the rest parameter.
+ * @returns {Function} Returns the new function.
+ */
+function baseRest(func, start) {
+  start = nativeMax(start === undefined ? (func.length - 1) : start, 0);
+  return function() {
+    var args = arguments,
+        index = -1,
+        length = nativeMax(args.length - start, 0),
+        array = Array(length);
+
+    while (++index < length) {
+      array[index] = args[start + index];
+    }
+    index = -1;
+    var otherArgs = Array(start + 1);
+    while (++index < start) {
+      otherArgs[index] = args[index];
+    }
+    otherArgs[start] = array;
+    return apply(func, this, otherArgs);
+  };
+}
+
+/**
+ * Copies properties of `source` to `object`.
+ *
+ * @private
+ * @param {Object} source The object to copy properties from.
+ * @param {Array} props The property identifiers to copy.
+ * @param {Object} [object={}] The object to copy properties to.
+ * @param {Function} [customizer] The function to customize copied values.
+ * @returns {Object} Returns `object`.
+ */
+function copyObject(source, props, object, customizer) {
+  object || (object = {});
+
+  var index = -1,
+      length = props.length;
+
+  while (++index < length) {
+    var key = props[index];
+
+    var newValue = customizer
+      ? customizer(object[key], source[key], key, object, source)
+      : undefined;
+
+    assignValue(object, key, newValue === undefined ? source[key] : newValue);
+  }
+  return object;
+}
+
+/**
+ * Creates a function like `_.assign`.
+ *
+ * @private
+ * @param {Function} assigner The function to assign values.
+ * @returns {Function} Returns the new assigner function.
+ */
+function createAssigner(assigner) {
+  return baseRest(function(object, sources) {
+    var index = -1,
+        length = sources.length,
+        customizer = length > 1 ? sources[length - 1] : undefined,
+        guard = length > 2 ? sources[2] : undefined;
+
+    customizer = (assigner.length > 3 && typeof customizer == 'function')
+      ? (length--, customizer)
+      : undefined;
+
+    if (guard && isIterateeCall(sources[0], sources[1], guard)) {
+      customizer = length < 3 ? undefined : customizer;
+      length = 1;
+    }
+    object = Object(object);
+    while (++index < length) {
+      var source = sources[index];
+      if (source) {
+        assigner(object, source, index, customizer);
+      }
+    }
+    return object;
+  });
+}
+
+/**
+ * Checks if `value` is a valid array-like index.
+ *
+ * @private
+ * @param {*} value The value to check.
+ * @param {number} [length=MAX_SAFE_INTEGER] The upper bounds of a valid index.
+ * @returns {boolean} Returns `true` if `value` is a valid index, else `false`.
+ */
+function isIndex(value, length) {
+  length = length == null ? MAX_SAFE_INTEGER : length;
+  return !!length &&
+    (typeof value == 'number' || reIsUint.test(value)) &&
+    (value > -1 && value % 1 == 0 && value < length);
+}
+
+/**
+ * Checks if the given arguments are from an iteratee call.
+ *
+ * @private
+ * @param {*} value The potential iteratee value argument.
+ * @param {*} index The potential iteratee index or key argument.
+ * @param {*} object The potential iteratee object argument.
+ * @returns {boolean} Returns `true` if the arguments are from an iteratee call,
+ *  else `false`.
+ */
+function isIterateeCall(value, index, object) {
+  if (!isObject(object)) {
+    return false;
+  }
+  var type = typeof index;
+  if (type == 'number'
+        ? (isArrayLike(object) && isIndex(index, object.length))
+        : (type == 'string' && index in object)
+      ) {
+    return eq(object[index], value);
+  }
+  return false;
+}
+
+/**
+ * Checks if `value` is likely a prototype object.
+ *
+ * @private
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is a prototype, else `false`.
+ */
+function isPrototype(value) {
+  var Ctor = value && value.constructor,
+      proto = (typeof Ctor == 'function' && Ctor.prototype) || objectProto;
+
+  return value === proto;
+}
+
+/**
+ * This function is like
+ * [`Object.keys`](http://ecma-international.org/ecma-262/7.0/#sec-object.keys)
+ * except that it includes inherited enumerable properties.
+ *
+ * @private
+ * @param {Object} object The object to query.
+ * @returns {Array} Returns the array of property names.
+ */
+function nativeKeysIn(object) {
+  var result = [];
+  if (object != null) {
+    for (var key in Object(object)) {
+      result.push(key);
+    }
+  }
+  return result;
+}
+
+/**
+ * Performs a
+ * [`SameValueZero`](http://ecma-international.org/ecma-262/7.0/#sec-samevaluezero)
+ * comparison between two values to determine if they are equivalent.
+ *
+ * @static
+ * @memberOf _
+ * @since 4.0.0
+ * @category Lang
+ * @param {*} value The value to compare.
+ * @param {*} other The other value to compare.
+ * @returns {boolean} Returns `true` if the values are equivalent, else `false`.
+ * @example
+ *
+ * var object = { 'a': 1 };
+ * var other = { 'a': 1 };
+ *
+ * _.eq(object, object);
+ * // => true
+ *
+ * _.eq(object, other);
+ * // => false
+ *
+ * _.eq('a', 'a');
+ * // => true
+ *
+ * _.eq('a', Object('a'));
+ * // => false
+ *
+ * _.eq(NaN, NaN);
+ * // => true
+ */
+function eq(value, other) {
+  return value === other || (value !== value && other !== other);
+}
+
+/**
+ * Checks if `value` is likely an `arguments` object.
+ *
+ * @static
+ * @memberOf _
+ * @since 0.1.0
+ * @category Lang
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is an `arguments` object,
+ *  else `false`.
+ * @example
+ *
+ * _.isArguments(function() { return arguments; }());
+ * // => true
+ *
+ * _.isArguments([1, 2, 3]);
+ * // => false
+ */
+function isArguments(value) {
+  // Safari 8.1 makes `arguments.callee` enumerable in strict mode.
+  return isArrayLikeObject(value) && hasOwnProperty.call(value, 'callee') &&
+    (!propertyIsEnumerable.call(value, 'callee') || objectToString.call(value) == argsTag);
+}
+
+/**
+ * Checks if `value` is classified as an `Array` object.
+ *
+ * @static
+ * @memberOf _
+ * @since 0.1.0
+ * @category Lang
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is an array, else `false`.
+ * @example
+ *
+ * _.isArray([1, 2, 3]);
+ * // => true
+ *
+ * _.isArray(document.body.children);
+ * // => false
+ *
+ * _.isArray('abc');
+ * // => false
+ *
+ * _.isArray(_.noop);
+ * // => false
+ */
+var isArray = Array.isArray;
+
+/**
+ * Checks if `value` is array-like. A value is considered array-like if it's
+ * not a function and has a `value.length` that's an integer greater than or
+ * equal to `0` and less than or equal to `Number.MAX_SAFE_INTEGER`.
+ *
+ * @static
+ * @memberOf _
+ * @since 4.0.0
+ * @category Lang
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is array-like, else `false`.
+ * @example
+ *
+ * _.isArrayLike([1, 2, 3]);
+ * // => true
+ *
+ * _.isArrayLike(document.body.children);
+ * // => true
+ *
+ * _.isArrayLike('abc');
+ * // => true
+ *
+ * _.isArrayLike(_.noop);
+ * // => false
+ */
+function isArrayLike(value) {
+  return value != null && isLength(value.length) && !isFunction(value);
+}
+
+/**
+ * This method is like `_.isArrayLike` except that it also checks if `value`
+ * is an object.
+ *
+ * @static
+ * @memberOf _
+ * @since 4.0.0
+ * @category Lang
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is an array-like object,
+ *  else `false`.
+ * @example
+ *
+ * _.isArrayLikeObject([1, 2, 3]);
+ * // => true
+ *
+ * _.isArrayLikeObject(document.body.children);
+ * // => true
+ *
+ * _.isArrayLikeObject('abc');
+ * // => false
+ *
+ * _.isArrayLikeObject(_.noop);
+ * // => false
+ */
+function isArrayLikeObject(value) {
+  return isObjectLike(value) && isArrayLike(value);
+}
+
+/**
+ * Checks if `value` is classified as a `Function` object.
+ *
+ * @static
+ * @memberOf _
+ * @since 0.1.0
+ * @category Lang
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is a function, else `false`.
+ * @example
+ *
+ * _.isFunction(_);
+ * // => true
+ *
+ * _.isFunction(/abc/);
+ * // => false
+ */
+function isFunction(value) {
+  // The use of `Object#toString` avoids issues with the `typeof` operator
+  // in Safari 8-9 which returns 'object' for typed array and other constructors.
+  var tag = isObject(value) ? objectToString.call(value) : '';
+  return tag == funcTag || tag == genTag;
+}
+
+/**
+ * Checks if `value` is a valid array-like length.
+ *
+ * **Note:** This method is loosely based on
+ * [`ToLength`](http://ecma-international.org/ecma-262/7.0/#sec-tolength).
+ *
+ * @static
+ * @memberOf _
+ * @since 4.0.0
+ * @category Lang
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is a valid length, else `false`.
+ * @example
+ *
+ * _.isLength(3);
+ * // => true
+ *
+ * _.isLength(Number.MIN_VALUE);
+ * // => false
+ *
+ * _.isLength(Infinity);
+ * // => false
+ *
+ * _.isLength('3');
+ * // => false
+ */
+function isLength(value) {
+  return typeof value == 'number' &&
+    value > -1 && value % 1 == 0 && value <= MAX_SAFE_INTEGER;
+}
+
+/**
+ * Checks if `value` is the
+ * [language type](http://www.ecma-international.org/ecma-262/7.0/#sec-ecmascript-language-types)
+ * of `Object`. (e.g. arrays, functions, objects, regexes, `new Number(0)`, and `new String('')`)
+ *
+ * @static
+ * @memberOf _
+ * @since 0.1.0
+ * @category Lang
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is an object, else `false`.
+ * @example
+ *
+ * _.isObject({});
+ * // => true
+ *
+ * _.isObject([1, 2, 3]);
+ * // => true
+ *
+ * _.isObject(_.noop);
+ * // => true
+ *
+ * _.isObject(null);
+ * // => false
+ */
+function isObject(value) {
+  var type = typeof value;
+  return !!value && (type == 'object' || type == 'function');
+}
+
+/**
+ * Checks if `value` is object-like. A value is object-like if it's not `null`
+ * and has a `typeof` result of "object".
+ *
+ * @static
+ * @memberOf _
+ * @since 4.0.0
+ * @category Lang
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is object-like, else `false`.
+ * @example
+ *
+ * _.isObjectLike({});
+ * // => true
+ *
+ * _.isObjectLike([1, 2, 3]);
+ * // => true
+ *
+ * _.isObjectLike(_.noop);
+ * // => false
+ *
+ * _.isObjectLike(null);
+ * // => false
+ */
+function isObjectLike(value) {
+  return !!value && typeof value == 'object';
+}
+
+/**
+ * This method is like `_.assignIn` except that it accepts `customizer`
+ * which is invoked to produce the assigned values. If `customizer` returns
+ * `undefined`, assignment is handled by the method instead. The `customizer`
+ * is invoked with five arguments: (objValue, srcValue, key, object, source).
+ *
+ * **Note:** This method mutates `object`.
+ *
+ * @static
+ * @memberOf _
+ * @since 4.0.0
+ * @alias extendWith
+ * @category Object
+ * @param {Object} object The destination object.
+ * @param {...Object} sources The source objects.
+ * @param {Function} [customizer] The function to customize assigned values.
+ * @returns {Object} Returns `object`.
+ * @see _.assignWith
+ * @example
+ *
+ * function customizer(objValue, srcValue) {
+ *   return _.isUndefined(objValue) ? srcValue : objValue;
+ * }
+ *
+ * var defaults = _.partialRight(_.assignInWith, customizer);
+ *
+ * defaults({ 'a': 1 }, { 'b': 2 }, { 'a': 3 });
+ * // => { 'a': 1, 'b': 2 }
+ */
+var assignInWith = createAssigner(function(object, source, srcIndex, customizer) {
+  copyObject(source, keysIn(source), object, customizer);
+});
+
+/**
+ * Assigns own and inherited enumerable string keyed properties of source
+ * objects to the destination object for all destination properties that
+ * resolve to `undefined`. Source objects are applied from left to right.
+ * Once a property is set, additional values of the same property are ignored.
+ *
+ * **Note:** This method mutates `object`.
+ *
+ * @static
+ * @since 0.1.0
+ * @memberOf _
+ * @category Object
+ * @param {Object} object The destination object.
+ * @param {...Object} [sources] The source objects.
+ * @returns {Object} Returns `object`.
+ * @see _.defaultsDeep
+ * @example
+ *
+ * _.defaults({ 'a': 1 }, { 'b': 2 }, { 'a': 3 });
+ * // => { 'a': 1, 'b': 2 }
+ */
+var defaults = baseRest(function(args) {
+  args.push(undefined, assignInDefaults);
+  return apply(assignInWith, undefined, args);
+});
+
+/**
+ * Creates an array of the own and inherited enumerable property names of `object`.
+ *
+ * **Note:** Non-object values are coerced to objects.
+ *
+ * @static
+ * @memberOf _
+ * @since 3.0.0
+ * @category Object
+ * @param {Object} object The object to query.
+ * @returns {Array} Returns the array of property names.
+ * @example
+ *
+ * function Foo() {
+ *   this.a = 1;
+ *   this.b = 2;
+ * }
+ *
+ * Foo.prototype.c = 3;
+ *
+ * _.keysIn(new Foo);
+ * // => ['a', 'b', 'c'] (iteration order is not guaranteed)
+ */
+function keysIn(object) {
+  return isArrayLike(object) ? arrayLikeKeys(object, true) : baseKeysIn(object);
+}
+
+module.exports = defaults;
+
+},{}],8:[function(require,module,exports){
 (function (global){
 /**
  * @license
@@ -33410,103 +33926,7 @@ JSONF.parse=function(s){
 }.call(this));
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],7:[function(require,module,exports){
-(function (process){
-var os = require('os');
-
-module.exports = Loggr;
-
-var LEVELS = Loggr.LEVELS = {
-    OFF: 0,
-    INFO: 1,
-    DEBUG: 2,
-    TRACE: 3,
-    ALL: Number.POSITIVE_INFINITY,
-};
-
-// TODO accept string levels, normalize internally to numbers
-
-// TODO more/optional outputs
-// TODO string substitution, multiple params, etc
-
-function Loggr(config) {
-    var c = config || {};
-
-    c.level = c.level || c.logLevel || LEVELS.INFO;
-    c.showTime = 'showTime' in c ? Boolean(c.showTime) : true;
-    c.namespace = c.namespace || null;
-    c.outStream = c.outStream || process.stdout;
-    c.eol = c.eol || os.EOL;
-
-    this.config = c;
-}
-
-Loggr.prototype.fork = function (newNamespace) {
-    var conf = this.config;
-
-    return new Loggr({
-        level: conf.level,
-        showTime: conf.showTime,
-        namespace: newNamespace,
-        outStream: conf.outStream,
-        eol: conf.eol,
-    });
-};
-
-Loggr.prototype._log = function (lvl, messages) {
-    if (lvl <= this.config.level) {
-        var time = '';
-        var namespace = '';
-
-        if (this.config.showTime) {
-            var d = new Date();
-            var h = ('0' + d.getHours()).slice(-2);
-            var m = ('0' + d.getMinutes()).slice(-2);
-            var s = ('0' + d.getSeconds()).slice(-2);
-            var ms = ('00' + d.getMilliseconds()).slice(-3);
-
-            time = '[' + h + ':' + m + ':' + s + '.' + ms + '] ';
-        }
-
-        if (this.config.namespace) {
-            namespace = '[' + this.config.namespace + '] ';
-        }
-
-        var message = messages
-            .map(function (msg) {
-                return String(msg);
-            })
-            .join(' ');
-
-        var levelStr = Loggr.getLevelChar(lvl) + ' ';
-
-        this.config.outStream.write(time + levelStr + namespace + message + this.config.eol);
-    }
-};
-
-Loggr.prototype.info = function () {
-    this._log(LEVELS.INFO, Array.prototype.slice.call(arguments));
-};
-
-Loggr.prototype.debug = function () {
-    this._log(LEVELS.DEBUG, Array.prototype.slice.call(arguments));
-};
-
-Loggr.prototype.trace = function () {
-    this._log(LEVELS.TRACE, Array.prototype.slice.call(arguments));
-};
-
-Loggr.getLevelChar = function (level) {
-    switch (level) {
-        case Loggr.LEVELS.INFO: return 'I';
-        case Loggr.LEVELS.DEBUG: return 'D';
-        case Loggr.LEVELS.TRACE: return 'T';
-        default: return '?';
-    }
-};
-
-}).call(this,require('_process'))
-},{"_process":10,"os":9}],8:[function(require,module,exports){
+},{}],9:[function(require,module,exports){
 (function (global){
 ;(function() {
 "use strict"
@@ -34751,7 +35171,7 @@ if (typeof module !== "undefined") module["exports"] = m
 else window.m = m
 }());
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],9:[function(require,module,exports){
+},{}],10:[function(require,module,exports){
 exports.endianness = function () { return 'LE' };
 
 exports.hostname = function () {
@@ -34798,7 +35218,7 @@ exports.tmpdir = exports.tmpDir = function () {
 
 exports.EOL = '\n';
 
-},{}],10:[function(require,module,exports){
+},{}],11:[function(require,module,exports){
 // shim for using process in browser
 var process = module.exports = {};
 
@@ -34983,21 +35403,6 @@ process.chdir = function (dir) {
     throw new Error('process.chdir is not supported');
 };
 process.umask = function() { return 0; };
-
-},{}],11:[function(require,module,exports){
-'use strict'
-
-exports=module.exports=function(opts, defaults){
-    opts=opts||{}
-
-    Object.keys(defaults).forEach(function(key){
-        if (opts[key]===undefined){
-            opts[key]=defaults[key]
-        }
-    })
-
-    return opts
-}
 
 },{}],12:[function(require,module,exports){
 if (typeof Object.create === 'function') {
@@ -35621,115 +36026,10 @@ function hasOwnProperty(obj, prop) {
 }
 
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./support/isBuffer":13,"_process":10,"inherits":12}],15:[function(require,module,exports){
-
-if (isNode()) {
-    module.exports=Ws4ever
-}
-else {
-    window.Ws4ever=Ws4ever
-}
-
-
-function Ws4ever(url, protocols, options){
-    this._opts=Object.assign({}, {
-        retryInterval:1000
-    }, options||{})
-
-    this._url=url
-    this._protocols=protocols
-    this._ws=null
-    this._isConnecting=false
-
-    this.onopen=noop
-    this.onclose=noop
-    this.onerror=noop
-    this.onmessage=noop
-
-    Object.defineProperties(this, {
-        readyState: {
-            get: function () { return this._ws?this._ws.readyState:WebSocket.CLOSED }
-        },
-        url: {
-            get: function () { return this._url }
-        },
-    })
-
-    this._ensureConnection=this._ensureConnection.bind(this)
-    this._onWsOpen=this._onWsOpen.bind(this)
-    this._onWsClose=this._onWsClose.bind(this)
-    // this._onWsError=this._onWsError.bind(this)
-    this._onWsMessage=this._onWsMessage.bind(this)
-
-    setInterval(this._ensureConnection, this._opts.retryInterval)
-}
-
-Ws4ever.prototype.isConnected=function(){
-    return Boolean(this._ws && this._ws.readyState === WebSocket.OPEN)
-}
-
-Ws4ever.prototype.send=function(msg){
-    if (!this.isConnected())throw new Error('cannot send message, ws closed')
-    this._ws.send(msg)
-}
-
-Ws4ever.prototype._ensureConnection=function(){
-    if (this.isConnected())return
-    if (this._isConnecting)return
-
-    try {
-        console.log('_ensureConnection: connecting')
-        this._isConnecting=true
-        this._ws=new WebSocket(this._url, this._protocols)
-        this._ws.onopen=this._onWsOpen
-        this._ws.onclose=this._onWsClose
-        this._ws.onerror=this._onWsError
-        this._ws.onmessage=this._onWsMessage
-    }
-    catch(e){
-        // TODO handle or log?
-        this._isConnecting=false
-        this._ws=null
-    }
-}
-
-Ws4ever.prototype._onWsOpen=function () {
-    console.log('_onWsOpen')
-    this.onopen.apply(null, arguments)
-    this._isConnecting=false
-}
-
-Ws4ever.prototype._onWsClose=function () {
-    console.log('_onWsClose')
-    this.onclose.apply(null, arguments)
-    this._isConnecting=false
-    this._ws=null
-}
-
-Ws4ever.prototype._onWsError=function () {
-    console.log('_onWsError')
-    this.onerror.apply(null, arguments)
-    // this._isConnecting=false
-    // this._ws=null
-}
-
-Ws4ever.prototype._onWsMessage=function () {
-    console.log('_onWsMessage')
-    this.onmessage.apply(null,arguments)
-}
-
-
-
-
-function noop(){}
-
-function isNode(){return typeof module==='object'&&typeof module.exports==='object'}
-
-
-
-},{}],16:[function(require,module,exports){
+},{"./support/isBuffer":13,"_process":11,"inherits":12}],15:[function(require,module,exports){
 var Command=require('./command')
 var TYPES=Command.TYPES
+var CLICK_FOCUS_MIN_SEPARATION = 200
 
 exports=module.exports=CommandList
 
@@ -35744,12 +36044,21 @@ CommandList.prototype._compact=function(){
 	var newCommands=[]
 
     for (var i=0,len=this._commands.length;i<len;i++){
-    	var lastNewIdx=newCommands.length-1
-    	var lastNewCmd=lastNewIdx>=0?newCommands[lastNewIdx]:null
+        var lastNewIdx=newCommands.length-1
+        var lastNewCmd=lastNewIdx>=0?newCommands[lastNewIdx]:null
         var cmd=this._commands[i]
 
         if (newCommands.length===0) {
             newCommands.push(cmd)
+            continue
+        }
+
+        var timestampDiff = Math.abs(cmd.timestamp-lastNewCmd.timestamp)
+
+        if (cmd.type===TYPES.CLICK && lastNewCmd.type===TYPES.FOCUS && timestampDiff < CLICK_FOCUS_MIN_SEPARATION) {
+            // exchange focus and click so click comes first
+            newCommands[lastNewIdx] = cmd
+            newCommands.push(lastNewCmd)
         }
         else if (cmd.type===TYPES.SET_VALUE && lastNewCmd.type===TYPES.SET_VALUE && cmd.selector===lastNewCmd.selector) {
         	newCommands[lastNewIdx]=cmd
@@ -35802,7 +36111,7 @@ CommandList.prototype.clear=function(){
 
 
 
-},{"./command":17}],17:[function(require,module,exports){
+},{"./command":16}],16:[function(require,module,exports){
 exports=module.exports=Command
 
 // TODO replace magic strings everywhere
@@ -35814,7 +36123,7 @@ var TYPES = Command.TYPES = {
 	WAIT_FOR_VISIBLE: 'waitForVisible',
 	WAIT_WHILE_VISIBLE: 'waitWhileVisible',
 	FOCUS: 'focus',
-	ASSERT_SCREENSHOT: 'assertScreenshot',
+	ASSERT: 'assert',
 
 }
 
@@ -35829,7 +36138,7 @@ function Command(data){
 	// 	})
 	// })
 }
-},{}],18:[function(require,module,exports){
+},{}],17:[function(require,module,exports){
 'use strict';
 
 var _ = require('lodash');
@@ -35837,47 +36146,60 @@ var $ = require('jquery');
 var Promise = require('bluebird');
 // var css=require('./src/styles/index.styl')
 // var views=require('./views.msx')
-// TODO move to Puppet
-var UniqueSelector = require('get-unique-selector');
 // var utils = require('./utils')
-var Loggr = require('loggr');
-var defaults = require('shallow-defaults');
+var Loggr = require('../../../../modules/loggr');
+var defaults = require('lodash.defaults');
 // var EventEmitter=require('events').EventEmitter
 var util = require('util');
-var JSONF = require('jsonf');
+var JSONF = require('../../../../modules/jsonf');
 var m = require('mithril');
-var Ws4ever = require('ws4ever');
+var Ws4ever = require('../../../../modules/ws4ever');
 
 var CommandList = require('../../../command-list');
 var CMD_TYPES = require('../../../command').TYPES;
 
 // TODO better require
-var MESSAGES = require('../../../../node_modules/browser-puppeteer/src/messages.js');
+var MESSAGES = require('../../../../modules/browser-puppeteer/src/messages.js');
 
 var EOL = '\n';
 
+var JSON_OUTPUT_FORMATTER_NAME = 'json (built-in)';
+var NOSTROMO_OUTPUT_FORMATTER_NAME = 'nostromo (built-in)';
+var DEFAULT_OUTPUT_FILENAME = 'output';
+
 window.RecorderApp = RecorderApp;
-
-// TODO record command times, compare to tested times?
-
-// TODO handle if connection was lost?
 
 // TODO beforeCommand: provide raw data AND next command as param
 // TODO support touch events
 
-// TODO executable specifications? (image list with command target highlights)
-//      or play macro step-by-step?
+// TODO executable specifications
+// TODO play macro step-by-step
 
 function RecorderApp(conf) {
     var self = this;
-
-    // EventEmitter.call(self)
 
     if (typeof conf === 'string') {
         conf = JSONF.parse(conf);
     }
 
-    self._conf = conf || {};
+    self._conf = defaults({}, conf, {
+        pressKeyFilter: function pressKeyFilter(command) {
+            return [13, 27].indexOf(command.keyCode) >= 0;
+        },
+        beforeCapture: noop,
+        outputFormatters: [],
+        selectedOutputFormatter: JSON_OUTPUT_FORMATTER_NAME
+    });
+
+    self._conf.outputFormatters.unshift({
+        name: JSON_OUTPUT_FORMATTER_NAME,
+        filename: 'recorder_output.json',
+        fn: jsonOutputFormatter
+    }, {
+        name: NOSTROMO_OUTPUT_FORMATTER_NAME,
+        filename: 'recorder_output.js',
+        fn: renderTestfile
+    });
 
     self._log = new Loggr({
         logLevel: Loggr.LEVELS.ALL, // TODO logLevel
@@ -35896,22 +36218,25 @@ function RecorderApp(conf) {
         clearRecording: function clearRecording() {
             self.commandList.clear();
         },
-        addScreenshotAssert: function addScreenshotAssert() {
-            self.commandList.add({ type: CMD_TYPES.ASSERT_SCREENSHOT });
+        addAssertion: function addAssertion() {
+            self.commandList.add({ type: CMD_TYPES.ASSERT });
         },
-        downloadTestfile: function downloadTestfile() {
-            var testFileStr = renderTestfile(self.commandList);
-            var blob = new Blob([testFileStr], { type: 'application/octet-stream' });
+        downloadOutput: function downloadOutput() {
+            var formatter = self._getSelectedOutputFormatter();
+            var output = self._getFormattedOutput();
+            var blob = new Blob([output], { type: 'application/octet-stream' });
             var dlTarget = document.getElementById('download-target');
             var dlUrl = window.URL.createObjectURL(blob);
+
             dlTarget.href = dlUrl;
-            dlTarget.download = 'testfile.js';
+            dlTarget.download = formatter.filename || DEFAULT_OUTPUT_FILENAME;
             dlTarget.click();
+        },
+        selectOutputFormatter: function selectOutputFormatter(event) {
+            self._conf.selectedOutputFormatter = event.target.value;
         }
     };
 }
-
-// util.inherits(RecorderApp,EventEmitter)
 
 // TODO promise, resolve when loaded
 RecorderApp.prototype.start = function () {
@@ -35929,10 +36254,10 @@ RecorderApp.prototype.start = function () {
                     self.onSelectorBecameVisibleEvent(data);
                     break;
                 case MESSAGES.UPSTREAM.CAPTURED_EVENT:
-                    self.onCapturedEvent(data);
+                    self._onCapturedEvent(data.event);
                     break;
-                case MESSAGES.UPSTREAM.INSERT_SCREENSHOT_ASSERT:
-                    if (self._isRecording) self.commandList.add({ type: CMD_TYPES.ASSERT_SCREENSHOT });
+                case MESSAGES.UPSTREAM.INSERT_ASSERTION:
+                    if (self._isRecording) self.commandList.add({ type: CMD_TYPES.ASSERT });
                     break;
                 default:
                     throw new Error('Unknown type' + data.type);
@@ -35953,15 +36278,57 @@ RecorderApp.prototype.start = function () {
     m.mount($('#mount')[0], MountComp);
 };
 
-RecorderApp.prototype.onCapturedEvent = function (data) {
-    if (!this._isRecording) return;
+RecorderApp.prototype._getSelectedOutputFormatter = function () {
+    var self = this;
+    var filtered = self._conf.outputFormatters.filter(function (formatter) {
+        return formatter.name === self._conf.selectedOutputFormatter;
+    });
 
-    var event = data.event;
+    if (filtered.length !== 1) {
+        return function () {
+            return '(formatter "' + self._conf.selectedOutputFormatter + '" not found)';
+        };
+    }
 
-    // TODO use command instead of raw capture data
+    return filtered[0];
+};
+
+RecorderApp.prototype._getFormattedOutput = function () {
+    return this._getSelectedOutputFormatter().fn(this.commandList.getList());
+};
+
+RecorderApp.prototype._onCapturedEvent = function (event) {
+    if (!this._isRecording) {
+        return;
+    }
+
+    var command;
+
+    switch (event.type) {
+        case 'input':
+            command = this._getCommandFromInputEvent(event);
+            break;
+        case 'keydown':
+            command = this._getCommandFromKeydownEvent(event);
+            break;
+        case 'scroll':
+            command = this._getCommandFromScrollEvent(event);
+            break;
+        case 'click':
+            command = this._getCommandFromClickEvent(event);
+            break;
+        case 'focus':
+            command = this._getCommandFromFocusEvent(event);
+            break;
+        default:
+            console.error('Unknown event type: ' + event.type + ', event:', event);
+            return;
+    }
+
+    // TODO pass event AND command
     // type, target, $target, selector
     var beforeCaptureData = {
-        avent: event,
+        event: event,
         type: event.type,
         target: event.target,
         selector: event.selector
@@ -35972,33 +36339,56 @@ RecorderApp.prototype.onCapturedEvent = function (data) {
         return;
     }
 
-    // TODO configurable
-    if (event.type === 'keypress' && [13, 27].indexOf(event.keyCode) < 0) {
+    if (command.type === 'pressKey' && this._conf.pressKeyFilter(command, event) === false) {
         return;
     }
 
-    switch (event.type) {
-        case 'input':
-            event.type = 'setValue';
-            break;
-        case 'keypress':
-            event.type = 'pressKey';
-            break;
-        case 'scroll':
-            event.scrollTop = event.target.scrollTop;
-            break;
-        case 'click':
-            event.message = 'Click "' + event.target.innerText + '" (' + event.selector + ')';
-        default:
-            break;
-    }
-
-    delete event.target;
-
-    this.commandList.add(event);
+    this.addCommand(command);
 };
 
-// record.conf.js API
+RecorderApp.prototype._getCommandFromInputEvent = function (event) {
+    return {
+        type: 'setValue',
+        timestamp: event.timestamp,
+        selector: event.selector,
+        value: event.value
+    };
+};
+
+RecorderApp.prototype._getCommandFromKeydownEvent = function (event) {
+    return {
+        type: 'pressKey',
+        timestamp: event.timestamp,
+        selector: event.selector,
+        keyCode: event.keyCode
+    };
+};
+
+RecorderApp.prototype._getCommandFromScrollEvent = function (event) {
+    return {
+        type: 'scroll',
+        timestamp: event.timestamp,
+        selector: event.selector,
+        scrollTop: event.target.scrollTop
+    };
+};
+
+RecorderApp.prototype._getCommandFromClickEvent = function (event) {
+    return {
+        type: 'click',
+        timestamp: event.timestamp,
+        selector: event.selector
+    };
+};
+
+RecorderApp.prototype._getCommandFromFocusEvent = function (event) {
+    return {
+        type: 'focus',
+        timestamp: event.timestamp,
+        selector: event.selector
+    };
+};
+
 RecorderApp.prototype.addCommand = function (cmd) {
     this.commandList.add(cmd);
 };
@@ -36015,7 +36405,7 @@ RecorderApp.prototype.onSelectorBecameVisibleEvent = function (data) {
     });
 
     if (!rule) {
-        console.error('SBV rule not found for selector ' + data.selector);
+        console.error('SelectorBecameVisible rule not found for selector ' + data.selector);
     } else {
         rule.listener(this);
     }
@@ -36026,66 +36416,85 @@ var RootComp = {
         var app = vnode.attrs.app;
         var actions = vnode.attrs.actions;
 
+        var toggleBtnClass = app._isRecording ? 'button--toggle-on' : 'button--toggle-off';
+
         return m(
-            'div',
+            'main',
             null,
             m(
-                'button',
-                { onclick: actions.toggleRecording },
-                'Toggle recording'
-            ),
-            '\xA0',
-            m(
-                'button',
-                { onclick: actions.clearRecording },
-                'Clear recording'
-            ),
-            '\xA0',
-            m(
-                'button',
-                { onclick: actions.addScreenshotAssert },
-                'Add screenshot assert'
-            ),
-            '\xA0',
-            m(
-                'button',
-                { onclick: actions.downloadTestfile },
-                'Download testfile'
-            ),
-            '\xA0 | ',
-            app._isRecording ? 'Recording' : 'Not recording',
-            m(
-                'div',
+                'nav',
                 null,
                 m(
-                    'ul',
-                    null,
-                    app.commandList.map(function (cmd) {
-                        return m(
-                            'li',
-                            null,
-                            JSON.stringify(cmd),
-                            ','
-                        );
-                    })
+                    'button',
+                    { 'class': toggleBtnClass, onclick: actions.toggleRecording },
+                    'Toggle recording'
+                ),
+                m(
+                    'button',
+                    { onclick: actions.addAssertion },
+                    'Add assertion'
+                ),
+                m(
+                    'button',
+                    { onclick: actions.downloadOutput },
+                    'Download output'
+                ),
+                m(
+                    'button',
+                    { 'class': 'button--danger clear-recording-btn', onclick: actions.clearRecording },
+                    'Clear recording'
                 )
             ),
-            m('hr', null),
             m(
-                'div',
+                'section',
+                null,
+                m(
+                    'p',
+                    { 'class': 'flex-row' },
+                    'Output format:',
+                    m(
+                        'select',
+                        { 'class': 'output-format-dropdown', onchange: actions.selectOutputFormatter },
+                        app._conf.outputFormatters.map(function (formatter) {
+                            return m(
+                                'option',
+                                {
+                                    selected: formatter.name === app._conf.selectedOutputFormatter,
+                                    value: formatter.name },
+                                formatter.name
+                            );
+                        })
+                    )
+                )
+            ),
+            m(
+                'section',
                 null,
                 m(
                     'pre',
-                    null,
-                    renderTestfile(app.commandList)
+                    { 'class': 'output' },
+                    app._getFormattedOutput()
                 )
             ),
             m('a', { href: '#', id: 'download-target', 'class': 'hidden' })
         );
     }
+};
 
-    // TODO move these to Command or CommandList?
-};function renderTestfile(cmds, indent) {
+function jsonOutputFormatter(cmds, indent) {
+    indent = indent || '    ';
+
+    if (cmds.length === 0) {
+        return '[]';
+    }
+
+    return '[' + EOL + cmds.map(function (cmd) {
+        return indent + JSON.stringify(cmd);
+    }).join(',' + EOL) + EOL + ']' + EOL;
+}
+
+// TODO move to own file
+function renderTestfile(cmds, indent) {
     indent = indent || '    ';
 
     var res = ['\'use strict\';', '', 'exports = module.exports = function (test) {', indent + 'test(\'\', t => {'];
@@ -36099,15 +36508,15 @@ var RootComp = {
     return res.join(EOL);
 }
 
-// TODO move these to Command or CommandList?
+// TODO move to own file
 function renderCmd(cmd) {
     switch (cmd.type) {
         case 'setValue':
             return 't.setValue(' + apos(cmd.selector) + ', ' + apos(cmd.value) + ')';
         case 'pressKey':
-            return 't.pressKey(' + apos(cmd.selector) + ', ' + apos(cmd.keyCode) + ')';
+            return 't.pressKey(' + apos(cmd.selector) + ', ' + cmd.keyCode + ')';
         case 'scroll':
-            return 't.scroll(' + apos(cmd.selector) + ', ' + apos(cmd.scrollTop) + ')';
+            return 't.scroll(' + apos(cmd.selector) + ', ' + cmd.scrollTop + ')';
         case 'click':
             return 't.click(' + apos(cmd.selector) + ')';
         case 'waitForVisible':
@@ -36116,12 +36525,16 @@ function renderCmd(cmd) {
             return 't.waitWhileVisible(' + apos(cmd.selector) + ')';
         case 'focus':
             return 't.focus(' + apos(cmd.selector) + ')';
-        case 'assertScreenshot':
-            return 't.assertScreenshot()';
+        case 'assert':
+            return 't.assert()';
         // case '': return 't.()'
         default:
             console.error('unknown cmd type ', cmd.type, cmd);return '<unknown>';
     }
+}
+
+function ellipsis(s, l) {
+    l = l || 30;return s.length <= l ? s : s.substr(0, l - 3) + '...';
 }
 
 function apos(s) {
@@ -36152,4 +36565,4 @@ function nl2backslashnl(str) {
     return str.replace(/\n/g, '\\n');
 }
 
-},{"../../../../node_modules/browser-puppeteer/src/messages.js":2,"../../../command":17,"../../../command-list":16,"bluebird":1,"get-unique-selector":3,"jquery":4,"jsonf":5,"lodash":6,"loggr":7,"mithril":8,"shallow-defaults":11,"util":14,"ws4ever":15}]},{},[18]);
+},{"../../../../modules/browser-puppeteer/src/messages.js":1,"../../../../modules/jsonf":2,"../../../../modules/loggr":3,"../../../../modules/ws4ever":4,"../../../command":16,"../../../command-list":15,"bluebird":5,"jquery":6,"lodash":8,"lodash.defaults":7,"mithril":9,"util":14}]},{},[17]);
