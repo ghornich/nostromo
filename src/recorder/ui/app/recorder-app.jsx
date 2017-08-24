@@ -269,16 +269,22 @@ var RootComp={
         var app=vnode.attrs.app
         var actions=vnode.attrs.actions
 
-        return <div>
-            <button onclick={ actions.toggleRecording }>Toggle recording</button>&nbsp;
-            <button onclick={ actions.clearRecording }>Clear recording</button>&nbsp;
-            <button onclick={ actions.addAssertion }>Add assertion</button>&nbsp;
-            <button onclick={ actions.downloadOutput }>Download output</button>&nbsp;
-            | { app._isRecording ? 'Recording': 'Not recording' }
-            <div>
-                <br />
-                <div>Output format:
-                    <select onchange={ actions.selectOutputFormatter }>{
+        var toggleBtnClass = app._isRecording
+            ? 'button--toggle-on'
+            : 'button--toggle-off';
+
+        return <main>
+            <nav>
+                <button class={ toggleBtnClass } onclick={ actions.toggleRecording }>Toggle recording</button>
+                <button onclick={ actions.addAssertion }>Add assertion</button>
+                <button onclick={ actions.downloadOutput }>Download output</button>
+                <button class="button--danger clear-recording-btn" onclick={ actions.clearRecording }>Clear recording</button>
+            </nav>
+
+            <section>
+                <p class="flex-row">
+                    Output format:
+                    <select class="output-format-dropdown" onchange={ actions.selectOutputFormatter }>{
                         app._conf.outputFormatters.map(function (formatter) {
                             return <option
                                     selected={ formatter.name === app._conf.selectedOutputFormatter }
@@ -287,12 +293,15 @@ var RootComp={
                             </option>
                         })
                     }</select>
-                </div>
-                <pre>{ app._getFormattedOutput() }</pre>
-            </div>
+                </p>
+            </section>
+
+            <section>
+                <pre class="output">{ app._getFormattedOutput() }</pre>
+            </section>
 
             <a href="#" id="download-target" class="hidden"></a>
-        </div>
+        </main>
     }
 }
 
