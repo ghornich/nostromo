@@ -24,10 +24,10 @@ CommandList.prototype._compact=function(){
             continue
         }
 
-        var timestampDiff = Math.abs(cmd.timestamp-lastNewCmd.timestamp)
+        var timestampDiff = Math.abs(cmd.$timestamp-lastNewCmd.$timestamp)
 
         if ((cmd.type===TYPES.CLICK && lastNewCmd.type===TYPES.FOCUS || cmd.type===TYPES.FOCUS && lastNewCmd.type===TYPES.CLICK) &&
-                timestampDiff < CLICK_FOCUS_MIN_SEPARATION && stringsSimilar(cmd.selector, lastNewCmd.selector)) {
+                timestampDiff < CLICK_FOCUS_MIN_SEPARATION && stringsSimilar(cmd.$fullSelectorPath, lastNewCmd.$fullSelectorPath)) {
             // insert composite command
             newCommands[lastNewIdx] = {
                 type: TYPES.COMPOSITE,

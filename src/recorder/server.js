@@ -8,13 +8,19 @@ var fs=require('fs')
 var JSONF=require(MODULES_PATH + 'jsonf')
 var pathlib=require('path')
 var Loggr=require(MODULES_PATH + 'loggr')
+var defaults=require('lodash.defaults')
 
 module.exports=Server
 
+// TODO conf docblock
 function Server(conf){
-	this._conf=conf
+	this._conf=defaults({}, conf, {
+        beforeCapture: noop,
+        mouseoverSelectors: [],
+        ignoredClasses: [],
+    })
 
-    this._conf.beforeCapture=this._conf.beforeCapture||noop
+    // TODO assert conf
 
 	this._recServer=http.createServer(this._onRecRequest.bind(this))
 	this._wsServer=new WS.Server({server:this._recServer})
@@ -45,16 +51,33 @@ Server.prototype.start=Promise.method(function(){
     this._puppeteer.on(MESSAGES.UPSTREAM.CAPTURED_EVENT, this._proxyMessage)
 	this._puppeteer.on(MESSAGES.UPSTREAM.INSERT_ASSERTION, this._proxyMessage)
 
-    this._puppeteer.on('puppetConnected', ()=>{
-        // no return
-        this._puppeteer.setTransmitEvents(true)
-        .then(()=>{
+    this._puppeteer.on('puppetConnected', async ()=>{
+        try {
+            await this._puppeteer.setTransmitEvents(true)
+
             var selectors = (this._conf.onSelectorBecameVisible || []).map(data => data.selector)
 
             if (selectors.length > 0) {
-                return this._puppeteer.setSelectorBecameVisibleSelectors(selectors)
+                await this._puppeteer.setSelectorBecameVisibleSelectors(selectors)
             }
-        })
+
+            if (this._conf.mouseoverSelectors.length > 0) {
+                await this._puppeteer.sendMessage({
+                    type: MESSAGES.DOWNSTREAM.SET_MOUSEOVER_SELECTORS,
+                    selectors: this._conf.mouseoverSelectors,
+                })
+            }
+
+            if (this._conf.ignoredClasses.length > 0) {
+                await this._puppeteer.sendMessage({
+                    type: MESSAGES.DOWNSTREAM.SET_IGNORED_CLASSES,
+                    classes: this._conf.ignoredClasses,
+                })
+            }
+        }
+        catch (err) {
+            console.log(err)
+        }
     })
 })
 

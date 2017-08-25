@@ -20,8 +20,8 @@
 
 	// -----------------------
 
-	function SelectorElement(node) {
-		var nodeSelectorData = SelectorElement.getNodeSelectorData(node)
+	function SelectorElement(node, options) {
+		var nodeSelectorData = SelectorElement.getNodeSelectorData(node, options)
 
 		this._node = node
 		this._rawSelector = nodeSelectorData.selector,
@@ -122,12 +122,14 @@
 	 * @param  {[type]} node [description]
 	 * @return {Object} { selector: String, type: Number }
 	 */
-	SelectorElement.getNodeSelectorData = function (node) {
+	SelectorElement.getNodeSelectorData = function (node, options) {
 		if (!node || !('tagName' in node)) {
 			var error = new Error('SelectorElement::getNodeSelectorData: invalid node');
 			error.type = SelectorElement.ERROR.INVALID_NODE
 			throw error
 		}
+
+		options.ignoredClasses = options.ignoredClasses||[]
 
 		if (NodeUtils.hasId(node)) {
 			return {
@@ -137,9 +139,19 @@
 		}
 
 		if (NodeUtils.hasClass(node)) {
-			return {
-				selector: '.' + NodeUtils.getClass(node).replace(/ +/g, '.'),
-				type: SelectorElement.TYPE.CLASS
+			var classNames = NodeUtils.getClass(node)
+
+			options.ignoredClasses.forEach(function(ignoredClass) {
+				classNames = classNames.replace(ignoredClass, '')
+			})
+
+			classNames = classNames.trim()
+
+			if (classNames.length > 0) {
+				return {
+					selector: '.' + classNames.replace(/ +/g, '.'),
+					type: SelectorElement.TYPE.CLASS
+				}	
 			}
 		}
 
@@ -282,7 +294,8 @@
 
 	function UniqueSelector(options) {
 		this._opts = optionDefaults(options, {
-			querySelectorAll: document.querySelectorAll.bind(document)
+			querySelectorAll: document.querySelectorAll.bind(document),
+			ignoredClasses: []
 		})
 	}
 
@@ -291,6 +304,18 @@
 			return '#' + NodeUtils.getId(node)
 		}
 
+		var selectorElementList = this._getFullSelectorElementList(node);
+
+		selectorElementList.simplify()
+
+		if (!selectorElementList.isUnique()) {
+			selectorElementList.uniqueify()
+		}
+
+		return selectorElementList.getSelectorPath()
+	}
+
+	UniqueSelector.prototype._getFullSelectorElementList = function (node) {
 		var selectorElementList = new SelectorElementList({
 			querySelectorAll: this._opts.querySelectorAll
 		})
@@ -298,7 +323,7 @@
 		var currentNode = node
 
 		while (currentNode && currentNode.tagName !== 'BODY') {
-			var selectorElement = new SelectorElement(currentNode)
+			var selectorElement = new SelectorElement(currentNode, this._opts)
 
 			selectorElementList.addElement(selectorElement);
 
@@ -309,13 +334,11 @@
 			currentNode = currentNode.parentNode
 		}
 
-		selectorElementList.simplify()
+		return selectorElementList;
+	}
 
-		if (!selectorElementList.isUnique()) {
-			selectorElementList.uniqueify()
-		}
-
-		return selectorElementList.getSelectorPath()
+	UniqueSelector.prototype.getFullSelectorPath = function (node) {
+		return this._getFullSelectorElementList(node).getSelectorPath()
 	}
 
 	// -----------------------

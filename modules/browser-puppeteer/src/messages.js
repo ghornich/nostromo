@@ -38,4 +38,7 @@ exports.DOWNSTREAM = {
 
     // { type, selectors }
     SET_MOUSEOVER_SELECTORS: 'set-mouseover-selectors',
+
+    // { type, classes }
+    SET_IGNORED_CLASSES: 'set-ignored-classes',
 };
