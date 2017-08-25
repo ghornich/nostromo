@@ -49,7 +49,7 @@ function BrowserPuppet(opts) {
         states: [],
     };
 
-    this._mouseoverSelectors = null;
+    this._mouseoverSelector = null;
 
     this._scheduleReopen = false;
     this._scheduleReopenUrl = '';
@@ -122,6 +122,14 @@ BrowserPuppet.prototype._onMessage = function (rawData) {
                 // self._scheduleReopenUrl = data.url
                 return;
 
+            case MESSAGES.DOWNSTREAM.SET_MOUSEOVER_SELECTORS:
+                self.setMouseoverSelectors(data.selectors)
+                return
+
+            case MESSAGES.DOWNSTREAM.SET_IGNORED_CLASSES:
+                self.setIgnoredClasses(data.classes)
+                return
+
             default:
                 throw new Error('BrowserPuppet: unknown message type: ' + data.type);
         }
@@ -165,8 +173,8 @@ BrowserPuppet.prototype._attachCaptureEventListeners = function () {
     document.addEventListener('keydown', this._onKeydownCapture.bind(this), true);
 };
 
-BrowserPuppet.prototype._attachMouseoverEventListener = function () {
-    $(document.body).on('mouseover', this._mouseoverSelectors.join(', '), this._onMouseoverCapture.bind(this));
+BrowserPuppet.prototype._attachMouseoverCaptureEventListener = function () {
+    document.body.addEventListener('mouseover', this._onMouseoverCapture.bind(this), true);
 };
 
 var SHIFT_KEY = 16;
@@ -181,6 +189,7 @@ BrowserPuppet.prototype._onClickCapture = function (event) {
 
     try {
         var selector = this._uniqueSelector.get(target);
+        var fullSelectorPath = this._uniqueSelector.getFullSelectorPath(target)
     }
     catch (err) {
         console.error(err);
@@ -191,8 +200,9 @@ BrowserPuppet.prototype._onClickCapture = function (event) {
         type: MESSAGES.UPSTREAM.CAPTURED_EVENT,
         event: {
             type: 'click',
-            timestamp: Date.now(),
+            $timestamp: Date.now(),
             selector: selector,
+            $fullSelectorPath: fullSelectorPath,
             target: {
                 innerText: target.innerText,
             },
@@ -209,6 +219,7 @@ BrowserPuppet.prototype._onFocusCapture = function (event) {
 
     try {
         var selector = this._uniqueSelector.get(target);
+        var fullSelectorPath = this._uniqueSelector.getFullSelectorPath(target)
     }
     catch (err) {
         console.error(err);
@@ -219,8 +230,9 @@ BrowserPuppet.prototype._onFocusCapture = function (event) {
         type: MESSAGES.UPSTREAM.CAPTURED_EVENT,
         event: {
             type: 'focus',
-            timestamp: Date.now(),
+            $timestamp: Date.now(),
             selector: selector,
+            $fullSelectorPath: fullSelectorPath,
             target: {
                 innerText: target.innerText,
             },
@@ -247,7 +259,7 @@ BrowserPuppet.prototype._onInputCapture = function (event) {
         type: MESSAGES.UPSTREAM.CAPTURED_EVENT,
         event: {
             type: 'input',
-            timestamp: Date.now(),
+            $timestamp: Date.now(),
             selector: selector,
             value: target.value,
             target: {
@@ -278,7 +290,7 @@ BrowserPuppet.prototype._onScrollCapture = debounce(function (event) {
         type: MESSAGES.UPSTREAM.CAPTURED_EVENT,
         event: {
             type: 'scroll',
-            timestamp: Date.now(),
+            $timestamp: Date.now(),
             selector: selector,
             target: {
                 scrollTop: target.scrollTop,
@@ -314,7 +326,7 @@ BrowserPuppet.prototype._onKeydownCapture = function (event) {
         type: MESSAGES.UPSTREAM.CAPTURED_EVENT,
         event: {
             type: 'keydown',
-            timestamp: Date.now(),
+            $timestamp: Date.now(),
             selector: selector,
             keyCode: event.keyCode || event.charCode,
             ctrlKey: event.ctrlKey,
@@ -326,7 +338,32 @@ BrowserPuppet.prototype._onKeydownCapture = function (event) {
 };
 
 BrowserPuppet.prototype._onMouseoverCapture = function (event) {
-    ITTTTTTT
+    if (!this._canCapture()) {
+        return;
+    }
+
+    var target = event.target;
+
+    if ($(target).is(this._mouseoverSelector)) {
+        try {
+            var selector = this._uniqueSelector.get(target);
+        }
+        catch (err) {
+            console.error(err);
+            return;
+        }
+
+        this._sendMessage({
+            type: MESSAGES.UPSTREAM.CAPTURED_EVENT,
+            event: {
+                type: 'mouseover',
+                $timestamp: Date.now(),
+                selector: selector,
+                target: cleanTarget(target),
+            },
+        });
+    }
+
 };
 
 BrowserPuppet.prototype._sendInsertAssertionDebounced = debounce(function () {
@@ -341,9 +378,14 @@ BrowserPuppet.prototype.setOnSelectorBecameVisibleSelectors = function (selector
 };
 
 BrowserPuppet.prototype.setMouseoverSelectors = function (selectors) {
-    this._mouseoverSelectors = selectors;
-    this._attachMouseoverEventListener();
+    this._mouseoverSelector = selectors.join(', ');
+    this._attachMouseoverCaptureEventListener();
 };
+
+BrowserPuppet.prototype.setIgnoredClasses = function (classes) {
+    // TODO ugly
+    this._uniqueSelector._opts.ignoredClasses = classes
+}
 
 BrowserPuppet.prototype.setTransmitEvents = function (value) {
     if (typeof value !== 'boolean') {
@@ -410,6 +452,8 @@ BrowserPuppet.prototype.execCommand=Promise.method(function(command){
             return this.scroll(command.selector, command.scrollTop);
         case 'composite':
             return this.execCompositeCommand(command.commands);
+        case 'mouseover':
+            return this.mouseover(command.selector);
         default:
             throw new Error('Unknown command type: ' + command.type);
     }
@@ -639,7 +683,29 @@ BrowserPuppet.prototype.isVisible = function (selector) {
 };
 
 BrowserPuppet.prototype.scroll = function (selector, scrollTop) {
-    $(selector)[0].scrollTop = scrollTop;
+    var $el = $(selector);
+
+    if ($el.length === 0) {
+        throw new Error('Unable to scroll "' + selector + '": not found');
+    }
+    else if ($el.length > 1) {
+        throw new Error('Unable to scroll "' + selector + '": not unique');
+    }
+
+    $el[0].scrollTop = scrollTop;
+};
+
+BrowserPuppet.prototype.mouseover = function (selector) {
+    var $el = $(selector);
+
+    if ($el.length === 0) {
+        throw new Error('Unable to mouseover "' + selector + '": not found');
+    }
+    else if ($el.length > 1) {
+        throw new Error('Unable to mouseover "' + selector + '": not unique');
+    }
+
+    $el.trigger('mouseover');
 };
 
 BrowserPuppet.prototype.setScreenshotMarkerState = function (state) {
@@ -668,7 +734,7 @@ BrowserPuppet.prototype.setScreenshotMarkerState = function (state) {
 
 
 
-function noop(){}
+function noop() {}
 
 function cleanTarget(target) {
     return {

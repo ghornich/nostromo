@@ -152,6 +152,7 @@ function TestRunner(conf){
         assert:this._assert.bind(this),
         pressKey:this._pressKey_direct.bind(this),
         composite:this._composite_direct.bind(this),
+        mouseover:this._mouseover_direct.bind(this),
     }
 
     this.sideEffectAPI={}
@@ -655,6 +656,22 @@ TestRunner.prototype._composite_direct = Promise.method(function (commands) {
     })
     .catch(e=>{
         this._tapWriter.notOk('composite - ' + e.message)
+
+        if (this._conf.bailout) {
+            throw createError('BailoutError', e.message)
+        }
+    })
+})
+
+TestRunner.prototype._mouseover_direct = Promise.method(function (selector) {
+    this._log.info('mouseover: '+selector)
+
+    return this._browserPuppeteer.execCommand({
+        type: 'mouseover',
+        selector: selector,
+    })
+    .catch(e=>{
+        this._tapWriter.notOk('mouseover - ' + e.message)
 
         if (this._conf.bailout) {
             throw createError('BailoutError', e.message)
