@@ -181,6 +181,9 @@ RecorderApp.prototype._onCapturedEvent = function (event) {
         case 'focus':
             command = this._getCommandFromFocusEvent(event);
             break;
+        case 'mouseover':
+            command = this._getCommandFromMouseoverEvent(event);
+            break;
         default:
             console.error('Unknown event type: ' + event.type + ', event:', event);
             return;
@@ -210,7 +213,7 @@ RecorderApp.prototype._onCapturedEvent = function (event) {
 RecorderApp.prototype._getCommandFromInputEvent = function (event) {
     return {
         type: 'setValue',
-        timestamp: event.timestamp,
+        $timestamp: event.$timestamp,
         selector: event.selector,
         value: event.value
     };
@@ -219,7 +222,7 @@ RecorderApp.prototype._getCommandFromInputEvent = function (event) {
 RecorderApp.prototype._getCommandFromKeydownEvent = function (event) {
     return {
         type: 'pressKey',
-        timestamp: event.timestamp,
+        $timestamp: event.$timestamp,
         selector: event.selector,
         keyCode: event.keyCode
     };
@@ -228,7 +231,7 @@ RecorderApp.prototype._getCommandFromKeydownEvent = function (event) {
 RecorderApp.prototype._getCommandFromScrollEvent = function (event) {
     return {
         type: 'scroll',
-        timestamp: event.timestamp,
+        $timestamp: event.$timestamp,
         selector: event.selector,
         scrollTop: event.target.scrollTop
     };
@@ -237,15 +240,25 @@ RecorderApp.prototype._getCommandFromScrollEvent = function (event) {
 RecorderApp.prototype._getCommandFromClickEvent = function (event) {
     return {
         type: 'click',
-        timestamp: event.timestamp,
-        selector: event.selector
+        $timestamp: event.$timestamp,
+        selector: event.selector,
+        $fullSelectorPath: event.$fullSelectorPath
     };
 };
 
 RecorderApp.prototype._getCommandFromFocusEvent = function (event) {
     return {
         type: 'focus',
-        timestamp: event.timestamp,
+        $timestamp: event.$timestamp,
+        selector: event.selector,
+        $fullSelectorPath: event.$fullSelectorPath
+    };
+};
+
+RecorderApp.prototype._getCommandFromMouseoverEvent = function (event) {
+    return {
+        type: 'mouseover',
+        $timestamp: event.$timestamp,
         selector: event.selector
     };
 };
@@ -307,40 +320,56 @@ var RootComp = {
                 )
             ),
             m(
-                'section',
-                null,
+                'div',
+                { 'class': 'content' },
                 m(
-                    'p',
-                    { 'class': 'flex-row' },
-                    'Output format:',
+                    'section',
+                    null,
                     m(
-                        'select',
-                        { 'class': 'output-format-dropdown', onchange: actions.selectOutputFormatter },
-                        app._conf.outputFormatters.map(function (formatter) {
-                            return m(
-                                'option',
-                                {
-                                    selected: formatter.name === app._conf.selectedOutputFormatter,
-                                    value: formatter.name },
-                                formatter.name
-                            );
-                        })
+                        'p',
+                        { 'class': 'flex-row' },
+                        'Output format:',
+                        m(
+                            'select',
+                            { 'class': 'output-format-dropdown', onchange: actions.selectOutputFormatter },
+                            app._conf.outputFormatters.map(function (formatter) {
+                                return m(
+                                    'option',
+                                    {
+                                        selected: formatter.name === app._conf.selectedOutputFormatter,
+                                        value: formatter.name },
+                                    formatter.name
+                                );
+                            })
+                        )
                     )
-                )
-            ),
-            m(
-                'section',
-                null,
+                ),
                 m(
-                    'pre',
-                    { 'class': 'output' },
-                    app._getFormattedOutput()
+                    'section',
+                    null,
+                    m(
+                        'pre',
+                        { 'class': 'output' },
+                        app._getFormattedOutput()
+                    )
                 )
             ),
             m('a', { href: '#', id: 'download-target', 'class': 'hidden' })
         );
     }
-};
+
+    // remove meta (keys starting with $)
+};function cleanCmd(cmd) {
+    var o = {};
+
+    Object.keys(cmd).forEach(function (k) {
+        if (k[0] !== '$') {
+            o[k] = cmd[k];
+        }
+    });
+
+    return o;
+}
 
 function jsonOutputFormatter(cmds, indent) {
     indent = indent || '    ';
@@ -352,10 +381,10 @@ function jsonOutputFormatter(cmds, indent) {
     return '[' + EOL + cmds.map(function (cmd) {
         if (cmd.type === CMD_TYPES.COMPOSITE) {
             return indent + '{"type":"' + CMD_TYPES.COMPOSITE + '","commands":[' + EOL + cmd.commands.map(function (subcmd) {
-                return indent + indent + JSON.stringify(subcmd);
+                return indent + indent + JSON.stringify(cleanCmd(subcmd));
             }).join(',' + EOL) + EOL + indent + ']}';
         } else {
-            return indent + JSON.stringify(cmd);
+            return indent + JSON.stringify(cleanCmd(cmd));
         }
     }).join(',' + EOL) + EOL + ']' + EOL;
 }
@@ -394,10 +423,14 @@ function renderCmd(cmd, indent) {
             return 't.focus(' + apos(cmd.selector) + ')';
         case 'assert':
             return 't.assert()';
+
         case 'composite':
             return 't.composite([' + EOL + cmd.commands.map(function (subcmd) {
-                return indent + indent + indent + inspectObj(subcmd);
+                return indent + indent + indent + inspectObj(cleanCmd(subcmd));
             }).join(',' + EOL) + EOL + indent + indent + '])';
+
+        case 'mouseover':
+            return 't.mouseover(' + apos(cmd.selector) + ')';
         // case '': return 't.()'
         default:
             console.error('unknown cmd type ', cmd.type, cmd);return '<unknown>';

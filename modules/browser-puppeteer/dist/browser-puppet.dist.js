@@ -42,6 +42,9 @@ exports.DOWNSTREAM = {
 
     // { type, selectors }
     SET_MOUSEOVER_SELECTORS: 'set-mouseover-selectors',
+
+    // { type, classes }
+    SET_IGNORED_CLASSES: 'set-ignored-classes',
 };
 
 },{}],3:[function(require,module,exports){
@@ -96,7 +99,7 @@ function BrowserPuppet(opts) {
         states: [],
     };
 
-    this._mouseoverSelectors = null;
+    this._mouseoverSelector = null;
 
     this._scheduleReopen = false;
     this._scheduleReopenUrl = '';
@@ -169,6 +172,14 @@ BrowserPuppet.prototype._onMessage = function (rawData) {
                 // self._scheduleReopenUrl = data.url
                 return;
 
+            case MESSAGES.DOWNSTREAM.SET_MOUSEOVER_SELECTORS:
+                self.setMouseoverSelectors(data.selectors)
+                return
+
+            case MESSAGES.DOWNSTREAM.SET_IGNORED_CLASSES:
+                self.setIgnoredClasses(data.classes)
+                return
+
             default:
                 throw new Error('BrowserPuppet: unknown message type: ' + data.type);
         }
@@ -212,8 +223,8 @@ BrowserPuppet.prototype._attachCaptureEventListeners = function () {
     document.addEventListener('keydown', this._onKeydownCapture.bind(this), true);
 };
 
-BrowserPuppet.prototype._attachMouseoverEventListener = function () {
-    $(document.body).on('mouseover', this._mouseoverSelectors.join(', '), this._onMouseoverCapture.bind(this));
+BrowserPuppet.prototype._attachMouseoverCaptureEventListener = function () {
+    document.body.addEventListener('mouseover', this._onMouseoverCapture.bind(this), true);
 };
 
 var SHIFT_KEY = 16;
@@ -228,6 +239,7 @@ BrowserPuppet.prototype._onClickCapture = function (event) {
 
     try {
         var selector = this._uniqueSelector.get(target);
+        var fullSelectorPath = this._uniqueSelector.getFullSelectorPath(target)
     }
     catch (err) {
         console.error(err);
@@ -238,8 +250,9 @@ BrowserPuppet.prototype._onClickCapture = function (event) {
         type: MESSAGES.UPSTREAM.CAPTURED_EVENT,
         event: {
             type: 'click',
-            timestamp: Date.now(),
+            $timestamp: Date.now(),
             selector: selector,
+            $fullSelectorPath: fullSelectorPath,
             target: {
                 innerText: target.innerText,
             },
@@ -256,6 +269,7 @@ BrowserPuppet.prototype._onFocusCapture = function (event) {
 
     try {
         var selector = this._uniqueSelector.get(target);
+        var fullSelectorPath = this._uniqueSelector.getFullSelectorPath(target)
     }
     catch (err) {
         console.error(err);
@@ -266,8 +280,9 @@ BrowserPuppet.prototype._onFocusCapture = function (event) {
         type: MESSAGES.UPSTREAM.CAPTURED_EVENT,
         event: {
             type: 'focus',
-            timestamp: Date.now(),
+            $timestamp: Date.now(),
             selector: selector,
+            $fullSelectorPath: fullSelectorPath,
             target: {
                 innerText: target.innerText,
             },
@@ -294,7 +309,7 @@ BrowserPuppet.prototype._onInputCapture = function (event) {
         type: MESSAGES.UPSTREAM.CAPTURED_EVENT,
         event: {
             type: 'input',
-            timestamp: Date.now(),
+            $timestamp: Date.now(),
             selector: selector,
             value: target.value,
             target: {
@@ -325,7 +340,7 @@ BrowserPuppet.prototype._onScrollCapture = debounce(function (event) {
         type: MESSAGES.UPSTREAM.CAPTURED_EVENT,
         event: {
             type: 'scroll',
-            timestamp: Date.now(),
+            $timestamp: Date.now(),
             selector: selector,
             target: {
                 scrollTop: target.scrollTop,
@@ -361,7 +376,7 @@ BrowserPuppet.prototype._onKeydownCapture = function (event) {
         type: MESSAGES.UPSTREAM.CAPTURED_EVENT,
         event: {
             type: 'keydown',
-            timestamp: Date.now(),
+            $timestamp: Date.now(),
             selector: selector,
             keyCode: event.keyCode || event.charCode,
             ctrlKey: event.ctrlKey,
@@ -373,6 +388,31 @@ BrowserPuppet.prototype._onKeydownCapture = function (event) {
 };
 
 BrowserPuppet.prototype._onMouseoverCapture = function (event) {
+    if (!this._canCapture()) {
+        return;
+    }
+
+    var target = event.target;
+
+    if ($(target).is(this._mouseoverSelector)) {
+        try {
+            var selector = this._uniqueSelector.get(target);
+        }
+        catch (err) {
+            console.error(err);
+            return;
+        }
+
+        this._sendMessage({
+            type: MESSAGES.UPSTREAM.CAPTURED_EVENT,
+            event: {
+                type: 'mouseover',
+                $timestamp: Date.now(),
+                selector: selector,
+                target: cleanTarget(target),
+            },
+        });
+    }
 
 };
 
@@ -388,9 +428,14 @@ BrowserPuppet.prototype.setOnSelectorBecameVisibleSelectors = function (selector
 };
 
 BrowserPuppet.prototype.setMouseoverSelectors = function (selectors) {
-    this._mouseoverSelectors = selectors;
-    this._attachMouseoverEventListener();
+    this._mouseoverSelector = selectors.join(', ');
+    this._attachMouseoverCaptureEventListener();
 };
+
+BrowserPuppet.prototype.setIgnoredClasses = function (classes) {
+    // TODO ugly
+    this._uniqueSelector._opts.ignoredClasses = classes
+}
 
 BrowserPuppet.prototype.setTransmitEvents = function (value) {
     if (typeof value !== 'boolean') {
@@ -457,6 +502,8 @@ BrowserPuppet.prototype.execCommand=Promise.method(function(command){
             return this.scroll(command.selector, command.scrollTop);
         case 'composite':
             return this.execCompositeCommand(command.commands);
+        case 'mouseover':
+            return this.mouseover(command.selector);
         default:
             throw new Error('Unknown command type: ' + command.type);
     }
@@ -686,7 +733,29 @@ BrowserPuppet.prototype.isVisible = function (selector) {
 };
 
 BrowserPuppet.prototype.scroll = function (selector, scrollTop) {
-    $(selector)[0].scrollTop = scrollTop;
+    var $el = $(selector);
+
+    if ($el.length === 0) {
+        throw new Error('Unable to scroll "' + selector + '": not found');
+    }
+    else if ($el.length > 1) {
+        throw new Error('Unable to scroll "' + selector + '": not unique');
+    }
+
+    $el[0].scrollTop = scrollTop;
+};
+
+BrowserPuppet.prototype.mouseover = function (selector) {
+    var $el = $(selector);
+
+    if ($el.length === 0) {
+        throw new Error('Unable to mouseover "' + selector + '": not found');
+    }
+    else if ($el.length > 1) {
+        throw new Error('Unable to mouseover "' + selector + '": not unique');
+    }
+
+    $el.trigger('mouseover');
 };
 
 BrowserPuppet.prototype.setScreenshotMarkerState = function (state) {
@@ -715,7 +784,7 @@ BrowserPuppet.prototype.setScreenshotMarkerState = function (state) {
 
 
 
-function noop(){}
+function noop() {}
 
 function cleanTarget(target) {
     return {
@@ -788,8 +857,8 @@ exports.base64 =
 
 	// -----------------------
 
-	function SelectorElement(node) {
-		var nodeSelectorData = SelectorElement.getNodeSelectorData(node)
+	function SelectorElement(node, options) {
+		var nodeSelectorData = SelectorElement.getNodeSelectorData(node, options)
 
 		this._node = node
 		this._rawSelector = nodeSelectorData.selector,
@@ -890,12 +959,14 @@ exports.base64 =
 	 * @param  {[type]} node [description]
 	 * @return {Object} { selector: String, type: Number }
 	 */
-	SelectorElement.getNodeSelectorData = function (node) {
+	SelectorElement.getNodeSelectorData = function (node, options) {
 		if (!node || !('tagName' in node)) {
 			var error = new Error('SelectorElement::getNodeSelectorData: invalid node');
 			error.type = SelectorElement.ERROR.INVALID_NODE
 			throw error
 		}
+
+		options.ignoredClasses = options.ignoredClasses||[]
 
 		if (NodeUtils.hasId(node)) {
 			return {
@@ -905,9 +976,19 @@ exports.base64 =
 		}
 
 		if (NodeUtils.hasClass(node)) {
-			return {
-				selector: '.' + NodeUtils.getClass(node).replace(/ +/g, '.'),
-				type: SelectorElement.TYPE.CLASS
+			var classNames = NodeUtils.getClass(node)
+
+			options.ignoredClasses.forEach(function(ignoredClass) {
+				classNames = classNames.replace(ignoredClass, '')
+			})
+
+			classNames = classNames.trim()
+
+			if (classNames.length > 0) {
+				return {
+					selector: '.' + classNames.replace(/ +/g, '.'),
+					type: SelectorElement.TYPE.CLASS
+				}	
 			}
 		}
 
@@ -1050,7 +1131,8 @@ exports.base64 =
 
 	function UniqueSelector(options) {
 		this._opts = optionDefaults(options, {
-			querySelectorAll: document.querySelectorAll.bind(document)
+			querySelectorAll: document.querySelectorAll.bind(document),
+			ignoredClasses: []
 		})
 	}
 
@@ -1059,6 +1141,18 @@ exports.base64 =
 			return '#' + NodeUtils.getId(node)
 		}
 
+		var selectorElementList = this._getFullSelectorElementList(node);
+
+		selectorElementList.simplify()
+
+		if (!selectorElementList.isUnique()) {
+			selectorElementList.uniqueify()
+		}
+
+		return selectorElementList.getSelectorPath()
+	}
+
+	UniqueSelector.prototype._getFullSelectorElementList = function (node) {
 		var selectorElementList = new SelectorElementList({
 			querySelectorAll: this._opts.querySelectorAll
 		})
@@ -1066,7 +1160,7 @@ exports.base64 =
 		var currentNode = node
 
 		while (currentNode && currentNode.tagName !== 'BODY') {
-			var selectorElement = new SelectorElement(currentNode)
+			var selectorElement = new SelectorElement(currentNode, this._opts)
 
 			selectorElementList.addElement(selectorElement);
 
@@ -1077,13 +1171,11 @@ exports.base64 =
 			currentNode = currentNode.parentNode
 		}
 
-		selectorElementList.simplify()
+		return selectorElementList;
+	}
 
-		if (!selectorElementList.isUnique()) {
-			selectorElementList.uniqueify()
-		}
-
-		return selectorElementList.getSelectorPath()
+	UniqueSelector.prototype.getFullSelectorPath = function (node) {
+		return this._getFullSelectorElementList(node).getSelectorPath()
 	}
 
 	// -----------------------
