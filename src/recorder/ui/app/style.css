@@ -25,10 +25,25 @@ select:focus, button:focus {
 
 /* layout */
 
+main {
+    display: flex;
+    flex-flow: column;
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+}
+
 nav {
     padding: 0.3em 2em;
     background: #525252;
     display: flex;
+    flex: 0 0 auto;
+}
+
+.content {
+    overflow: auto;
 }
 
 section {
