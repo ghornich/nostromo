@@ -1,5 +1,5 @@
 {
   "name": "get-unique-selector",
-  "main": "index.js",
+  "main": "get-unique-selector.js",
   "version": "0.1.1"
 }
