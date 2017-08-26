@@ -1,9 +1,11 @@
 'use strict';
 
+var defaults=require('lodash.defaults')
+
 exports = module.exports = SelectorElementList;
 
 function SelectorElementList(options) {
-	this._opts = optionDefaults(options, {
+	this._opts = defaults({}, options, {
 		querySelectorAll: document.querySelectorAll.bind(document)
 	})
 

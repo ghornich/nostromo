@@ -1,4 +1,4 @@
-var SelectorElement = require('../')._SelectorElement
+var SelectorElement = require('../selector-element')
 var test = require('tape')
 
 test('SelectorElement::ctor', t => {

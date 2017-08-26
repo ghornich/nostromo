@@ -3,6 +3,7 @@ const Promise=require('bluebird')
 Promise.config({ longStackTraces: true })
 const Loggr=require(MODULES_PATH + 'loggr')
 const defaults=require('lodash.defaults')
+const isEqual=require('lodash.isequal')
 const Schema=require('schema-inspector')
 const http=require('http')
 const fs=require('fs')
@@ -23,12 +24,14 @@ const rimrafAsync=Promise.promisify(require('rimraf'))
 
 // TODO show error if test(...) doesn't return a promise
 
+// TODO standard tape API (sync), rename current equal() to valueEquals()
+
 const CONF_SCHEMA = {
     type: 'object',
     properties: {
         appUrl: {
             type: 'string',
-            pattern: /^(http:\/\/|file:\/\/\/)[^ ]+$/ // TODO support relative file:/// urls
+            pattern: /^(http:\/\/|file:\/\/\/?)[^ ]+$/
         },
         testPort: {
             type: 'number',
@@ -153,6 +156,7 @@ function TestRunner(conf){
         pressKey:this._pressKey_direct.bind(this),
         composite:this._composite_direct.bind(this),
         mouseover:this._mouseover_direct.bind(this),
+        execFunction:this._execFunction_direct.bind(this),
     }
 
     this.sideEffectAPI={}
@@ -168,6 +172,11 @@ function TestRunner(conf){
 
     this.directAPI.execCommands=this._execCommands_direct.bind(this)
     this.sideEffectAPI.execCommands=this._execCommands_sideEffect.bind(this)
+
+    this.tAPI = Object.assign({}, this.sideEffectAPI, {
+        equal: this._equal.bind(this),
+        equals: this._equal.bind(this),
+    })
 
     this._browserPuppeteer=new BrowserPuppeteer({
         logger: this._log.fork('BrowserPuppeteer')
@@ -404,7 +413,7 @@ TestRunner.prototype._runTestModule = function(fn){
 
             return Promise.try(this._conf.beforeTest)
             .then(()=>{
-                var maybePromise = testData.testFn(this.sideEffectAPI)
+                var maybePromise = testData.testFn(this.tAPI)
 
                 if (typeof maybePromise.then !== 'function'){
                     throw new Error('test function didn\'t return a promise (name: '+testData.name+')')
@@ -423,7 +432,10 @@ TestRunner.prototype._wrapFunctionWithSideEffects = function(fn, cmdType){
     return (...args)=>{
         return Promise.try(_=>this._beforeCommand(this.directAPI, {type:cmdType}))
         .then(_=>fn(...args))
-        .then(_=>this._afterCommand(this.directAPI, {type:cmdType}))
+        .then(async fnResult=>{
+            await this._afterCommand(this.directAPI, {type:cmdType})
+            return fnResult
+        })
     }
 }
 
@@ -457,7 +469,8 @@ TestRunner.prototype._execCommands_sideEffect = Promise.method(function(cmds){
     return Promise.each(cmds,cmd=>this._execCommand_sideEffect(cmd))
 })
 
-TestRunner.prototype._equal_direct = Promise.method(function(selector, expected, description) {
+// TODO use
+TestRunner.prototype._selectorEqual_direct = Promise.method(function(selector, expected, description) {
     description=description||'equal - ' + selector + ', ' + expected
 
     return this._getValue(selector)
@@ -499,6 +512,24 @@ TestRunner.prototype._equal_direct = Promise.method(function(selector, expected,
     })  
 })
 
+TestRunner.prototype._equal = Promise.method(function (actual, expected, description) {
+    if (isEqual(actual, expected)) {
+        this._tapWriter.ok({
+            type: 'equal',
+            message: description
+        })
+    }
+    else {
+        this._tapWriter.fail({
+            type:'equal',
+            expected:expected,
+            actual:actual
+        })
+
+    }
+})
+
+// TODO fix+use or remove
 TestRunner.prototype._isEqual_direct = Promise.method(function (selector, expected, description) {
     return this._getValue(selector)
     .then(actual=>expected === actual)
@@ -677,6 +708,12 @@ TestRunner.prototype._mouseover_direct = Promise.method(function (selector) {
             throw createError('BailoutError', e.message)
         }
     })
+})
+
+TestRunner.prototype._execFunction_direct = Promise.method(function (fn, ...args) {
+    this._log.info('execFunction')
+
+    return this._browserPuppeteer.execFunction(fn, args)
 })
 
 TestRunner.prototype._delay = Promise.method(function (ms, description) {

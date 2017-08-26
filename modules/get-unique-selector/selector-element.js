@@ -118,6 +118,7 @@ SelectorElement._getNodeSelectorData = function (node, options) {
 		throw error
 	}
 
+	options=options||{}
 	options.ignoredClasses = options.ignoredClasses||[]
 
 	if (DOMUtils.hasId(node)) {

@@ -422,13 +422,26 @@ BrowserPuppet.prototype._onExecMessage = Promise.method(function (data) {
         return this.execCommand(data.command);
     }
     else if (data.type === MESSAGES.DOWNSTREAM.EXEC_FUNCTION) {
-        // TODO
-        throw new Error('TODO: EXEC_FUNCTION');
+        return this.execFunction(data.fn, data.args)
     }
     else {
         throw new Error('Unknown exec type: ' + data.type);
     }
 });
+
+BrowserPuppet.prototype.execFunction=Promise.method(function (fn, args) {
+    var context = {
+        driver: this,
+        $: $,
+        // TODO kell?
+        jQuery: $,
+        promiseWhile: promiseWhile,
+        Promise: Promise,
+    };
+
+    // TODO args
+    return fn.apply(context)
+})
 
 BrowserPuppet.prototype.execCommand=Promise.method(function(command){
     switch (command.type) {

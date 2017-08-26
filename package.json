@@ -11,7 +11,8 @@
     "watch": "watchmen \"npm run build\" src",
     "watch-ui": "watchmen \"npm run build-ui\" src/recorder/ui",
     "watch-diff-app": "watchmen \"npm run build-diff-app\" src/differ/web-app/src",
-    "watch-browser-puppet": "watchmen \"npm run build-browser-puppet\" modules/browser-puppeteer/src/puppet"
+    "watch-browser-puppet": "watchmen \"npm run build-browser-puppet\" modules/browser-puppeteer/src/puppet",
+    "lint": "eslint **/*"
   },
   "author": "ghornich",
   "dependencies": {
@@ -21,6 +22,7 @@
     "lodash": "^4.17.4",
     "lodash.debounce": "^4.0.8",
     "lodash.defaults": "^4.2.0",
+    "lodash.isequal": "^4.5.0",
     "minimist": "^1.2.0",
     "mithril": "^1.1.1",
     "mkdirp": "^0.5.1",
@@ -44,5 +46,8 @@
     "eslint-config-ghornich-es5": "github:ghornich/eslint-config-ghornich-es5",
     "tape": "^4.7.0",
     "watchmen": "github:ghornich/watchmen"
+  },
+  "eslintConfig": {
+    "extends": "eslint-config-ghornich"
   }
 }

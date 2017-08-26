@@ -482,13 +482,26 @@ BrowserPuppet.prototype._onExecMessage = Promise.method(function (data) {
         return this.execCommand(data.command);
     }
     else if (data.type === MESSAGES.DOWNSTREAM.EXEC_FUNCTION) {
-        // TODO
-        throw new Error('TODO: EXEC_FUNCTION');
+        return this.execFunction(data.fn, data.args)
     }
     else {
         throw new Error('Unknown exec type: ' + data.type);
     }
 });
+
+BrowserPuppet.prototype.execFunction=Promise.method(function (fn, args) {
+    var context = {
+        driver: this,
+        $: $,
+        // TODO kell?
+        jQuery: $,
+        promiseWhile: promiseWhile,
+        Promise: Promise,
+    };
+
+    // TODO args
+    return fn.apply(context)
+})
 
 BrowserPuppet.prototype.execCommand=Promise.method(function(command){
     switch (command.type) {
@@ -828,7 +841,7 @@ function promiseWhile(condition, action) {
     });
 }
 
-},{"../../../../modules/get-unique-selector":5,"../../../../modules/jsonf":6,"../../../../modules/ws4ever":7,"../messages":2,"../screenshot-marker":4,"bluebird":9,"jquery":12,"lodash.debounce":13,"lodash.defaults":14}],4:[function(require,module,exports){
+},{"../../../../modules/get-unique-selector":6,"../../../../modules/jsonf":9,"../../../../modules/ws4ever":10,"../messages":2,"../screenshot-marker":4,"bluebird":12,"jquery":15,"lodash.debounce":16,"lodash.defaults":17}],4:[function(require,module,exports){
 (function (Buffer){
 exports.width = 4;
 exports.height = 4;
@@ -844,386 +857,369 @@ exports.base64 =
     'kYGD4zwAEM2++YgABJgYg+F+vzpC2zJYBBJhm3nzFAAPp6mIMTAxAMCvqMANj400GEAAAvQYMY6PVnIQAAAAASUVORK5CYII=';
 
 }).call(this,require("buffer").Buffer)
-},{"buffer":10}],5:[function(require,module,exports){
-(function () {
-	'use strict';
+},{"buffer":13}],5:[function(require,module,exports){
+'use strict';
 
-	// TODO preferred selectors?
+var DOMUtils = exports;
 
-	var NodeUtils = {}
+DOMUtils.hasId = function (node) {
+	return Boolean(node && typeof node.id === 'string' && node.id.trim().length > 0)
+}
 
-	UniqueSelector._SelectorElement = SelectorElement
-	UniqueSelector._SelectorElementList = SelectorElementList
-	UniqueSelector._NodeUtils = NodeUtils
+DOMUtils.getId = function (node) {
+	return node.id.trim()
+}
 
-	// -----------------------
+DOMUtils.hasClass = function (node) {
+	return Boolean(node && typeof node.className === 'string' && node.className.trim().length > 0)
+}
 
-	if (typeof module === 'object' && typeof module.exports === 'object' && typeof exports === 'object') {
-		exports = module.exports = UniqueSelector
-	}
-	else {
-		window.UniqueSelector = UniqueSelector
-	}
-
-	// -----------------------
-
-	function SelectorElement(node, options) {
-		var nodeSelectorData = SelectorElement.getNodeSelectorData(node, options)
-
-		this._node = node
-		this._rawSelector = nodeSelectorData.selector,
-		this._type = nodeSelectorData.type,
-		this._active = true,
-		this._useNthChild = false,
-		this._nthChild = Array.prototype.indexOf.call(node.parentNode.children, node) + 1
-
-		Object.defineProperties(this, {
-			node: {
-				get: function () {
-					return this._node
-				},
-				set: function () {
-					throw new Error('Cannot set read-only property "node"')
-				}
-			},
-			// TODO unit test
-			rawSelector: {
-				get: function () {
-					if (!this._active) {
-						return null
-					}
-
-					return this._rawSelector
-				},
-				set: function (val) {
-					// TODO enforce selector type?
-					this._rawSelector = val
-				}
-			},
-			selector: {
-				get: function () {
-					if (!this._active) {
-						return null
-					}
-
-					return this._rawSelector + (this._useNthChild ? ':nth-child(' + this._nthChild + ')' : '')
-				},
-				set: function () {
-					throw new Error('Cannot set read-only property "selector"')
-				}
-			},
-			type: {
-				get: function () {
-					return this._type
-				},
-				set: function () {
-					throw new Error('Cannot set read-only property "type"')
-				}
-			},
-			active: {
-				get: function () {
-					return this._active
-				},
-				set: function (val) {
-					if (typeof val !== 'boolean') {
-						throw new Error('Invalid type for "active"')
-					}
-
-					this._active = val
-				}
-			},
-			useNthChild: {
-				get: function () {
-					return this._useNthChild
-				},
-				set: function (val) {
-					if (typeof val !== 'boolean') {
-						throw new Error('Invalid type for "useNthChild"')
-					}
-
-					this._useNthChild = val
-				}
-			},
-			// nthChild: {
-			//  get: function () { return this._nthChild },
-			//  set: function () { throw new Error('Cannot set read-only property "nthChild"') }
-			// }
-		})
-
-		Object.seal(this)
-	}
-
-	SelectorElement.TYPE = {
-		ID: 0,
-		CLASS: 1,
-		ATTR: 2,
-		TAG: 3
-	}
-
-	SelectorElement.ERROR = {
-		INVALID_NODE: 0
-	}
-
-	/**
-	 * [getSelectorStringData description]
-	 * @param  {[type]} node [description]
-	 * @return {Object} { selector: String, type: Number }
-	 */
-	SelectorElement.getNodeSelectorData = function (node, options) {
-		if (!node || !('tagName' in node)) {
-			var error = new Error('SelectorElement::getNodeSelectorData: invalid node');
-			error.type = SelectorElement.ERROR.INVALID_NODE
-			throw error
-		}
-
-		options.ignoredClasses = options.ignoredClasses||[]
-
-		if (NodeUtils.hasId(node)) {
-			return {
-				selector: '#' + NodeUtils.getId(node),
-				type: SelectorElement.TYPE.ID
-			}
-		}
-
-		if (NodeUtils.hasClass(node)) {
-			var classNames = NodeUtils.getClass(node)
-
-			options.ignoredClasses.forEach(function(ignoredClass) {
-				classNames = classNames.replace(ignoredClass, '')
-			})
-
-			classNames = classNames.trim()
-
-			if (classNames.length > 0) {
-				return {
-					selector: '.' + classNames.replace(/ +/g, '.'),
-					type: SelectorElement.TYPE.CLASS
-				}	
-			}
-		}
-
-		// TODO custom attributes?
-
-		var maybeNameAttr = (node.getAttribute('name') || '').trim(); 
-
-		if (maybeNameAttr.length > 0) {
-			return {
-				selector: node.tagName.toLowerCase() + '[name="' + maybeNameAttr + '"]',
-				type: SelectorElement.TYPE.ATTR
-			}
-		}
-
-		// TODO other common selectors?
-
-		return {
-			selector: node.tagName.toLowerCase(),
-			type: SelectorElement.TYPE.TAG
-		}
-	}
-
-	// -----------------------
-
-	function SelectorElementList(options) {
-		this._opts = optionDefaults(options, {
-			querySelectorAll: document.querySelectorAll.bind(document)
-		})
-
-		this._selectorElements = []
-
-		Object.seal(this)
-	}
-
-	SelectorElementList.prototype.getSelectorPath = function () {
-		return this._selectorElements
-			.map(function (selectorElement) {
-				return selectorElement.selector
-			})
-			.filter(function (selector) { return Boolean(selector) })
-			.join(' ')
-			.trim()
-			.replace(/ +/g, ' ');
-	}
-
-	SelectorElementList.prototype.addElement = function (element) {
-		this._selectorElements.unshift(element)
-	}
-
-	SelectorElementList.prototype.getAmbiguity = function () {
-		return this._opts.querySelectorAll(this.getSelectorPath()).length
-	}
-
-	SelectorElementList.prototype.isUnique = function () {
-		return this.getAmbiguity() === 1;
-	}
-
-	SelectorElementList.prototype.simplify = function () {
-		var ambiguity = this.getAmbiguity()
-
-		for (var i = 0, len = this._selectorElements.length; i < len - 1; i++) {
-			var selectorElement = this._selectorElements[i]
-
-			if (!selectorElement.active) {
-				continue
-			}
-
-			selectorElement.active = false
-
-			var newAmbiguity = this.getAmbiguity()
-
-			if (ambiguity !== newAmbiguity) {
-				selectorElement.active = true
-			}
-
-
-
-		}
-	}
-	
-	// TODO if selectorElement is type CLASS and >1 classnames: simplify classnames
-
-	SelectorElementList.prototype.simplifyClasses = function () {
-		var ambiguity = this.getAmbiguity()
-
-		for (var i = 0, len = this._selectorElements.length; i < len - 1; i++) {
-			var selectorElement = this._selectorElements[i]
-
-			if (!selectorElement.active || selectorElement.type !== SelectorElement.TYPE.CLASS) {
-				return
-			}
-
-			// 	var originalSelector = selectorElement.rawSelector
-			// 	var classNames = originalSelector.split(/(?=\.)/g)
-			// 	var ignoredClassIdxs = []
-			
-			// 	if (classNames.length > 1) {
-			// 		for (var classIdx = 0, classLen = classNames.length; classIdx < classLen; classIdx++) {
-			// 			var className = classNames[classIdx]
-
-						
-			// 		}
-			// 	}
-		}
-
-	}
-
-	/**
-	 * add "nth-child"s from back until selector becomes unique
-	 */
-	SelectorElementList.prototype.uniqueify = function () {
-		var ambiguity = this.getAmbiguity()
-
-		for (var i = this._selectorElements.length - 1; i >= 0; i--) {
-			var selectorElement = this._selectorElements[i]
-			var prevActiveValue = selectorElement.active
-
-			selectorElement.active = true
-			selectorElement.useNthChild = true
-
-			var newAmbiguity = this.getAmbiguity()
-
-			// TODO error check: newAmbiguity < 1
-
-			if (newAmbiguity < ambiguity) {
-				ambiguity = newAmbiguity
-
-				if (ambiguity === 1) {
-					break
-				}
-			}
-			else {
-				selectorElement.useNthChild = false
-				selectorElement.active = prevActiveValue
-			}
-		}
-	}
-
-	// -----------------------
-
-	function UniqueSelector(options) {
-		this._opts = optionDefaults(options, {
-			querySelectorAll: document.querySelectorAll.bind(document),
-			ignoredClasses: []
-		})
-	}
-
-	UniqueSelector.prototype.get = function(node) {
-		if (NodeUtils.hasId(node)) {
-			return '#' + NodeUtils.getId(node)
-		}
-
-		var selectorElementList = this._getFullSelectorElementList(node);
-
-		selectorElementList.simplify()
-
-		if (!selectorElementList.isUnique()) {
-			selectorElementList.uniqueify()
-		}
-
-		return selectorElementList.getSelectorPath()
-	}
-
-	UniqueSelector.prototype._getFullSelectorElementList = function (node) {
-		var selectorElementList = new SelectorElementList({
-			querySelectorAll: this._opts.querySelectorAll
-		})
-
-		var currentNode = node
-
-		while (currentNode && currentNode.tagName !== 'BODY') {
-			var selectorElement = new SelectorElement(currentNode, this._opts)
-
-			selectorElementList.addElement(selectorElement);
-
-			if (selectorElement.type === SelectorElement.TYPE.ID) {
-				break
-			}
-
-			currentNode = currentNode.parentNode
-		}
-
-		return selectorElementList;
-	}
-
-	UniqueSelector.prototype.getFullSelectorPath = function (node) {
-		return this._getFullSelectorElementList(node).getSelectorPath()
-	}
-
-	// -----------------------
-
-	NodeUtils.hasId = function (node) {
-		return Boolean(node && typeof node.id === 'string' && node.id.trim().length > 0)
-	}
-
-	NodeUtils.getId = function (node) {
-		return node.id.trim()
-	}
-
-	NodeUtils.hasClass = function (node) {
-		return Boolean(node && typeof node.className === 'string' && node.className.trim().length > 0)
-	}
-
-	NodeUtils.getClass = function (node) {
-		return node.className.trim()
-	}
-
-	// -----------------------
-
-	function optionDefaults(options, defaults) {
-		if (!options) {
-			return defaults
-		}
-
-		Object.keys(defaults).forEach(function (key) {
-			if (!(key in options)) {
-				options[key] = defaults[key]
-			}
-		})
-
-		return options
-	}
-})()
+DOMUtils.getClass = function (node) {
+	return node.className.trim()
+}
 
 },{}],6:[function(require,module,exports){
+'use strict';
+
+var defaults = require('lodash.defaults');
+var DOMUtils = require('./dom-utils');
+var SelectorElement = require('./selector-element')
+var SelectorElementList=require('./selector-element-list')
+
+exports = module.exports = UniqueSelector
+
+function UniqueSelector(options) {
+	this._opts = defaults({}, options, {
+		querySelectorAll: document.querySelectorAll.bind(document),
+		ignoredClasses: []
+	})
+}
+
+UniqueSelector.prototype.get = function(node) {
+	if (DOMUtils.hasId(node)) {
+		return '#' + DOMUtils.getId(node)
+	}
+
+	var selectorElementList = this._getFullSelectorElementList(node);
+
+	selectorElementList.simplify()
+
+	if (!selectorElementList.isUnique()) {
+		selectorElementList.uniqueify()
+	}
+
+	return selectorElementList.getSelectorPath()
+}
+
+UniqueSelector.prototype._getFullSelectorElementList = function (node) {
+	var selectorElementList = new SelectorElementList({
+		querySelectorAll: this._opts.querySelectorAll
+	})
+
+	var currentNode = node
+
+	while (currentNode && currentNode.tagName !== 'BODY') {
+		var selectorElement = new SelectorElement(currentNode, this._opts)
+
+		selectorElementList.addElement(selectorElement);
+
+		if (selectorElement.type === SelectorElement.TYPE.ID) {
+			break
+		}
+
+		currentNode = currentNode.parentNode
+	}
+
+	return selectorElementList;
+}
+
+UniqueSelector.prototype.getFullSelectorPath = function (node) {
+	return this._getFullSelectorElementList(node).getSelectorPath()
+}
+
+},{"./dom-utils":5,"./selector-element":8,"./selector-element-list":7,"lodash.defaults":17}],7:[function(require,module,exports){
+'use strict';
+
+var defaults=require('lodash.defaults')
+
+exports = module.exports = SelectorElementList;
+
+function SelectorElementList(options) {
+	this._opts = defaults({}, options, {
+		querySelectorAll: document.querySelectorAll.bind(document)
+	})
+
+	this._selectorElements = []
+
+	Object.seal(this)
+}
+
+SelectorElementList.prototype.getSelectorPath = function () {
+	return this._selectorElements
+		.map(function (selectorElement) {
+			return selectorElement.selector
+		})
+		.filter(function (selector) { return Boolean(selector) })
+		.join(' ')
+		.trim()
+		.replace(/ +/g, ' ');
+}
+
+SelectorElementList.prototype.addElement = function (element) {
+	this._selectorElements.unshift(element)
+}
+
+SelectorElementList.prototype.getAmbiguity = function () {
+	return this._opts.querySelectorAll(this.getSelectorPath()).length
+}
+
+SelectorElementList.prototype.isUnique = function () {
+	return this.getAmbiguity() === 1;
+}
+
+SelectorElementList.prototype.simplify = function () {
+	var ambiguity = this.getAmbiguity()
+
+	for (var i = 0, len = this._selectorElements.length; i < len - 1; i++) {
+		var selectorElement = this._selectorElements[i]
+
+		if (!selectorElement.active) {
+			continue
+		}
+
+		selectorElement.active = false
+
+		var newAmbiguity = this.getAmbiguity()
+
+		if (ambiguity !== newAmbiguity) {
+			selectorElement.active = true
+		}
+
+
+
+	}
+}
+
+// TODO if selectorElement is type CLASS and >1 classnames: simplify classnames
+
+SelectorElementList.prototype.simplifyClasses = function () {
+	var ambiguity = this.getAmbiguity()
+
+	for (var i = 0, len = this._selectorElements.length; i < len - 1; i++) {
+		var selectorElement = this._selectorElements[i]
+
+		if (!selectorElement.active || selectorElement.type !== SelectorElement.TYPE.CLASS) {
+			return
+		}
+
+		// 	var originalSelector = selectorElement.rawSelector
+		// 	var classNames = originalSelector.split(/(?=\.)/g)
+		// 	var ignoredClassIdxs = []
+		
+		// 	if (classNames.length > 1) {
+		// 		for (var classIdx = 0, classLen = classNames.length; classIdx < classLen; classIdx++) {
+		// 			var className = classNames[classIdx]
+
+					
+		// 		}
+		// 	}
+	}
+
+}
+
+/**
+ * add "nth-child"s from back until selector becomes unique
+ */
+SelectorElementList.prototype.uniqueify = function () {
+	var ambiguity = this.getAmbiguity()
+
+	for (var i = this._selectorElements.length - 1; i >= 0; i--) {
+		var selectorElement = this._selectorElements[i]
+		var prevActiveValue = selectorElement.active
+
+		selectorElement.active = true
+		selectorElement.useNthChild = true
+
+		var newAmbiguity = this.getAmbiguity()
+
+		// TODO error check: newAmbiguity < 1
+
+		if (newAmbiguity < ambiguity) {
+			ambiguity = newAmbiguity
+
+			if (ambiguity === 1) {
+				break
+			}
+		}
+		else {
+			selectorElement.useNthChild = false
+			selectorElement.active = prevActiveValue
+		}
+	}
+}
+},{"lodash.defaults":17}],8:[function(require,module,exports){
+'use strict';
+
+var DOMUtils = require('./dom-utils');
+
+exports =module.exports=SelectorElement
+
+SelectorElement.TYPE = {
+	ID: 0,
+	CLASS: 1,
+	ATTR: 2,
+	TAG: 3
+}
+
+SelectorElement.ERROR = {
+	INVALID_NODE: 0
+}
+
+/**
+ * Represents a single DOM node's selector, e.g.:
+ *
+ * .class1 .class2.red span [name="user"]
+ * |-----| |---------| |--| |-----------|
+ *
+ * 
+ */
+
+function SelectorElement(node, options) {
+	var nodeSelectorData = SelectorElement._getNodeSelectorData(node, options)
+
+	this._node = node
+	this._rawSelector = nodeSelectorData.selector,
+	this._type = nodeSelectorData.type,
+	this._active = true,
+	this._useNthChild = false,
+	this._nthChild = Array.prototype.indexOf.call(node.parentNode.children, node) + 1
+
+	Object.defineProperties(this, {
+		node: {
+			get: function () {
+				return this._node
+			},
+			set: function () {
+				throw new Error('Cannot set read-only property "node"')
+			}
+		},
+		rawSelector: {
+			get: function () {
+				if (!this._active) {
+					return null
+				}
+
+				return this._rawSelector
+			},
+			set: function (val) {
+				// TODO enforce selector type?
+				this._rawSelector = val
+			}
+		},
+		selector: {
+			get: function () {
+				if (!this._active) {
+					return null
+				}
+
+				return this._rawSelector + (this._useNthChild ? ':nth-child(' + this._nthChild + ')' : '')
+			},
+			set: function () {
+				throw new Error('Cannot set read-only property "selector"')
+			}
+		},
+		type: {
+			get: function () {
+				return this._type
+			},
+			set: function () {
+				throw new Error('Cannot set read-only property "type"')
+			}
+		},
+		active: {
+			get: function () {
+				return this._active
+			},
+			set: function (val) {
+				if (typeof val !== 'boolean') {
+					throw new Error('Invalid type for "active"')
+				}
+
+				this._active = val
+			}
+		},
+		useNthChild: {
+			get: function () {
+				return this._useNthChild
+			},
+			set: function (val) {
+				if (typeof val !== 'boolean') {
+					throw new Error('Invalid type for "useNthChild"')
+				}
+
+				this._useNthChild = val
+			}
+		},
+	})
+
+	Object.seal(this)
+}
+
+
+/**
+ * [getSelectorStringData description]
+ * @param  {[type]} node [description]
+ * @return {Object} { selector: String, type: Number }
+ */
+SelectorElement._getNodeSelectorData = function (node, options) {
+	if (!node || !('tagName' in node)) {
+		var error = new Error('SelectorElement::_getNodeSelectorData: invalid node');
+		error.type = SelectorElement.ERROR.INVALID_NODE
+		throw error
+	}
+
+	options=options||{}
+	options.ignoredClasses = options.ignoredClasses||[]
+
+	if (DOMUtils.hasId(node)) {
+		return {
+			selector: '#' + DOMUtils.getId(node),
+			type: SelectorElement.TYPE.ID
+		}
+	}
+
+	if (DOMUtils.hasClass(node)) {
+		var classNames = DOMUtils.getClass(node)
+
+		options.ignoredClasses.forEach(function(ignoredClass) {
+			classNames = classNames.replace(ignoredClass, '')
+		})
+
+		classNames = classNames.trim()
+
+		if (classNames.length > 0) {
+			return {
+				selector: '.' + classNames.replace(/ +/g, '.'),
+				type: SelectorElement.TYPE.CLASS
+			}	
+		}
+	}
+
+	var maybeNameAttr = (node.getAttribute('name') || '').trim(); 
+
+	if (maybeNameAttr.length > 0) {
+		return {
+			selector: node.tagName.toLowerCase() + '[name="' + maybeNameAttr + '"]',
+			type: SelectorElement.TYPE.ATTR
+		}
+	}
+
+	return {
+		selector: node.tagName.toLowerCase(),
+		type: SelectorElement.TYPE.TAG
+	}
+}
+},{"./dom-utils":5}],9:[function(require,module,exports){
 'use strict'
 
 // TODO support ES6 arrow fns
@@ -1269,118 +1265,126 @@ function isStringAFunction(s){
         /^function\s+[a-zA-Z0-9_$]+\s*\(/.test(s)
 }
 
-},{}],7:[function(require,module,exports){
+},{}],10:[function(require,module,exports){
 
 if (isNode()) {
-    module.exports=Ws4ever
+    module.exports = Ws4ever;
 }
 else {
-    window.Ws4ever=Ws4ever
+    window.Ws4ever = Ws4ever;
 }
 
 
-function Ws4ever(url, protocols, options){
-    this._opts=Object.assign({}, {
-        retryInterval:1000
-    }, options||{})
+function Ws4ever(url, protocols, options) {
+    this._opts = Object.assign({}, {
+        retryInterval: 1000,
+    }, options || {});
 
-    this._url=url
-    this._protocols=protocols
-    this._ws=null
-    this._isConnecting=false
+    this._url = url;
+    this._protocols = protocols;
+    this._ws = null;
+    this._isConnecting = false;
 
-    this.onopen=noop
-    this.onclose=noop
-    this.onerror=noop
-    this.onmessage=noop
+    this.onopen = noop;
+    this.onclose = noop;
+    this.onerror = noop;
+    this.onmessage = noop;
 
     Object.defineProperties(this, {
         readyState: {
-            get: function () { return this._ws?this._ws.readyState:WebSocket.CLOSED }
+            get: function () {
+                return this._ws ? this._ws.readyState : WebSocket.CLOSED;
+            },
         },
         url: {
-            get: function () { return this._url }
+            get: function () {
+                return this._url;
+            },
         },
-    })
+    });
 
-    this._ensureConnection=this._ensureConnection.bind(this)
-    this._onWsOpen=this._onWsOpen.bind(this)
-    this._onWsClose=this._onWsClose.bind(this)
-    this._onWsError=this._onWsError.bind(this)
-    this._onWsMessage=this._onWsMessage.bind(this)
+    this._ensureConnection = this._ensureConnection.bind(this);
+    this._onWsOpen = this._onWsOpen.bind(this);
+    this._onWsClose = this._onWsClose.bind(this);
+    this._onWsError = this._onWsError.bind(this);
+    this._onWsMessage = this._onWsMessage.bind(this);
 
-    this.iid = setInterval(this._ensureConnection, this._opts.retryInterval)
+    this.iid = setInterval(this._ensureConnection, this._opts.retryInterval);
 }
 
-Ws4ever.prototype.isConnected=function(){
-    return Boolean(this._ws && this._ws.readyState === WebSocket.OPEN)
-}
+Ws4ever.prototype.isConnected = function () {
+    return Boolean(this._ws && this._ws.readyState === WebSocket.OPEN);
+};
 
-Ws4ever.prototype.send=function(msg){
-    if (!this.isConnected())throw new Error('cannot send message, ws closed')
-    this._ws.send(msg)
-}
+Ws4ever.prototype.send = function (msg) {
+    if (!this.isConnected()) {
+        throw new Error('cannot send message, ws closed');
+    }
+    this._ws.send(msg);
+};
 
-Ws4ever.prototype._ensureConnection=function(){
-    if (this.isConnected())return
-    if (this._isConnecting)return
+Ws4ever.prototype._ensureConnection = function () {
+    if (this.isConnected()) {
+        return;
+    }
+    if (this._isConnecting) {
+        return;
+    }
 
     try {
-        console.log('_ensureConnection: connecting')
-        this._isConnecting=true
-        this._ws=new WebSocket(this._url, this._protocols)
-        this._ws.onopen=this._onWsOpen
-        this._ws.onclose=this._onWsClose
-        this._ws.onerror=this._onWsError
-        this._ws.onmessage=this._onWsMessage
+        this._isConnecting = true;
+        this._ws = new WebSocket(this._url, this._protocols);
+        this._ws.onopen = this._onWsOpen;
+        this._ws.onclose = this._onWsClose;
+        this._ws.onerror = this._onWsError;
+        this._ws.onmessage = this._onWsMessage;
     }
-    catch(e){
+    catch (e) {
         // TODO handle or log?
-        this._isConnecting=false
-        this._ws=null
+        console.log(e);
+        this._isConnecting = false;
+        this._ws = null;
     }
-}
+};
 
-Ws4ever.prototype.close=function(){
-    clearInterval(this.iid)
-    this._ws.close()
-}
+Ws4ever.prototype.close = function () {
+    clearInterval(this.iid);
+    this._ws.close();
+};
 
-Ws4ever.prototype._onWsOpen=function () {
-    console.log('_onWsOpen')
-    this.onopen.apply(null, arguments)
-    this._isConnecting=false
-}
+Ws4ever.prototype._onWsOpen = function () {
+    this.onopen.apply(null, arguments);
+    this._isConnecting = false;
+};
 
-Ws4ever.prototype._onWsClose=function () {
-    console.log('_onWsClose')
-    this.onclose.apply(null, arguments)
-    this._isConnecting=false
-    this._ws=null
-}
+Ws4ever.prototype._onWsClose = function () {
+    this.onclose.apply(null, arguments);
+    this._isConnecting = false;
+    this._ws = null;
+};
 
-Ws4ever.prototype._onWsError=function () {
-    console.log('_onWsError')
-    this.onerror.apply(null, arguments)
+Ws4ever.prototype._onWsError = function () {
+    this.onerror.apply(null, arguments);
     // this._isConnecting=false
     // this._ws=null
+};
+
+Ws4ever.prototype._onWsMessage = function () {
+    this.onmessage.apply(null, arguments);
+};
+
+
+
+
+function noop() {}
+
+function isNode() {
+    return typeof module === 'object' && typeof module.exports === 'object';
 }
 
-Ws4ever.prototype._onWsMessage=function () {
-    console.log('_onWsMessage')
-    this.onmessage.apply(null,arguments)
-}
 
 
-
-
-function noop(){}
-
-function isNode(){return typeof module==='object'&&typeof module.exports==='object'}
-
-
-
-},{}],8:[function(require,module,exports){
+},{}],11:[function(require,module,exports){
 'use strict'
 
 exports.byteLength = byteLength
@@ -1496,7 +1500,7 @@ function fromByteArray (uint8) {
   return parts.join('')
 }
 
-},{}],9:[function(require,module,exports){
+},{}],12:[function(require,module,exports){
 (function (process,global){
 /* @preserve
  * The MIT License (MIT)
@@ -7118,7 +7122,7 @@ module.exports = ret;
 },{"./es5":13}]},{},[4])(4)
 });                    ;if (typeof window !== 'undefined' && window !== null) {                               window.P = window.Promise;                                                     } else if (typeof self !== 'undefined' && self !== null) {                             self.P = self.Promise;                                                         }
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"_process":15}],10:[function(require,module,exports){
+},{"_process":18}],13:[function(require,module,exports){
 /*!
  * The buffer module from node.js, for the browser.
  *
@@ -8834,7 +8838,7 @@ function numberIsNaN (obj) {
   return obj !== obj // eslint-disable-line no-self-compare
 }
 
-},{"base64-js":8,"ieee754":11}],11:[function(require,module,exports){
+},{"base64-js":11,"ieee754":14}],14:[function(require,module,exports){
 exports.read = function (buffer, offset, isLE, mLen, nBytes) {
   var e, m
   var eLen = nBytes * 8 - mLen - 1
@@ -8920,7 +8924,7 @@ exports.write = function (buffer, value, offset, isLE, mLen, nBytes) {
   buffer[offset + i - d] |= s * 128
 }
 
-},{}],12:[function(require,module,exports){
+},{}],15:[function(require,module,exports){
 /*!
  * jQuery JavaScript Library v3.2.1
  * https://jquery.com/
@@ -19175,7 +19179,7 @@ if ( !noGlobal ) {
 return jQuery;
 } );
 
-},{}],13:[function(require,module,exports){
+},{}],16:[function(require,module,exports){
 (function (global){
 /**
  * lodash (Custom Build) <https://lodash.com/>
@@ -19556,7 +19560,7 @@ function toNumber(value) {
 module.exports = debounce;
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],14:[function(require,module,exports){
+},{}],17:[function(require,module,exports){
 /**
  * lodash (Custom Build) <https://lodash.com/>
  * Build: `lodash modularize exports="npm" -o ./`
@@ -20226,7 +20230,7 @@ function keysIn(object) {
 
 module.exports = defaults;
 
-},{}],15:[function(require,module,exports){
+},{}],18:[function(require,module,exports){
 // shim for using process in browser
 var process = module.exports = {};
 

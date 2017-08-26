@@ -194,6 +194,14 @@ BrowserPuppeteer.prototype.execCommand = Promise.method(function (command) {
     });
 });
 
+BrowserPuppeteer.prototype.execFunction = Promise.method(function (fn, ...args) {
+    return this.sendMessage({
+        type: MESSAGES.DOWNSTREAM.EXEC_FUNCTION,
+        fn: fn,
+        args: args,
+    });
+});
+
 BrowserPuppeteer.prototype.setTransmitEvents = function (value) {
     return this.sendMessage({
         type: MESSAGES.DOWNSTREAM.SET_TRANSMIT_EVENTS,
