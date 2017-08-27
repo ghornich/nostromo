@@ -16,12 +16,12 @@
                 <li><a href="item5">item5</a></li>
             </ul>
 
-            <div class="class1">
-                <input name="user" value="user1"  data-test="4" />
+            <div class="class1" data-test="4">
+                <input name="user" value="user1"  data-test="5" />
                 <input name="pass" value="pass1" />
                 <div>
                     <span>
-                        <a href="x" data-test="5">x</a>
+                        <a href="x" data-test="6">x</a>
                     </span>
                 </div>
             </div>
@@ -30,7 +30,13 @@
         <script src="http://localhost:47225/browser-puppet.defaults.js"></script>
         <script src="../dist/get-unique-selector.dist.js"></script>
         <script>
-            window.uniqueSelector = new GetUniqueSelector()
+            window.uniqueSelector1 = new GetUniqueSelector()
+            window.uniqueSelector2 = new GetUniqueSelector({
+                ignoredClasses: [
+                    'class1',
+                    'class2',
+                ]
+            })
         </script>
     </body>
 </html>
