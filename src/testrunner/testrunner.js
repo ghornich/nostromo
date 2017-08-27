@@ -221,8 +221,8 @@ TestRunner.prototype.run = Promise.method(function(){
 
                 this._tapWriter.version()
 
-                await mkdirpAsync(this._getCurrentBrowserReferenceScreenshotDir())
-                await mkdirpAsync(this._getCurrentBrowserReferenceErrorDir())
+                // await mkdirpAsync(this._getCurrentBrowserReferenceScreenshotDir())
+                // await mkdirpAsync(this._getCurrentBrowserReferenceErrorDir())
 
                 await browser.start(this._conf.appUrl)
 
@@ -390,8 +390,9 @@ TestRunner.prototype._getCurrentTestModuleReferenceErrorDir=function(){
 TestRunner.prototype._runTestModule = function(fn){
     this._log.trace('_runTestModule')
 
-    return mkdirpAsync(this._getCurrentTestModuleReferenceScreenshotDir())
-    .then(()=>mkdirpAsync(this._getCurrentTestModuleReferenceErrorDir()))
+    // return mkdirpAsync(this._getCurrentTestModuleReferenceScreenshotDir())
+    // .then(()=>mkdirpAsync(this._getCurrentTestModuleReferenceErrorDir()))
+    return Promise.resolve()
     .then(()=>{
         var testDatas = []
 
@@ -728,13 +729,16 @@ TestRunner.prototype._comment = Promise.method(function (comment) {
 
 
 // TODO remove sync codes
-TestRunner.prototype._assert = Promise.method(function(){
+TestRunner.prototype._assert = async function(){
     var ssCount = this._assertCount
     var refImgDir = this._getCurrentTestModuleReferenceScreenshotDir()
     var failedImgDir = this._getCurrentTestModuleReferenceErrorDir()
     var refImgName = ssCount+'.png'
     var refImgPath = pathlib.resolve(refImgDir, refImgName)
     var refImgPathRelative = pathlib.relative(pathlib.resolve(REF_SCREENSHOT_BASE_DIR), refImgPath)
+
+    await mkdirpAsync(refImgDir)
+    await mkdirpAsync(failedImgDir)
 
     return screenshotjs({ cropMarker: cropMarkerImg })
     .then(img=>{
@@ -784,7 +788,7 @@ TestRunner.prototype._assert = Promise.method(function(){
     .finally(_=>{
         this._assertCount++
     })
-})
+}
 
 function noop(){}
 
