@@ -1,13 +1,13 @@
-'use strict'
+'use strict';
 
-var os=require('os')
-var defaults=require('lodash.defaults')
+const os = require('os');
+const defaults = require('lodash.defaults');
 
-var TAP_VERSION = 13
+const TAP_VERSION = 13;
 
-var DIAGNOSTIC_MARK = '#'
+const DIAGNOSTIC_MARK = '#';
 
-var DEFAULT_MESSAGES = aliasedMap({
+const DEFAULT_MESSAGES = aliasedMap({
     'ok': 'should be truthy',
     'notOk, notok': 'should be falsy',
     'equal': 'should be equal',
@@ -16,8 +16,8 @@ var DEFAULT_MESSAGES = aliasedMap({
     'notDeepEqual, notdeepequal': 'shouldn\'t be deep equal',
     'throws': 'should throw',
     'doesNotThrow, doesnotthrow': 'shouldn\'t throw',
-    'anonymous': '(unnamed assert)'
-})
+    'anonymous': '(unnamed assert)',
+});
 
 /*
 fail
@@ -33,110 +33,116 @@ throws -------
 doesNotThrow -------
 */
 
-exports = module.exports = TAPWriter
+exports = module.exports = TAPWriter;
 
 function TAPWriter(conf) {
     this._conf = defaults({}, conf, {
         eol: os.EOL,
         indent: '  ',
-        outStream: process.stdout
+        outStream: process.stdout,
     });
 
-    this._testCount=null
-    this._failCount=null
+    this._testCount = null;
+    this._failCount = null;
 
     Object.defineProperties(this, {
         testCount: {
-            get: function () { return this._testCount }
+            get: function () {
+                return this._testCount;
+            },
         },
         passCount: {
-            get: function () { return this._testCount - this._failCount }
+            get: function () {
+                return this._testCount - this._failCount;
+            },
         },
         failCount: {
-            get: function () { return this._failCount }
+            get: function () {
+                return this._failCount;
+            },
         },
-    })
+    });
 
-    this.reset()
+    this.reset();
 }
 
-TAPWriter.TAP_VERSION = TAP_VERSION
+TAPWriter.TAP_VERSION = TAP_VERSION;
 
-TAPWriter._aliasedMap = aliasedMap
+TAPWriter._aliasedMap = aliasedMap;
 
-TAPWriter.prototype.reset=function(){
-    this._testCount=0
-    this._failCount=0
-}
+TAPWriter.prototype.reset = function () {
+    this._testCount = 0;
+    this._failCount = 0;
+};
 
 TAPWriter.prototype.version = function (version) {
-    version = version === undefined ? TAPWriter.TAP_VERSION : version
-    this._writeLn('TAP version ' + version)
-}
+    version = version === undefined ? TAPWriter.TAP_VERSION : version;
+    this._writeLn(`TAP version ${ version}`);
+};
 
 TAPWriter.prototype.diagnostic = function (message) {
-    this._writeLn(DIAGNOSTIC_MARK + ' ' + message)
-}
+    this._writeLn(`${DIAGNOSTIC_MARK } ${ message}`);
+};
 
 // TODO ok/notOk: accept string too, use as message
 
 // type, message
 TAPWriter.prototype.ok =
 TAPWriter.prototype.pass = function (data) {
-    var msg = typeof data === 'string'
+    const msg = typeof data === 'string'
         ? data
-        : data.message || DEFAULT_MESSAGES[data.type] || DEFAULT_MESSAGES.anonymous
-    this._testCount++
-    this._writeLn('ok ' + this._testCount + ' ' + msg)
-}
+        : data.message || DEFAULT_MESSAGES[data.type] || DEFAULT_MESSAGES.anonymous;
+    this._testCount++;
+    this._writeLn(`ok ${ this._testCount } ${ msg}`);
+};
 
 // TODO use one failure-type function, show expected+actual if provided
 // use ok/notOk pair or pass/fail pair
 
 TAPWriter.prototype.notOk = function (description) {
-    description = description || DEFAULT_MESSAGES.anonymous
-    this._testCount++
-    this._failCount++
+    description = description || DEFAULT_MESSAGES.anonymous;
+    this._testCount++;
+    this._failCount++;
 
-    this._writeLn('not ok ' + this._testCount + ' ' + description)
-}
+    this._writeLn(`not ok ${ this._testCount } ${ description}`);
+};
 
 // type, message, expected, actual
 TAPWriter.prototype.fail = function (data) {
-    var msg = data.message || DEFAULT_MESSAGES[data.type] || DEFAULT_MESSAGES.anonymous
-    this._testCount++
-    this._failCount++
+    const msg = data.message || DEFAULT_MESSAGES[data.type] || DEFAULT_MESSAGES.anonymous;
+    this._testCount++;
+    this._failCount++;
 
-    this._writeLn('not ok ' + this._testCount + ' ' + msg)
-    this._writeLn('---', 1)
-    this._writeLn('operator: ' + data.type, 2)
-    this._writeLn('expected: ' + prettyPrint(data.expected), 2)
-    this._writeLn('actual:   ' + prettyPrint(data.actual), 2)
-    this._writeLn('...', 1)
-}
+    this._writeLn(`not ok ${ this._testCount } ${ msg}`);
+    this._writeLn('---', 1);
+    this._writeLn(`operator: ${ data.type}`, 2);
+    this._writeLn(`expected: ${ prettyPrint(data.expected)}`, 2);
+    this._writeLn(`actual:   ${ prettyPrint(data.actual)}`, 2);
+    this._writeLn('...', 1);
+};
 
 TAPWriter.prototype.plan = function (testCount) {
-    testCount = testCount === undefined ? this._testCount : testCount
-    this._writeLn('1..' + testCount)
-}
+    testCount = testCount === undefined ? this._testCount : testCount;
+    this._writeLn(`1..${ testCount}`);
+};
 
-TAPWriter.prototype.bailout=function(reason){
-    reason = reason ? ' '+reason : ''
-    this._writeLn('Bail out!'+reason)
-}
+TAPWriter.prototype.bailout = function (reason) {
+    reason = reason ? ` ${reason}` : '';
+    this._writeLn(`Bail out!${reason}`);
+};
 
-TAPWriter.prototype.comment=function(message){
-    this._writeLn(message, 1)
-}
+TAPWriter.prototype.comment = function (message) {
+    this._writeLn(message, 1);
+};
 
-TAPWriter.prototype._write=function(str, indentLvl){
-    var indent = strtimes(this._conf.indent, indentLvl || 0)
-    this._conf.outStream.write(indent + str)
-}
+TAPWriter.prototype._write = function (str, indentLvl) {
+    const indent = strtimes(this._conf.indent, indentLvl || 0);
+    this._conf.outStream.write(indent + str);
+};
 
-TAPWriter.prototype._writeLn=function(str, indentLvl){
-    this._write(str+this._conf.eol, indentLvl)
-}
+TAPWriter.prototype._writeLn = function (str, indentLvl) {
+    this._write(str + this._conf.eol, indentLvl);
+};
 
 
 
@@ -147,19 +153,27 @@ TAPWriter.prototype._writeLn=function(str, indentLvl){
 
 
 function strtimes(str, times) {
-    if (times === 0) return ''
-    var result=''
-    for (var i=0;i<times;i++){
-        result+=str
+    if (times === 0) {
+        return '';
     }
-    return result
+    let result = '';
+    for (let i = 0; i < times; i++) {
+        result += str;
+    }
+    return result;
 }
 
-function prettyPrint(val){
-    if (typeof val==='string') return '"'+val+'"'
+function prettyPrint(val) {
+    if (typeof val === 'string') {
+        return `"${val}"`;
+    }
 
-    try{return JSON.stringify(val)}
-    catch(err){return String(val)}
+    try {
+        return JSON.stringify(val);
+    }
+    catch (err) {
+        return String(val);
+    }
 }
 
 /**
@@ -177,15 +191,15 @@ function prettyPrint(val){
  * @param  {[type]} data [description]
  * @return {[type]}      [description]
  */
-function aliasedMap(raw){
-    var map={}
-    Object.keys(raw).forEach(rawKey=>{
-        var val = raw[rawKey]
-        var keys = rawKey.split(/, */)
-        keys.forEach(key=>{
-            map[key]=val
-        })
-    })
+function aliasedMap(raw) {
+    const map = {};
+    Object.keys(raw).forEach(rawKey => {
+        const val = raw[rawKey];
+        const keys = rawKey.split(/, */);
+        keys.forEach(key => {
+            map[key] = val;
+        });
+    });
 
-    return map
+    return map;
 }

@@ -64,21 +64,21 @@ BrowserSpawnerFirefox.prototype.start = Promise.method(function (url) {
     const xulstorePath = resolvePath(this._opts.tempDir, 'xulstore.json');
 
     return mkdirpAsync(this._opts.tempDir)
-        .then(() => fs.writeFileAsync(prefsPath, PREF_DEFAULT))
-        .then(() => fs.writeFileAsync(xulstorePath, JSON.stringify(xulstoreObj)))
-        .then(() => {
-            this._process = spawn(this._opts.path, ['-profile', this._opts.tempDir, '-no-remote', url]);
-            this._processRunning = true;
+    .then(() => fs.writeFileAsync(prefsPath, PREF_DEFAULT))
+    .then(() => fs.writeFileAsync(xulstorePath, JSON.stringify(xulstoreObj)))
+    .then(() => {
+        this._process = spawn(this._opts.path, ['-profile', this._opts.tempDir, '-no-remote', url]);
+        this._processRunning = true;
 
-            this._process.on('error', err => {
-                this.emit('error', err);
-            });
-
-            this._process.on('close', () => {
-                this.emit('close');
-                this._deleteTempDir();
-            });
+        this._process.on('error', err => {
+            this.emit('error', err);
         });
+
+        this._process.on('close', () => {
+            this.emit('close');
+            this._deleteTempDir();
+        });
+    });
 });
 
 BrowserSpawnerFirefox.prototype.stop = function () {

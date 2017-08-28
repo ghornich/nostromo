@@ -46,8 +46,10 @@ function BrowserSpawnerBase(options) {
     this._processRunning = false;
 
     Object.defineProperty(this, 'name', {
-        get: function () { return this._opts.name; }
-    })
+        get: function () {
+            return this._opts.name;
+        },
+    });
 }
 
 util.inherits(BrowserSpawnerBase, EventEmitter);

@@ -10,6 +10,6 @@ exports = module.exports = function (test) {
         .then(() => t.setValue('.in2', 'b'))
         .then(() => t.focus('.a:nth-child(1) button'))
         .then(() => t.click('.a:nth-child(1) button'))
-        .then(() => t.assertScreenshot())
+        .then(() => t.assertScreenshot());
     });
 };

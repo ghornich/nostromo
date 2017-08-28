@@ -123,12 +123,12 @@ BrowserPuppet.prototype._onMessage = function (rawData) {
                 return;
 
             case MESSAGES.DOWNSTREAM.SET_MOUSEOVER_SELECTORS:
-                self.setMouseoverSelectors(data.selectors)
-                return
+                self.setMouseoverSelectors(data.selectors);
+                return;
 
             case MESSAGES.DOWNSTREAM.SET_IGNORED_CLASSES:
-                self.setIgnoredClasses(data.classes)
-                return
+                self.setIgnoredClasses(data.classes);
+                return;
 
             default:
                 throw new Error('BrowserPuppet: unknown message type: ' + data.type);
@@ -189,7 +189,7 @@ BrowserPuppet.prototype._onClickCapture = function (event) {
 
     try {
         var selector = this._uniqueSelector.get(target);
-        var fullSelectorPath = this._uniqueSelector.getFullSelectorPath(target)
+        var fullSelectorPath = this._uniqueSelector.getFullSelectorPath(target);
     }
     catch (err) {
         console.error(err);
@@ -219,7 +219,7 @@ BrowserPuppet.prototype._onFocusCapture = function (event) {
 
     try {
         var selector = this._uniqueSelector.get(target);
-        var fullSelectorPath = this._uniqueSelector.getFullSelectorPath(target)
+        var fullSelectorPath = this._uniqueSelector.getFullSelectorPath(target);
     }
     catch (err) {
         console.error(err);
@@ -384,8 +384,8 @@ BrowserPuppet.prototype.setMouseoverSelectors = function (selectors) {
 
 BrowserPuppet.prototype.setIgnoredClasses = function (classes) {
     // TODO ugly
-    this._uniqueSelector._opts.ignoredClasses = classes
-}
+    this._uniqueSelector._opts.ignoredClasses = classes;
+};
 
 BrowserPuppet.prototype.setTransmitEvents = function (value) {
     if (typeof value !== 'boolean') {
@@ -422,14 +422,14 @@ BrowserPuppet.prototype._onExecMessage = Promise.method(function (data) {
         return this.execCommand(data.command);
     }
     else if (data.type === MESSAGES.DOWNSTREAM.EXEC_FUNCTION) {
-        return this.execFunction(data.fn, data.args)
+        return this.execFunction(data.fn, data.args);
     }
-    else {
-        throw new Error('Unknown exec type: ' + data.type);
-    }
+
+    throw new Error('Unknown exec type: ' + data.type);
+
 });
 
-BrowserPuppet.prototype.execFunction=Promise.method(function (fn, args) {
+BrowserPuppet.prototype.execFunction = Promise.method(function (fn, args) {
     var context = {
         driver: this,
         $: $,
@@ -440,10 +440,10 @@ BrowserPuppet.prototype.execFunction=Promise.method(function (fn, args) {
     };
 
     // TODO args
-    return fn.apply(context)
-})
+    return fn.apply(context);
+});
 
-BrowserPuppet.prototype.execCommand=Promise.method(function(command){
+BrowserPuppet.prototype.execCommand = Promise.method(function (command) {
     switch (command.type) {
         case 'click':
             return this.click(command.selector);
@@ -472,7 +472,7 @@ BrowserPuppet.prototype.execCommand=Promise.method(function(command){
     }
 });
 
-BrowserPuppet.prototype.execCompositeCommand=Promise.method(function (commands) {
+BrowserPuppet.prototype.execCompositeCommand = Promise.method(function (commands) {
     var self = this;
 
     return Promise.each(commands, function (command) {

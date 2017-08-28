@@ -8,4 +8,4 @@
 
     window.browserPuppet = new BrowserPuppet();
     browserPuppet.start();
-})();
+}());

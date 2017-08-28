@@ -1,46 +1,53 @@
-var SelectorElement = require('../selector-element')
-var test = require('tape')
+const SelectorElement = require('../selector-element');
+const test = require('tape');
 
 test('SelectorElement::ctor', t => {
-    var mockNode = {
+    const mockNode = {
         tagName: 'DIV',
         className: 'dummy class',
         name: '',
         parentNode: {
             tagName: 'DIV',
-            children: null
-        }
-    }
+            children: null,
+        },
+    };
 
     mockNode.parentNode.children = [
         'dummy1',
         'dummy2',
-        mockNode
-    ]
+        mockNode,
+    ];
 
-    var se = new SelectorElement(mockNode)
+    const se = new SelectorElement(mockNode);
 
-    t.equal(se.node, mockNode)
-    t.equal(se.selector, '.dummy.class')
-    t.equal(se.type, SelectorElement.TYPE.CLASS)
-    t.equal(se.active, true)
-    t.equal(se.useNthChild, false)
-    t.equal(se._nthChild, 3)
+    t.equal(se.node, mockNode);
+    t.equal(se.selector, '.dummy.class');
+    t.equal(se.type, SelectorElement.TYPE.CLASS);
+    t.equal(se.active, true);
+    t.equal(se.useNthChild, false);
+    t.equal(se._nthChild, 3);
 
-    t.end()
-})
+    t.end();
+});
 
 
 test('SelectorElement::ctor 2', t => {
-    var mockNode = {
+    const mockNode = {
         tagName: 'INPUT',
         className: '  ',
         name: 'password',
         parentNode: {
             tagName: 'FORM',
-            children: []
-        }
-    }
+            children: [],
+        },
+        getAttribute: function (attr) {
+            if (attr === 'name') {
+                return 'password';
+            }
+
+            throw new Error('Mock getAttribute only supports "name"');
+        },
+    };
 
     mockNode.parentNode.children.push(
         'dummy1',
@@ -48,24 +55,24 @@ test('SelectorElement::ctor 2', t => {
         'dummy3',
         mockNode,
         'dummy4',
-    )
+    );
 
-    var se = new SelectorElement(mockNode)
+    const se = new SelectorElement(mockNode);
 
-    t.equal(se.node, mockNode)
-    t.equal(se.selector, 'input[name="password"]')
-    t.equal(se.type, SelectorElement.TYPE.ATTR)
-    t.equal(se.active, true)
-    t.equal(se.useNthChild, false)
-    t.equal(se._nthChild, 4)
+    t.equal(se.node, mockNode);
+    t.equal(se.selector, 'input[name="password"]');
+    t.equal(se.type, SelectorElement.TYPE.ATTR);
+    t.equal(se.active, true);
+    t.equal(se.useNthChild, false);
+    t.equal(se._nthChild, 4);
 
-    t.end()
-})
+    t.end();
+});
 
 
 
 // test('SelectorElement::', t => {
-    
+
 
 //     t.end()
 // })

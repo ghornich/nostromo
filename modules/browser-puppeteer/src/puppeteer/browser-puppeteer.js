@@ -5,10 +5,10 @@ const urllib = require('url');
 const http = require('http');
 const util = require('util');
 const EventEmitter = require('events').EventEmitter;
-const JSONF = require(MODULES_PATH + 'jsonf');
+const JSONF = require(`${MODULES_PATH}jsonf`);
 const WS = require('ws');
 const Promise = require('bluebird');
-const Loggr = require(MODULES_PATH + 'loggr');
+const Loggr = require(`${MODULES_PATH}loggr`);
 const MESSAGES = require('../messages');
 
 // TODO transparent settings for puppet? (same function interface here & there)
@@ -73,7 +73,7 @@ BrowserPuppeteer.prototype._startServers = function () {
 
 BrowserPuppeteer.prototype._onHttpRequest = function (req, resp) {
     const parsedUrl = urllib.parse(req.url);
-    
+
     if (parsedUrl.pathname === '/browser-puppet.defaults.js') {
         resp.setHeader('content-type', 'application/javascript');
         resp.end(fs.readFileSync(pathlib.resolve(__dirname, '../../dist/browser-puppet.defaults.js')));
@@ -116,8 +116,8 @@ BrowserPuppeteer.prototype.reopen = function (url) {
     return this.sendMessage({
         type: MESSAGES.DOWNSTREAM.REOPEN_URL,
         url: url,
-    })
-}
+    });
+};
 
 BrowserPuppeteer.prototype._onWsConnection = function (wsConn) {
     this._log.trace('_onWsConnection');
@@ -170,7 +170,7 @@ BrowserPuppeteer.prototype.sendMessage = Promise.method(function (data) {
         throw new Error('Puppet not connected');
     }
     if (this._currentMessageHandler.resolve) {
-        throw new Error('Cannot send multiple messages - '+util.inspect(data));
+        throw new Error(`Cannot send multiple messages - ${util.inspect(data)}`);
     }
 
     this._log.debug('sending message');

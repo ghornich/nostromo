@@ -59,10 +59,10 @@ Loggr.prototype._log = function (lvl, messages) {
         }
 
         var message = messages
-            .map(function (msg) {
-                return String(msg);
-            })
-            .join(' ');
+        .map(function (msg) {
+            return String(msg);
+        })
+        .join(' ');
 
         var levelStr = Loggr.getLevelChar(lvl) + ' ';
 

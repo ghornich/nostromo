@@ -1,7 +1,7 @@
-module.exports=function(config){
+module.exports = function (config) {
     return {
     	referenceScreenshotDirs: [
-    		'referenceScreenshots2'
-    	]
-    }
-}
+    		'referenceScreenshots2',
+    	],
+    };
+};

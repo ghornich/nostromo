@@ -2,7 +2,7 @@
 
 exports = module.exports = function (test) {
     test('get-unique-selector', async t => {
-        var results=await t.execFunction(function () {
+        const results = await t.execFunction(function () {
             return [
                 uniqueSelector1.get(document.querySelector('[data-test="1"]')),
                 uniqueSelector1.get(document.querySelector('[data-test="2"]')),
@@ -10,8 +10,8 @@ exports = module.exports = function (test) {
                 uniqueSelector1.get(document.querySelector('[data-test="4"]')),
                 uniqueSelector1.get(document.querySelector('[data-test="5"]')),
                 uniqueSelector1.get(document.querySelector('[data-test="6"]')),
-            ]
-        })
+            ];
+        });
 
         t.equal(results, [
             'li:nth-child(2)',
@@ -20,11 +20,11 @@ exports = module.exports = function (test) {
             '.class1 .class1',
             'input[name="user"]',
             'span a',
-        ])
+        ]);
     });
 
     test('get-unique-selector, ignored classes', async t => {
-        var results=await t.execFunction(function () {
+        const results = await t.execFunction(function () {
             return [
                 uniqueSelector2.get(document.querySelector('[data-test="1"]')),
                 uniqueSelector2.get(document.querySelector('[data-test="2"]')),
@@ -32,8 +32,8 @@ exports = module.exports = function (test) {
                 uniqueSelector2.get(document.querySelector('[data-test="4"]')),
                 uniqueSelector2.get(document.querySelector('[data-test="5"]')),
                 uniqueSelector1.get(document.querySelector('[data-test="6"]')),
-            ]
-        })
+            ];
+        });
 
         t.equal(results, [
             'li:nth-child(2)',
@@ -42,7 +42,7 @@ exports = module.exports = function (test) {
             'div div:nth-child(2)',
             'input[name="user"]',
             'span a',
-        ])
+        ]);
 
     });
 };

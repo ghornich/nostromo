@@ -12,7 +12,8 @@
     "watch-ui": "watchmen \"npm run build-ui\" src/recorder/ui",
     "watch-diff-app": "watchmen \"npm run build-diff-app\" src/differ/web-app/src",
     "watch-browser-puppet": "watchmen \"npm run build-browser-puppet\" modules/browser-puppeteer/src/puppet",
-    "lint": "eslint **/*.js **/*.jsx"
+    "lint": "eslint **/*.js **/*.jsx",
+    "test": "tape **/test/*.test.js"
   },
   "author": "ghornich",
   "dependencies": {
