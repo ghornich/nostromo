@@ -1,6 +1,6 @@
 var tape=require('tape')
-var TYPES=require('../src/command').TYPES
-var CommandList=require('../src/command-list')
+var TYPES=require('../src/recorder/ui/command').TYPES
+var CommandList=require('../src/recorder/ui/command-list')
 
 tape('command list test', t=>{
 	var list = new CommandList([

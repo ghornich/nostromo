@@ -12,8 +12,8 @@ var JSONF=require('../../../../modules/jsonf')
 var m=require('mithril')
 var Ws4ever=require('../../../../modules/ws4ever')
 
-var CommandList = require('../../../command-list')
-var CMD_TYPES=require('../../../command').TYPES
+var CommandList = require('../command-list')
+var CMD_TYPES=require('../command').TYPES
 
 // TODO better require
 var MESSAGES=require('../../../../modules/browser-puppeteer/src/messages.js')
