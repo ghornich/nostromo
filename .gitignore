@@ -4,4 +4,3 @@ package-lock.json
 *_temp*
 test/referenceScreenshots*
 bc-test
-*.conf.js
