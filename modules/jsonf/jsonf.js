@@ -15,7 +15,6 @@ JSONF.stringify = function (o) {
 };
 
 JSONF.parse = function (s) {
-    var i = 0;
     return JSON.parse(s, function (key, val) {
         if (isStringAFunction(val)) {
             try {

@@ -37,18 +37,18 @@ CommandList.prototype._compact = function () {
             };
         }
         else if (cmd.type === TYPES.SET_VALUE && lastNewCmd.type === TYPES.SET_VALUE && cmd.selector === lastNewCmd.selector) {
-        	newCommands[lastNewIdx] = cmd;
+            newCommands[lastNewIdx] = cmd;
         }
 
         else if (cmd.type === TYPES.FOCUS && lastNewCmd.type === TYPES.FOCUS && cmd.selector === lastNewCmd.selector) {
-        	newCommands[lastNewIdx] = cmd;
+            newCommands[lastNewIdx] = cmd;
         }
         // TODO ???????
         // else if (cmd.type===TYPES.SCROLL && lastNewCmd.type===TYPES.SCROLL && cmd.selector===lastNewCmd.selector) {
-        // 	newCommands[lastNewIdx]=cmd
+        //     newCommands[lastNewIdx]=cmd
         // }
         else if (cmd.type === TYPES.ASSERT_SCREENSHOT && lastNewCmd.type === TYPES.ASSERT_SCREENSHOT) {
-        	continue;
+            continue;
         }
         else {
             newCommands.push(cmd);

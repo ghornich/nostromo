@@ -81,10 +81,13 @@ BrowserPuppet.prototype._startWs = function () {
     };
 };
 
-BrowserPuppet.prototype._sendMessage = function (data) {
+BrowserPuppet.prototype._sendMessage = function (rawData) {
+    var data = rawData;
+
     if (typeof data === 'object') {
         data = JSONF.stringify(data);
     }
+
     this._wsConn.send(data);
 };
 
@@ -429,7 +432,7 @@ BrowserPuppet.prototype._onExecMessage = Promise.method(function (data) {
 
 });
 
-BrowserPuppet.prototype.execFunction = Promise.method(function (fn, args) {
+BrowserPuppet.prototype.execFunction = Promise.method(function (fn/*, args*/) {
     var context = {
         driver: this,
         $: $,
@@ -542,7 +545,7 @@ BrowserPuppet.prototype.click = function (selector) {
         throw new Error('Unable to click selector "' + selector + '": not unique');
     }
     else {
-        var el = $el[0];
+        // var el = $el[0];
 
         // TODO detect inaccessible nodes !!!
 
@@ -747,7 +750,6 @@ BrowserPuppet.prototype.setScreenshotMarkerState = function (state) {
 
 
 
-function noop() {}
 
 function cleanTarget(target) {
     return {

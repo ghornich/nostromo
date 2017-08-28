@@ -17,10 +17,10 @@ function Command(data) {
     // var self=this
 
     // Object.keys(data).forEach(function (key){
-    // 	var val=data[key]
+    //     var val=data[key]
 
-    // 	Object.defineProperty(self, key, {
-    // 		value:
-    // 	})
+    //     Object.defineProperty(self, key, {
+    //         value:
+    //     })
     // })
 }

@@ -4,12 +4,12 @@ exports = module.exports = function (test) {
     test('get-unique-selector', async t => {
         const results = await t.execFunction(function () {
             return [
-                uniqueSelector1.get(document.querySelector('[data-test="1"]')),
-                uniqueSelector1.get(document.querySelector('[data-test="2"]')),
-                uniqueSelector1.get(document.querySelector('[data-test="3"]')),
-                uniqueSelector1.get(document.querySelector('[data-test="4"]')),
-                uniqueSelector1.get(document.querySelector('[data-test="5"]')),
-                uniqueSelector1.get(document.querySelector('[data-test="6"]')),
+                window.uniqueSelector1.get(document.querySelector('[data-test="1"]')),
+                window.uniqueSelector1.get(document.querySelector('[data-test="2"]')),
+                window.uniqueSelector1.get(document.querySelector('[data-test="3"]')),
+                window.uniqueSelector1.get(document.querySelector('[data-test="4"]')),
+                window.uniqueSelector1.get(document.querySelector('[data-test="5"]')),
+                window.uniqueSelector1.get(document.querySelector('[data-test="6"]')),
             ];
         });
 
@@ -26,12 +26,12 @@ exports = module.exports = function (test) {
     test('get-unique-selector, ignored classes', async t => {
         const results = await t.execFunction(function () {
             return [
-                uniqueSelector2.get(document.querySelector('[data-test="1"]')),
-                uniqueSelector2.get(document.querySelector('[data-test="2"]')),
-                uniqueSelector2.get(document.querySelector('[data-test="3"]')),
-                uniqueSelector2.get(document.querySelector('[data-test="4"]')),
-                uniqueSelector2.get(document.querySelector('[data-test="5"]')),
-                uniqueSelector1.get(document.querySelector('[data-test="6"]')),
+                window.uniqueSelector2.get(document.querySelector('[data-test="1"]')),
+                window.uniqueSelector2.get(document.querySelector('[data-test="2"]')),
+                window.uniqueSelector2.get(document.querySelector('[data-test="3"]')),
+                window.uniqueSelector2.get(document.querySelector('[data-test="4"]')),
+                window.uniqueSelector2.get(document.querySelector('[data-test="5"]')),
+                window.uniqueSelector1.get(document.querySelector('[data-test="6"]')),
             ];
         });
 

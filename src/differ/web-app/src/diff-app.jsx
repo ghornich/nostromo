@@ -1,13 +1,13 @@
 var $ = require('jquery');
 var m = require('mithril');
 var JSONF = require('../../../../modules/jsonf');
-var Buffer = require('buffer');
-var pathlib = require('path');
 var Promise = require('bluebird');
 
 var get = Promise.method(function (url) {
     return $.get(url);
 });
+
+var RootComp;
 
 window.DiffApp = DiffApp;
 window.$ = $;
@@ -22,16 +22,18 @@ var session = {
     },
 };
 
-function DiffApp(conf) {
+function DiffApp(rawConf) {
+    var conf = rawConf;
+
     if (typeof conf === 'string') {
         conf = JSONF.parse(conf);
     }
 
     /*
-		 * ref, current: Image(width, height, pixel base64)
-		 * id: path + number
-		 * 
-		 */
+         * ref, current: Image(width, height, pixel base64)
+         * id: path + number
+         * 
+         */
     this._diffDescriptors = [];
     this._currentDiffIdx = 0;
     this._currentImages = null;
@@ -59,21 +61,21 @@ DiffApp.prototype.initApp = function () {
     // no return
     session.getDiffDescriptors()
     .then(function (descriptors) {
-    	self._diffDescriptors = descriptors;
+        self._diffDescriptors = descriptors;
     })
     .then(function () {
-    	if (self.hasDiffs()) {
-    		return session.getDiffImagesById(self._diffDescriptors[self._currentDiffIdx].id)
-    		.then(function (images) {
-    			self._currentImages = images;
-    		});
-    	}
+        if (self.hasDiffs()) {
+            return session.getDiffImagesById(self._diffDescriptors[self._currentDiffIdx].id)
+            .then(function (images) {
+                self._currentImages = images;
+            });
+        }
     })
     .catch(function (err) {
-    	console.error(err);
+        console.error(err);
     })
     .finally(function () {
-    	m.redraw();
+        m.redraw();
     });
 };
 
@@ -81,7 +83,7 @@ DiffApp.prototype.hasDiffs = function () {
     return this._diffDescriptors.length > 0;
 };
 
-var RootComp = {
+RootComp = {
     view: function (vnode) {
         var app = vnode.attrs.app;
         var actions = vnode.attrs.actions;
@@ -89,10 +91,10 @@ var RootComp = {
         return <div class="page">
             <div class="header">
                 { app._currentDiffIdx }/{ app._diffDescriptors.length }
-				&nbsp;
-				&nbsp;
+                &nbsp;
+                &nbsp;
                 <button>Prev</button>
-				&nbsp;
+                &nbsp;
                 <button>Next</button>
             </div>
             <div class="body">
@@ -119,29 +121,29 @@ var RootComp = {
                         : 'No diffs'
 
                     /* app._diffDescriptors.map(function(diff){return <div class="diff">
-							<div class="diff--left">
-								<img src={'data:url(image/png;base64,'+diff.refImg.base64} />
-							</div>
-							<div class="diff--sep"></div>
-							<div class="diff--right">
-								<img src={'data:url(image/png;base64,'+diff.failImg.base64} />
-								{
-									diff.diffBounds.map(function(bounds){
-										var imgW=diff.refImg.width
-										var imgH=diff.refImg.height
+                            <div class="diff--left">
+                                <img src={'data:url(image/png;base64,'+diff.refImg.base64} />
+                            </div>
+                            <div class="diff--sep"></div>
+                            <div class="diff--right">
+                                <img src={'data:url(image/png;base64,'+diff.failImg.base64} />
+                                {
+                                    diff.diffBounds.map(function(bounds){
+                                        var imgW=diff.refImg.width
+                                        var imgH=diff.refImg.height
 
-										var topPc=bounds.y1/imgH*100
-										var leftPc=bounds.x1/imgW*100
-										var widthPc=bounds.width/imgW*100
-										var heightPc=bounds.height/imgH*100
+                                        var topPc=bounds.y1/imgH*100
+                                        var leftPc=bounds.x1/imgW*100
+                                        var widthPc=bounds.width/imgW*100
+                                        var heightPc=bounds.height/imgH*100
 
-										return <div class="diff--bounds" style={ ['top:', topPc, '%; left:', leftPc, '%; width: ', widthPc, '%; height: ', heightPc, '%'].join('') }></div>
-									})
-								}
-							</div>
+                                        return <div class="diff--bounds" style={ ['top:', topPc, '%; left:', leftPc, '%; width: ', widthPc, '%; height: ', heightPc, '%'].join('') }></div>
+                                    })
+                                }
+                            </div>
 
-						</div>
-					})*/
+                        </div>
+                    })*/
                 }
             </div>
         </div>;

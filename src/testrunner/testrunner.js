@@ -1,25 +1,24 @@
 const MODULES_PATH = '../../modules/';
 const Promise = require('bluebird');
 Promise.config({ longStackTraces: true });
-const Loggr = require(`${MODULES_PATH }loggr`);
+const Loggr = require(`${MODULES_PATH}loggr`);
 const defaults = require('lodash.defaults');
 const isEqual = require('lodash.isequal');
 const Schema = require('schema-inspector');
-const http = require('http');
 const fs = require('fs');
 const pathlib = require('path');
 const util = require('util');
-const TapWriter = require(`${MODULES_PATH }tap-writer`);
+const TapWriter = require(`${MODULES_PATH}tap-writer`);
 const EventEmitter = require('events').EventEmitter;
-const BrowserPuppeteer = require(`${MODULES_PATH }browser-puppeteer`).BrowserPuppeteer;
-const MESSAGES = require(`${MODULES_PATH }browser-puppeteer`).MESSAGES;
-const cropMarkerImg = require(`${MODULES_PATH }browser-puppeteer`).SCREENSHOT_MARKER;
-const screenshotjs = require(`${MODULES_PATH }screenshot-js`);
+const BrowserPuppeteer = require(`${MODULES_PATH}browser-puppeteer`).BrowserPuppeteer;
+const MESSAGES = require(`${MODULES_PATH}browser-puppeteer`).MESSAGES;
+const cropMarkerImg = require(`${MODULES_PATH}browser-puppeteer`).SCREENSHOT_MARKER;
+const screenshotjs = require(`${MODULES_PATH}screenshot-js`);
 const mkdirpAsync = Promise.promisify(require('mkdirp'));
 const PNG = require('pngjs').PNG;
 const globAsync = Promise.promisify(require('glob'));
-const bufferImageSearch = require(`${MODULES_PATH }buffer-image-search`);
-const bufferImageDiff = require(`${MODULES_PATH }buffer-image-diff`);
+const bufferImageSearch = require(`${MODULES_PATH}buffer-image-search`);
+const bufferImageDiff = require(`${MODULES_PATH}buffer-image-diff`);
 const rimrafAsync = Promise.promisify(require('rimraf'));
 
 // TODO show error if test(...) doesn't return a promise
@@ -60,7 +59,6 @@ const CONF_SCHEMA = {
 };
 
 const DEFAULT_TEST_PORT = 47225;
-const DEFAULT_WAITXVISIBLE_TIMEOUT = 5000;
 
 const ELLIPSIS_LIMIT = 60;
 
@@ -100,7 +98,7 @@ function TestRunner(conf) {
         namespace: 'TestRunner',
         outStream: {
             write: function (str) {
-                process.stdout.write(`  ${ str}`);
+                process.stdout.write(`  ${str}`);
             },
         },
     });
@@ -114,8 +112,6 @@ function TestRunner(conf) {
     // -------------------
 
     // TODO ensure browser names are unique (for reference images)
-
-    const browserNames = this._conf.browsers;
 
     const validationResult = Schema.validate(CONF_SCHEMA, this._conf);
 
@@ -142,21 +138,21 @@ function TestRunner(conf) {
     // })
 
     this.directAPI = {
-        getValue: this._getValue_direct.bind(this),
-        setValue: this._setValue_direct.bind(this),
-        click: this._click_direct.bind(this),
-        waitForVisible: this._waitForVisible_direct.bind(this),
-        waitWhileVisible: this._waitWhileVisible_direct.bind(this),
-        focus: this._focus_direct.bind(this),
-        scroll: this._scroll_direct.bind(this),
-        isVisible: this._isVisible_direct.bind(this),
+        getValue: this._getValueDirect.bind(this),
+        setValue: this._setValueDirect.bind(this),
+        click: this._clickDirect.bind(this),
+        waitForVisible: this._waitForVisibleDirect.bind(this),
+        waitWhileVisible: this._waitWhileVisibleDirect.bind(this),
+        focus: this._focusDirect.bind(this),
+        scroll: this._scrollDirect.bind(this),
+        isVisible: this._isVisibleDirect.bind(this),
         delay: this._delay.bind(this),
         comment: this._comment.bind(this),
         assert: this._assert.bind(this),
-        pressKey: this._pressKey_direct.bind(this),
-        composite: this._composite_direct.bind(this),
-        mouseover: this._mouseover_direct.bind(this),
-        execFunction: this._execFunction_direct.bind(this),
+        pressKey: this._pressKeyDirect.bind(this),
+        composite: this._compositeDirect.bind(this),
+        mouseover: this._mouseoverDirect.bind(this),
+        execFunction: this._execFunctionDirect.bind(this),
     };
 
     this.sideEffectAPI = {};
@@ -172,8 +168,8 @@ function TestRunner(conf) {
     this.sideEffectAPI.delay = this.directAPI.delay;
     this.sideEffectAPI.comment = this.directAPI.comment;
 
-    this.directAPI.execCommands = this._execCommands_direct.bind(this);
-    this.sideEffectAPI.execCommands = this._execCommands_sideEffect.bind(this);
+    this.directAPI.execCommands = this._execCommandsDirect.bind(this);
+    this.sideEffectAPI.execCommands = this._execCommandsSideEffect.bind(this);
 
     this.tAPI = Object.assign({}, this.sideEffectAPI, {
         equal: this._equal.bind(this),
@@ -248,7 +244,7 @@ TestRunner.prototype.run = Promise.method(function () {
                             break;
                         }
                         else {
-                            this._log.debug(`Screenshot marker count invalid (count: ${ markerPositions.length })`);
+                            this._log.debug(`Screenshot marker count invalid (count: ${markerPositions.length })`);
                         }
                         await Promise.delay(2000);
                     }
@@ -290,9 +286,9 @@ TestRunner.prototype.run = Promise.method(function () {
 
             await this._stopServers();
 
-            this._tapWriter.diagnostic(`tests ${ this._tapWriter.testCount}`);
-            this._tapWriter.diagnostic(`pass ${ this._tapWriter.passCount}`);
-            this._tapWriter.diagnostic(`fail ${ this._tapWriter.failCount}`);
+            this._tapWriter.diagnostic(`tests ${this._tapWriter.testCount}`);
+            this._tapWriter.diagnostic(`pass ${this._tapWriter.passCount}`);
+            this._tapWriter.diagnostic(`fail ${this._tapWriter.failCount}`);
         });
     })
     .catch(error => {
@@ -398,7 +394,8 @@ TestRunner.prototype._runTestModule = function (fn) {
     .then(() => {
         const testDatas = [];
 
-        function testRegistrar(name, testFn) { // TODO optional name
+        // TODO optional name
+        function testRegistrar(name, testFn) {
             testDatas.push({ name: name, testFn: testFn });
         }
 
@@ -412,7 +409,7 @@ TestRunner.prototype._runTestModule = function (fn) {
 
         return Promise.each(testDatas, testData => {
             this._tapWriter.diagnostic(testData.name);
-            this._log.debug(`Running test: ${ testData.name || '(anonymous)'}`);
+            this._log.debug(`Running test: ${testData.name || '(anonymous)'}`);
 
             return Promise.try(this._conf.beforeTest)
             .then(() => {
@@ -433,8 +430,8 @@ TestRunner.prototype._runTestModule = function (fn) {
 // TODO add next/prev command as param in before/after calls
 TestRunner.prototype._wrapFunctionWithSideEffects = function (fn, cmdType) {
     return (...args) => {
-        return Promise.try(_ => this._beforeCommand(this.directAPI, { type: cmdType }))
-        .then(_ => fn(...args))
+        return Promise.try(() => this._beforeCommand(this.directAPI, { type: cmdType }))
+        .then(() => fn(...args))
         .then(async fnResult => {
             await this._afterCommand(this.directAPI, { type: cmdType });
             return fnResult;
@@ -442,7 +439,7 @@ TestRunner.prototype._wrapFunctionWithSideEffects = function (fn, cmdType) {
     };
 };
 
-TestRunner.prototype._execCommand_withAPI = Promise.method(function (cmd, api) {
+TestRunner.prototype._execCommandWithAPI = Promise.method(function (cmd, api) {
     switch (cmd.type) {
         case 'setValue': return api.setValue(cmd.selector, cmd.value);
         case 'click': return api.click(cmd.selector);
@@ -456,25 +453,25 @@ TestRunner.prototype._execCommand_withAPI = Promise.method(function (cmd, api) {
     }
 });
 
-TestRunner.prototype._execCommand_direct = Promise.method(function (cmd) {
-    return this._execCommand_withAPI(cmd, this.directAPI);
+TestRunner.prototype._execCommandDirect = Promise.method(function (cmd) {
+    return this._execCommandWithAPI(cmd, this.directAPI);
 });
 
-TestRunner.prototype._execCommand_sideEffect = Promise.method(function (cmd) {
-    return this._execCommand_withAPI(cmd, this.sideEffectAPI);
+TestRunner.prototype._execCommandSideEffect = Promise.method(function (cmd) {
+    return this._execCommandWithAPI(cmd, this.sideEffectAPI);
 });
 
-TestRunner.prototype._execCommands_direct = Promise.method(function (cmds) {
-    return Promise.each(cmds, cmd => this._execCommand_direct(cmd));
+TestRunner.prototype._execCommandsDirect = Promise.method(function (cmds) {
+    return Promise.each(cmds, cmd => this._execCommandDirect(cmd));
 });
 
-TestRunner.prototype._execCommands_sideEffect = Promise.method(function (cmds) {
-    return Promise.each(cmds, cmd => this._execCommand_sideEffect(cmd));
+TestRunner.prototype._execCommandsSideEffect = Promise.method(function (cmds) {
+    return Promise.each(cmds, cmd => this._execCommandSideEffect(cmd));
 });
 
 // TODO use
-TestRunner.prototype._selectorEqual_direct = Promise.method(function (selector, expected, description) {
-    description = description || `equal - ${ selector }, ${ expected}`;
+TestRunner.prototype._selectorEqualDirect = Promise.method(function (selector, expected, rawDescription) {
+    const description = rawDescription || `equal - ${selector }, ${expected}`;
 
     return this._getValue(selector)
     .then(actual => {
@@ -533,14 +530,14 @@ TestRunner.prototype._equal = Promise.method(function (actual, expected, descrip
 });
 
 // TODO fix+use or remove
-TestRunner.prototype._isEqual_direct = Promise.method(function (selector, expected, description) {
+TestRunner.prototype._isEqualDirect = Promise.method(function (selector, expected, description) {
     return this._getValue(selector)
     .then(actual => expected === actual)
     .catch(err => this._tapWriter.notOk(err.message));
 });
 
-TestRunner.prototype._click_direct = Promise.method(function (selector, description) {
-    description = description || `click - ${ selector}`;
+TestRunner.prototype._clickDirect = Promise.method(function (selector, rawDescription) {
+    const description = rawDescription || `click - ${selector}`;
 
     return this._browserPuppeteer.execCommand({
         type: 'click',
@@ -565,7 +562,7 @@ TestRunner.prototype._getValue = Promise.method(function (selector) {
     });
 });
 
-TestRunner.prototype._getValue_direct = Promise.method(function (selector) {
+TestRunner.prototype._getValueDirect = Promise.method(function (selector) {
     // TODO logging?
     return this._browserPuppeteer.execCommand({
         type: 'getValue',
@@ -573,9 +570,9 @@ TestRunner.prototype._getValue_direct = Promise.method(function (selector) {
     });
 });
 
-TestRunner.prototype._setValue_direct = Promise.method(function (selector, value, description) {
+TestRunner.prototype._setValueDirect = Promise.method(function (selector, value, rawDescription) {
     // TODO logging?
-    description = description || `setValue - ${ selector }, ${ value}`;
+    const description = rawDescription || `setValue - ${selector }, ${value}`;
 
     return this._browserPuppeteer.execCommand({
         type: 'setValue',
@@ -594,8 +591,8 @@ TestRunner.prototype._setValue_direct = Promise.method(function (selector, value
     });
 });
 
-TestRunner.prototype._pressKey_direct = Promise.method(function (selector, keyCode, description) {
-    this._log.info(`pressKey: ${ keyCode } (${ ellipsis(selector, ELLIPSIS_LIMIT) })`);
+TestRunner.prototype._pressKeyDirect = Promise.method(function (selector, keyCode, description) {
+    this._log.info(`pressKey: ${keyCode } (${ellipsis(selector, ELLIPSIS_LIMIT) })`);
 
     return this._browserPuppeteer.execCommand({
         type: 'pressKey',
@@ -604,18 +601,15 @@ TestRunner.prototype._pressKey_direct = Promise.method(function (selector, keyCo
     });
 });
 
-TestRunner.prototype._waitForVisible_direct = Promise.method(function (selector, timeout) {
+TestRunner.prototype._waitForVisibleDirect = Promise.method(function (selector, timeout) {
     this._log.info(`waitForVisible: ${ellipsis(selector, ELLIPSIS_LIMIT)}`);
 
     return this._browserPuppeteer.execCommand({
         type: 'waitForVisible',
         selector: selector,
     })
-    // TODO
-    // TODO don't use Promise timeouts
-    // .timeout(timeout || DEFAULT_WAITXVISIBLE_TIMEOUT)
     .catch(e => {
-        this._tapWriter.notOk(`waitForVisible - ${ e.message}`);
+        this._tapWriter.notOk(`waitForVisible - ${e.message}`);
 
         if (this._conf.bailout) {
             throw createError('BailoutError', e.message);
@@ -623,7 +617,7 @@ TestRunner.prototype._waitForVisible_direct = Promise.method(function (selector,
     });
 });
 
-TestRunner.prototype._waitWhileVisible_direct = Promise.method(function (selector) {
+TestRunner.prototype._waitWhileVisibleDirect = Promise.method(function (selector) {
     this._log.info(`waitWhileVisible: ${ellipsis(selector, ELLIPSIS_LIMIT)}`);
 
     return this._browserPuppeteer.execCommand({
@@ -631,7 +625,7 @@ TestRunner.prototype._waitWhileVisible_direct = Promise.method(function (selecto
         selector: selector,
     })
     .catch(e => {
-        this._tapWriter.notOk(`waitWhileVisible - ${ e.message}`);
+        this._tapWriter.notOk(`waitWhileVisible - ${e.message}`);
 
         if (this._conf.bailout) {
             throw createError('BailoutError', e.message);
@@ -639,9 +633,9 @@ TestRunner.prototype._waitWhileVisible_direct = Promise.method(function (selecto
     });
 });
 
-TestRunner.prototype._focus_direct = Promise.method(function (selector, description) {
+TestRunner.prototype._focusDirect = Promise.method(function (selector, rawDescription) {
     this._log.info(`focus: ${selector}`);
-    description = description || `focus - selector: ${ selector}`;
+    const description = rawDescription || `focus - selector: ${selector}`;
 
     return this._browserPuppeteer.execCommand({
         type: 'focus',
@@ -660,7 +654,7 @@ TestRunner.prototype._focus_direct = Promise.method(function (selector, descript
     });
 });
 
-TestRunner.prototype._scroll_direct = Promise.method(function (selector, scrollTop) {
+TestRunner.prototype._scrollDirect = Promise.method(function (selector, scrollTop) {
     this._log.info(`scroll: ${selector}`);
 
     return this._browserPuppeteer.execCommand({
@@ -669,7 +663,7 @@ TestRunner.prototype._scroll_direct = Promise.method(function (selector, scrollT
         scrollTop: scrollTop,
     })
     .catch(e => {
-        this._tapWriter.notOk(`scroll - ${ e.message}`);
+        this._tapWriter.notOk(`scroll - ${e.message}`);
 
         if (this._conf.bailout) {
             throw createError('BailoutError', e.message);
@@ -677,11 +671,11 @@ TestRunner.prototype._scroll_direct = Promise.method(function (selector, scrollT
     });
 });
 
-TestRunner.prototype._isVisible_direct = Promise.method(function (selector, description) {
-    throw new Error('TODO _isVisible_direct');
+TestRunner.prototype._isVisibleDirect = Promise.method(function (selector, description) {
+    throw new Error('TODO _isVisibleDirect');
 });
 
-TestRunner.prototype._composite_direct = Promise.method(function (commands) {
+TestRunner.prototype._compositeDirect = Promise.method(function (commands) {
     this._log.info(`composite: ${commands.map(cmd => cmd.type).join(', ')}`);
 
     return this._browserPuppeteer.execCommand({
@@ -689,7 +683,7 @@ TestRunner.prototype._composite_direct = Promise.method(function (commands) {
         commands: commands,
     })
     .catch(e => {
-        this._tapWriter.notOk(`composite - ${ e.message}`);
+        this._tapWriter.notOk(`composite - ${e.message}`);
 
         if (this._conf.bailout) {
             throw createError('BailoutError', e.message);
@@ -697,7 +691,7 @@ TestRunner.prototype._composite_direct = Promise.method(function (commands) {
     });
 });
 
-TestRunner.prototype._mouseover_direct = Promise.method(function (selector) {
+TestRunner.prototype._mouseoverDirect = Promise.method(function (selector) {
     this._log.info(`mouseover: ${selector}`);
 
     return this._browserPuppeteer.execCommand({
@@ -705,7 +699,7 @@ TestRunner.prototype._mouseover_direct = Promise.method(function (selector) {
         selector: selector,
     })
     .catch(e => {
-        this._tapWriter.notOk(`mouseover - ${ e.message}`);
+        this._tapWriter.notOk(`mouseover - ${e.message}`);
 
         if (this._conf.bailout) {
             throw createError('BailoutError', e.message);
@@ -713,7 +707,7 @@ TestRunner.prototype._mouseover_direct = Promise.method(function (selector) {
     });
 });
 
-TestRunner.prototype._execFunction_direct = Promise.method(function (fn, ...args) {
+TestRunner.prototype._execFunctionDirect = Promise.method(function (fn, ...args) {
     this._log.info('execFunction');
 
     return this._browserPuppeteer.execFunction(fn, args);
@@ -750,11 +744,13 @@ TestRunner.prototype._assert = async function () {
             const imgDiffResult = bufferImageDiff(img, refImg, { pixelThreshold: PIXEL_THRESHOLD, imageThreshold: IMG_THRESHOLD });
 
             if (imgDiffResult.same) {
-                this._tapWriter.ok(`screenshot assert (${toPercent(imgDiffResult.difference)}): ${refImgPathRelative}`); // TODO customizable message
+                // TODO customizable message
+                this._tapWriter.ok(`screenshot assert (${toPercent(imgDiffResult.difference)}): ${refImgPathRelative}`);
             }
             else {
                 // TODO save image for later comparison
-                this._tapWriter.notOk(`screenshot assert (${toPercent(imgDiffResult.difference)}): ${refImgPathRelative}`); // TODO customizable message
+                // TODO customizable message
+                this._tapWriter.notOk(`screenshot assert (${toPercent(imgDiffResult.difference)}): ${refImgPathRelative}`);
 
                 const failedImgName = `${ssCount }.png`;
                 const failedImgPath = pathlib.resolve(failedImgDir, failedImgName);
@@ -766,7 +762,7 @@ TestRunner.prototype._assert = async function () {
 
                 fs.writeFileSync(failedImgPath, failedImgBin);
 
-                this._log.info(`failed screenshot added: ${ failedImgPathRelative}`);
+                this._log.info(`failed screenshot added: ${failedImgPathRelative}`);
             }
         }
         catch (e) {
@@ -777,7 +773,7 @@ TestRunner.prototype._assert = async function () {
 
                 fs.writeFileSync(refImgPath, pngFileBin);
 
-                this._log.info(`new reference image added: ${ refImgPathRelative}`);
+                this._log.info(`new reference image added: ${refImgPathRelative}`);
             }
             else {
                 throw e;
@@ -785,9 +781,10 @@ TestRunner.prototype._assert = async function () {
         }
     })
     .catch(e => {
-        this._tapWriter.notOk(`screenshot assert: ${refImgName }, ${ e}`); // TODO customizable message
+        // TODO customizable message
+        this._tapWriter.notOk(`screenshot assert: ${refImgName }, ${e}`);
     })
-    .finally(_ => {
+    .finally(() => {
         this._assertCount++;
     });
 };
@@ -806,7 +803,7 @@ function createError(type, msg) {
 }
 
 function slugifyPath(s) {
-    return s.replace(/[\/\\]+/g, '___').replace(/[^a-z0-9_-]/ig, '_');
+    return s.replace(/[/\\]+/g, '___').replace(/[^a-z0-9_-]/ig, '_');
 }
 
 function ellipsis(s, l) {

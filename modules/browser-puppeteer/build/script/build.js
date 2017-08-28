@@ -1,3 +1,5 @@
+// eslint-disable no-console
+
 const resolve = require('path').resolve;
 const Promise = require('bluebird');
 const execAsync = Promise.promisify(require('child_process').exec);

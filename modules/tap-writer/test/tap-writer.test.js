@@ -29,7 +29,7 @@ test('diagnostic', t => {
     t.end();
 });
 
-test('pass', t => {
+test('pass 1', t => {
     const outStream = createDummyWriteStream();
     const writer = new TapWriter({ eol: '\n', outStream: outStream });
 
@@ -42,7 +42,7 @@ test('pass', t => {
     writer.pass({ type: 'throws' });
     writer.pass({ type: 'doesNotThrow' });
 
-    var expected =
+    const expected =
         'ok 1 should be truthy\n' +
         'ok 2 should be falsy\n' +
         'ok 3 should be equal\n' +
@@ -53,9 +53,12 @@ test('pass', t => {
         'ok 8 shouldn\'t throw\n';
 
     t.equal(outStream.data, expected);
+    t.end();
+});
 
-    outStream.data = '';
-    writer.reset();
+test('pass 2', t => {
+    const outStream = createDummyWriteStream();
+    const writer = new TapWriter({ eol: '\n', outStream: outStream });
 
     writer.pass({ type: 'ok', message: 'a' });
     writer.pass({ type: 'notOk', message: 'b' });
@@ -66,7 +69,7 @@ test('pass', t => {
     writer.pass({ type: 'throws', message: 'g' });
     writer.pass({ type: 'doesNotThrow', message: 'h' });
 
-    var expected =
+    const expected =
         'ok 1 a\n' +
         'ok 2 b\n' +
         'ok 3 c\n' +
@@ -160,7 +163,7 @@ test('plan', t => {
     writer.plan();
     writer.plan(45);
 
-    t.equal(outStream.data, '1..3\n' + '1..45\n');
+    t.equal(outStream.data, '1..3\n1..45\n');
     t.end();
 });
 
@@ -171,7 +174,7 @@ test('bailout', t => {
     writer.bailout();
     writer.bailout('Oops!');
 
-    t.equal(outStream.data, 'Bail out!\n' + 'Bail out! Oops!\n');
+    t.equal(outStream.data, 'Bail out!\nBail out! Oops!\n');
     t.end();
 });
 

@@ -75,8 +75,8 @@ TAPWriter.prototype.reset = function () {
     this._failCount = 0;
 };
 
-TAPWriter.prototype.version = function (version) {
-    version = version === undefined ? TAPWriter.TAP_VERSION : version;
+TAPWriter.prototype.version = function (rawVersion) {
+    const version = rawVersion === undefined ? TAPWriter.TAP_VERSION : rawVersion;
     this._writeLn(`TAP version ${ version}`);
 };
 
@@ -99,8 +99,8 @@ TAPWriter.prototype.pass = function (data) {
 // TODO use one failure-type function, show expected+actual if provided
 // use ok/notOk pair or pass/fail pair
 
-TAPWriter.prototype.notOk = function (description) {
-    description = description || DEFAULT_MESSAGES.anonymous;
+TAPWriter.prototype.notOk = function (rawDescription) {
+    const description = rawDescription || DEFAULT_MESSAGES.anonymous;
     this._testCount++;
     this._failCount++;
 
@@ -121,13 +121,13 @@ TAPWriter.prototype.fail = function (data) {
     this._writeLn('...', 1);
 };
 
-TAPWriter.prototype.plan = function (testCount) {
-    testCount = testCount === undefined ? this._testCount : testCount;
+TAPWriter.prototype.plan = function (rawTestCount) {
+    const testCount = rawTestCount === undefined ? this._testCount : rawTestCount;
     this._writeLn(`1..${ testCount}`);
 };
 
-TAPWriter.prototype.bailout = function (reason) {
-    reason = reason ? ` ${reason}` : '';
+TAPWriter.prototype.bailout = function (rawReason) {
+    const reason = rawReason ? ` ${rawReason}` : '';
     this._writeLn(`Bail out!${reason}`);
 };
 

@@ -28,7 +28,10 @@ function imageDiff(a, b, options) {
     let diffCount = 0;
 
     for (let i = 0; i < a.data.length; i += 4) {
-        if (!pixelSameEnough(a.data[i], a.data[i + 1], a.data[i + 2], a.data[i + 3], b.data[i], b.data[i + 1], b.data[i + 2], b.data[i + 3], opts.pixelThreshold)) {
+        const px1 = { r: a.data[i], g: a.data[i + 1], b: a.data[i + 2], a: a.data[i + 3] };
+        const px2 = { r: b.data[i], g: b.data[i + 1], b: b.data[i + 2], a: b.data[i + 3] };
+
+        if (!pixelSameEnough(px1, px2, opts.pixelThreshold)) {
             diffCount++;
         }
     }
@@ -40,13 +43,13 @@ function imageDiff(a, b, options) {
     return { same: same, difference: imgDifference };
 }
 
-function pixelSameEnough(r1, g1, b1, a1, r2, g2, b2, a2, threshold) {
-    if (r1 === r2 && g1 === g2 && b1 === b2 && a1 === a2) {
+function pixelSameEnough(px1, px2, threshold) {
+    if (px1.r === px2.r && px1.g === px2.g && px1.b === px2.b && px1.a === px2.a) {
         return true;
     }
 
-    const avg1 = (r1 + g1 + b1 + a1) / 4;
-    const avg2 = (r2 + g2 + b2 + a2) / 4;
+    const avg1 = (px1.r + px1.g + px1.b + px1.a) / 4;
+    const avg2 = (px2.r + px2.g + px2.b + px2.a) / 4;
     const pixelDiffPc = diffPc(avg1, avg2);
 
     return pixelDiffPc <= threshold;
@@ -60,16 +63,4 @@ function assert(v, m) {
     if (!v) {
         throw new Error(m);
     }
-}
-
-function cloneImage(img) {
-    return {
-        width: img.width,
-        height: img.height,
-        data: Buffer.from(img.data),
-    };
-}
-
-function clampMin(val, min) {
-    return val < min ? min : val;
 }

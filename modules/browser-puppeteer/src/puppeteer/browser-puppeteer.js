@@ -1,5 +1,6 @@
 const MODULES_PATH = '../../../';
-const fs = require('fs');
+const Promise = require('bluebird');
+const fs = Promise.promisifyAll(require('fs'));
 const pathlib = require('path');
 const urllib = require('url');
 const http = require('http');
@@ -7,7 +8,6 @@ const util = require('util');
 const EventEmitter = require('events').EventEmitter;
 const JSONF = require(`${MODULES_PATH}jsonf`);
 const WS = require('ws');
-const Promise = require('bluebird');
 const Loggr = require(`${MODULES_PATH}loggr`);
 const MESSAGES = require('../messages');
 
@@ -71,16 +71,16 @@ BrowserPuppeteer.prototype._startServers = function () {
     this._httpServer.listen(this._conf.port);
 };
 
-BrowserPuppeteer.prototype._onHttpRequest = function (req, resp) {
+BrowserPuppeteer.prototype._onHttpRequest = async function (req, resp) {
     const parsedUrl = urllib.parse(req.url);
 
     if (parsedUrl.pathname === '/browser-puppet.defaults.js') {
         resp.setHeader('content-type', 'application/javascript');
-        resp.end(fs.readFileSync(pathlib.resolve(__dirname, '../../dist/browser-puppet.defaults.js')));
+        resp.end(await fs.readFileAsync(pathlib.resolve(__dirname, '../../dist/browser-puppet.defaults.js')));
     }
     else if (parsedUrl.pathname === '/browser-puppet.dist.js') {
         resp.setHeader('content-type', 'application/javascript');
-        resp.end(fs.readFileSync(pathlib.resolve(__dirname, '../../dist/browser-puppet.dist.js')));
+        resp.end(await fs.readFileAsync(pathlib.resolve(__dirname, '../../dist/browser-puppet.dist.js')));
     }
     else {
         resp.statusCode = 404;
@@ -93,7 +93,7 @@ BrowserPuppeteer.prototype.waitForPuppet = Promise.method(function () {
     this._log.info('waiting for puppet...');
 
     return new Promise((res, rej) => {
-        var checker = () => {
+        const checker = () => {
             if (this._wsConn !== null && this._wsConn.readyState === WS.OPEN) {
                 this._log.info('connected to puppet');
                 res();
@@ -177,10 +177,12 @@ BrowserPuppeteer.prototype.sendMessage = Promise.method(function (data) {
     this._log.trace(util.inspect(data));
 
     return new Promise((res, rej) => {
-        if (typeof data === 'object') {
-            data = JSONF.stringify(data);
+        let sendableData = data;
+
+        if (typeof sendableData === 'object') {
+            sendableData = JSONF.stringify(sendableData);
         }
-        this._wsConn.send(data);
+        this._wsConn.send(sendableData);
 
         this._currentMessageHandler.resolve = res;
         this._currentMessageHandler.reject = rej;

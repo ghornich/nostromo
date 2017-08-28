@@ -27,12 +27,12 @@ const unlinkAsync = Promise.promisify(fs.unlink);
  * @param {} opts. - 
  * @return {[type]}           [description]
  */
-module.exports = Promise.method(function (opts) {
-    opts = opts || {};
+module.exports = Promise.method(function (rawOpts) {
+    const opts = rawOpts || {};
 
     const tempPath = resolve(opts.tempPath || '_screenshot_temp.png');
 
-    return Promise.try(_ => {
+    return Promise.try(() => {
 
         if (process.platform === 'win32') {
             const screenshotCmdPath = resolve(__dirname, 'platform_modules/screenshot-cmd/screenshot-cmd.exe');
@@ -43,7 +43,7 @@ module.exports = Promise.method(function (opts) {
         // TODO
 
     })
-    .then(_ => new Promise((res, rej) => {
+    .then(() => new Promise((res) => {
         fs.createReadStream(tempPath)
         .pipe(new pngjs.PNG())
         .on('parsed', function () {
@@ -55,9 +55,9 @@ module.exports = Promise.method(function (opts) {
             return img;
         }
 
-        return Promise.try(_ => {
+        return Promise.try(() => {
             if (typeof opts.cropMarker === 'string') {
-                return new Promise((res, rej) => {
+                return new Promise((res) => {
                     fs.createReadStream(resolve(opts.cropMarker))
                     .pipe(new pngjs.PNG())
                     .on('parsed', function () {
@@ -89,7 +89,7 @@ module.exports = Promise.method(function (opts) {
     })
     .then(img => {
         return unlinkAsync(tempPath)
-        .then(_ => {
+        .then(() => {
             if (opts.outfile) {
                 return new Promise((res, rej) => {
                     const png = new pngjs.PNG(img);
@@ -103,7 +103,7 @@ module.exports = Promise.method(function (opts) {
                 });
             }
         })
-        .then(_ => ({
+        .then(() => ({
             width: img.width,
             height: img.height,
             data: img.data,

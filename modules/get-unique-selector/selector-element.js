@@ -28,10 +28,10 @@ function SelectorElement(node, options) {
     var nodeSelectorData = SelectorElement._getNodeSelectorData(node, options);
 
     this._node = node;
-    this._rawSelector = nodeSelectorData.selector,
-    this._type = nodeSelectorData.type,
-    this._active = true,
-    this._useNthChild = false,
+    this._rawSelector = nodeSelectorData.selector;
+    this._type = nodeSelectorData.type;
+    this._active = true;
+    this._useNthChild = false;
     this._nthChild = Array.prototype.indexOf.call(node.parentNode.children, node) + 1;
 
     Object.defineProperties(this, {
@@ -111,14 +111,14 @@ function SelectorElement(node, options) {
  * @param  {[type]} node [description]
  * @return {Object} { selector: String, type: Number }
  */
-SelectorElement._getNodeSelectorData = function (node, options) {
+SelectorElement._getNodeSelectorData = function (node, rawOptions) {
     if (!node || !('tagName' in node)) {
         var error = new Error('SelectorElement::_getNodeSelectorData: invalid node');
         error.type = SelectorElement.ERROR.INVALID_NODE;
         throw error;
     }
 
-    options = options || {};
+    var options = rawOptions || {};
     options.ignoredClasses = options.ignoredClasses || [];
 
     if (DOMUtils.hasId(node)) {

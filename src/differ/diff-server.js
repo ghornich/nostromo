@@ -1,18 +1,16 @@
 const MODULES_PATH = '../../modules/';
-const assert = require('assert');
 const Promise = require('bluebird');
-const fs = require('fs');
-const fsAsync = Promise.promisifyAll(fs);
+const fs = Promise.promisifyAll(require('fs'));
 const resolve = require('path').resolve;
 const pathlib = require('path');
 const http = require('http');
 const urllib = require('url');
 const qs = require('querystring');
-const JSONF = require(`${MODULES_PATH }jsonf`);
+const JSONF = require(`${MODULES_PATH}jsonf`);
 const pngjs = require('pngjs');
 const PNG = pngjs.PNG;
 const glob = require('glob');
-const visualImgDiff = require(`${MODULES_PATH }buffer-image-visual-diff`);
+// const visualImgDiff = require(`${MODULES_PATH}buffer-image-visual-diff`);
 const mkdirpAsync = Promise.promisify(require('mkdirp'));
 const globAsync = Promise.promisify(require('glob'));
 
@@ -56,7 +54,7 @@ DiffServer.prototype._generateDiffCache = async function () {
         // const errorImgBuf=PNG.sync.read(fs.readFileSync(refErrorPath))
         // const refImgBuf=PNG.sync.read(fs.readFileSync(refScreenshotPath))
         // const diffResult = visualImgDiff(refImgBuf, errorImgBuf, { pixelThreshold: 1/100 })
-        const diffFilename = refScreenshotPath.replace(this._conf.referenceScreenshotsDir, '').replace(/[\\\/]/g, '_');
+        const diffFilename = refScreenshotPath.replace(this._conf.referenceScreenshotsDir, '').replace(/[\\/]/g, '_');
 
         const diffDescriptor = new DiffDescriptor({
             id: diffFilename,
@@ -154,17 +152,17 @@ DiffServer.prototype.getDiffableScreenshots = function () {
             refPath: refP,
             failPath: failP,
             count: refP.match(/\/(\d+)/)[1],
-            dir: refP.replace(/\/[^\/]+$/, ''),
+            dir: refP.replace(/\/[^/]+$/, ''),
             diffBounds: diffBounds,
             refImg: {
                 width: refImg.width,
                 height: refImg.height,
-                base64: new Buffer(refRawImg).toString('base64'),
+                base64: Buffer.from(refRawImg).toString('base64'),
             },
             failImg: {
                 width: failImg.width,
                 height: failImg.height,
-                base64: new Buffer(failRawImg).toString('base64'),
+                base64: Buffer.from(failRawImg).toString('base64'),
             },
         };
     });

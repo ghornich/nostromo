@@ -1,13 +1,6 @@
-var _ = require('lodash');
 var $ = require('jquery');
-var Promise = require('bluebird');
-// var css=require('./src/styles/index.styl')
-// var views=require('./views.msx')
-// var utils = require('./utils')
 var Loggr = require('../../../../modules/loggr');
 var defaults = require('lodash.defaults');
-// var EventEmitter=require('events').EventEmitter
-var util = require('util');
 var JSONF = require('../../../../modules/jsonf');
 var m = require('mithril');
 var Ws4ever = require('../../../../modules/ws4ever');
@@ -24,6 +17,8 @@ var JSON_OUTPUT_FORMATTER_NAME = 'json (built-in)';
 var NOSTROMO_OUTPUT_FORMATTER_NAME = 'nostromo (built-in)';
 var DEFAULT_OUTPUT_FILENAME = 'output';
 
+var RootComp;
+
 window.RecorderApp = RecorderApp;
 
 // TODO beforeCommand: provide raw data AND next command as param
@@ -32,8 +27,9 @@ window.RecorderApp = RecorderApp;
 // TODO executable specifications
 // TODO play macro step-by-step
 
-function RecorderApp(conf) {
+function RecorderApp(rawConf) {
     var self = this;
+    var conf = rawConf;
 
     if (typeof conf === 'string') {
         conf = JSONF.parse(conf);
@@ -62,7 +58,8 @@ function RecorderApp(conf) {
     );
 
     self._log = new Loggr({
-        logLevel: Loggr.LEVELS.ALL, // TODO logLevel
+        // TODO logLevel
+        logLevel: Loggr.LEVELS.ALL,
         namespace: 'MacroRecorder',
     });
 
@@ -103,8 +100,8 @@ RecorderApp.prototype.start = function () {
     var self = this;
     self._wsConn = new Ws4ever(location.origin.replace('http://', 'ws://'));
 
-    self._wsConn.onmessage = function (e) {
-        var data = e.data;
+    self._wsConn.onmessage = function (event) {
+        var data = event.data;
 
         try {
             data = JSONF.parse(data);
@@ -126,8 +123,8 @@ RecorderApp.prototype.start = function () {
 
             m.redraw();
         }
-        catch (e) {
-            console.warn('message error: ' + e);
+        catch (err) {
+            console.warn('message error: ' + err);
         }
     };
 
@@ -289,7 +286,7 @@ RecorderApp.prototype.onSelectorBecameVisibleEvent = function (data) {
     }
 };
 
-var RootComp = {
+RootComp = {
     view: function (vnode) {
         var app = vnode.attrs.app;
         var actions = vnode.attrs.actions;
@@ -345,8 +342,8 @@ function cleanCmd(cmd) {
     return o;
 }
 
-function jsonOutputFormatter(cmds, indent) {
-    indent = indent || '    ';
+function jsonOutputFormatter(cmds, rawIndent) {
+    var indent = rawIndent || '    ';
 
     if (cmds.length === 0) {
         return '[]';
@@ -369,8 +366,8 @@ function jsonOutputFormatter(cmds, indent) {
 }
 
 // TODO move to own file
-function renderTestfile(cmds, indent) {
-    indent = indent || '    ';
+function renderTestfile(cmds, rawIndent) {
+    var indent = rawIndent || '    ';
 
     var res = [
         '\'use strict\';',
@@ -421,38 +418,11 @@ function renderCmd(cmd, indent) {
     }
 }
 
-function ellipsis(s, l) {
-    l = l || 30; return s.length <= l ? s : s.substr(0, l - 3) + '...';
-}
-
 function apos(s) {
     return '\'' + String(s).replace(/'/g, '\\\'') + '\'';
 }
 
-function promiseWhile(condition, action) {
-    return Promise.try(function () {
-        if (!condition()) {
-            return;
-        }
-
-        return action()
-        .then(promiseWhile.bind(null, condition, action));
-    });
-}
-
-function deepCopy(o) {
-    return JSONF.parse(JSONF.stringify(o));
-}
-
-function capitalize(str) {
-    return str[0].toUpperCase + str.slice(1);
-}
-
 function noop() {}
-
-function nl2backslashnl(str) {
-    return str.replace(/\n/g, '\\n');
-}
 
 function inspectObj(o) {
     return '{ ' + Object.keys(o).map(function (k) {

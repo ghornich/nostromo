@@ -64,30 +64,28 @@ SelectorElementList.prototype.simplify = function () {
 
 // TODO if selectorElement is type CLASS and >1 classnames: simplify classnames
 
-SelectorElementList.prototype.simplifyClasses = function () {
-    var ambiguity = this.getAmbiguity();
+// SelectorElementList.prototype.simplifyClasses = function () {
+//     for (var i = 0, len = this._selectorElements.length; i < len - 1; i++) {
+//         var selectorElement = this._selectorElements[i];
 
-    for (var i = 0, len = this._selectorElements.length; i < len - 1; i++) {
-        var selectorElement = this._selectorElements[i];
+//         if (!selectorElement.active || selectorElement.type !== SelectorElement.TYPE.CLASS) {
+//             return;
+//         }
 
-        if (!selectorElement.active || selectorElement.type !== SelectorElement.TYPE.CLASS) {
-            return;
-        }
+//         //     var originalSelector = selectorElement.rawSelector
+//         //     var classNames = originalSelector.split(/(?=\.)/g)
+//         //     var ignoredClassIdxs = []
 
-        // 	var originalSelector = selectorElement.rawSelector
-        // 	var classNames = originalSelector.split(/(?=\.)/g)
-        // 	var ignoredClassIdxs = []
-
-        // 	if (classNames.length > 1) {
-        // 		for (var classIdx = 0, classLen = classNames.length; classIdx < classLen; classIdx++) {
-        // 			var className = classNames[classIdx]
+//         //     if (classNames.length > 1) {
+//         //         for (var classIdx = 0, classLen = classNames.length; classIdx < classLen; classIdx++) {
+//         //             var className = classNames[classIdx]
 
 
-        // 		}
-        // 	}
-    }
+//         //         }
+//         //     }
+//     }
 
-};
+// };
 
 /**
  * add "nth-child"s from back until selector becomes unique

@@ -1,3 +1,5 @@
+/* eslint-disable no-sync */
+
 const test = require('tape');
 const pngjs = require('pngjs');
 const fs = require('fs');

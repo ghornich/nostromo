@@ -1,13 +1,13 @@
 const MODULES_PATH = '../../modules/';
 const Promise = require('bluebird');
-const BrowserPuppeteer = require(`${MODULES_PATH }browser-puppeteer`).BrowserPuppeteer;
-const MESSAGES = require(`${MODULES_PATH }browser-puppeteer`).MESSAGES;
+const BrowserPuppeteer = require(`${MODULES_PATH}browser-puppeteer`).BrowserPuppeteer;
+const MESSAGES = require(`${MODULES_PATH}browser-puppeteer`).MESSAGES;
 const WS = require('ws');
 const http = require('http');
-const fs = require('fs');
-const JSONF = require(`${MODULES_PATH }jsonf`);
+const fs = Promise.promisifyAll(require('fs'));
+const JSONF = require(`${MODULES_PATH}jsonf`);
 const pathlib = require('path');
-const Loggr = require(`${MODULES_PATH }loggr`);
+const Loggr = require(`${MODULES_PATH}loggr`);
 const defaults = require('lodash.defaults');
 
 module.exports = Server;
@@ -83,23 +83,23 @@ Server.prototype.start = Promise.method(function () {
 
 Server.prototype._proxyMessage = function (data, rawData) {
     if (this._wsServer.clients.size === 1) {
-    	this._wsServer.clients.forEach(wsConn => wsConn.send(rawData));
+        this._wsServer.clients.forEach(wsConn => wsConn.send(rawData));
     }
     else {
-    	this._log.debug(`_proxyMessage warning: invalid recording app connection count: ${this._wsServer.clients.size}`);
+        this._log.debug(`_proxyMessage warning: invalid recording app connection count: ${this._wsServer.clients.size}`);
     }
 };
 
-Server.prototype._onRecRequest = function (req, resp) {
+Server.prototype._onRecRequest = async function (req, resp) {
     if (req.url === '/') {
         resp.end(
-            fs.readFileSync(pathlib.resolve(__dirname, 'ui/recorder-ui.html'), { encoding: 'utf-8' })
+            (await fs.readFileAsync(pathlib.resolve(__dirname, 'ui/recorder-ui.html'), { encoding: 'utf-8' }))
             .replace('[[CONFIG]]', JSONF.stringify(this._conf).replace(/\\/g, '\\\\').replace(/'/g, '\\\''))
-            .replace('[[STYLE]]', fs.readFileSync(pathlib.resolve(__dirname, 'ui/app/style.css')))
+            .replace('[[STYLE]]', await fs.readFileAsync(pathlib.resolve(__dirname, 'ui/app/style.css')))
         );
     }
     else if (req.url === '/script.js') {
-        resp.end(fs.readFileSync(pathlib.resolve(__dirname, '../../dist/recorder-app.dist.js'), { encoding: 'utf-8' }));
+        resp.end(await fs.readFileAsync(pathlib.resolve(__dirname, '../../dist/recorder-app.dist.js'), { encoding: 'utf-8' }));
     }
     else {
         resp.status = 404;

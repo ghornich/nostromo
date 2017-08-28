@@ -5,7 +5,7 @@ test(t => {
 
     /* eslint-disable */
 
-	var o = {
+	var testObject = {
 		a:[1,2,3, function (a,b) {
 			/*          */
 			return a*b
@@ -25,8 +25,9 @@ test(t => {
 
 	/* eslint-enable */
 
-    const stringified = JSONF.stringify(o);
+    const stringified = JSONF.stringify(testObject);
 
+    // eslint-disable-next-line no-multi-str
     const expectedStringified = '{"a":[1,2,3,"function (a,b) {\\n\\t\\t\\t/*          */\\n\\t\\t\\treturn a*b\\n\\t\\t}"],\
 "b":"function (a){return a*a/*\\n\\n\\n\\t\\t*/}",\
 "c":{"d":5},\
