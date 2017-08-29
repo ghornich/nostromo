@@ -209,15 +209,15 @@ TestRunner.prototype.run = Promise.method(function () {
     .then(() => this._startServers())
 
     .then(() => {
-        return Promise.each(this._conf.browsers, async (browser) => {
+        this._tapWriter.version();
 
+        return Promise.each(this._conf.browsers, async (browser) => {
             try {
 
                 this._currentBrowserName = browser.name;
 
                 // TODO beforeBrowser, afterBrowser
 
-                this._tapWriter.version();
 
                 // await mkdirpAsync(this._getCurrentBrowserReferenceScreenshotDir())
                 // await mkdirpAsync(this._getCurrentBrowserReferenceErrorDir())
