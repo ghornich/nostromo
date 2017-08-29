@@ -104,7 +104,8 @@ BrowserPuppeteer.prototype.waitForPuppet = Promise.method(function () {
                         ? `readyState: ${ this._wsConn.readyState}`
                         : 'no wsConn'}`
                 );
-                setTimeout(checker, 500);
+                // TODO no magic numbers
+                setTimeout(checker, 1000);
             }
         };
 
