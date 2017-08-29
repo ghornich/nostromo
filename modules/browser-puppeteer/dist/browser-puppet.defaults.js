@@ -3,13 +3,14 @@
     var BrowserPuppet = require('../src/puppet/browser-puppet.js');
 
     if (window.browserPuppet) {
+        // eslint-disable-next-line no-console
         console.warn('BrowserPuppet was loaded multiple times');
         return;
     }
 
     window.browserPuppet = new BrowserPuppet();
-    browserPuppet.start();
-})();
+    window.browserPuppet.start();
+}());
 
 },{"../src/puppet/browser-puppet.js":3}],2:[function(require,module,exports){
 exports.UPSTREAM = {
@@ -46,6 +47,9 @@ exports.DOWNSTREAM = {
 
     // { type, value }
     SET_TRANSMIT_EVENTS: 'set-transmit-events',
+
+    // { type }
+    TERMINATE_PUPPET: 'terminate-puppet',
 
     // { type, url }
     REOPEN_URL: 'reopen-url',
@@ -96,6 +100,10 @@ function BrowserPuppet(opts) {
 
     this._transmitEvents = false;
     this._isExecuting = false;
+    this._isTerminating = false;
+
+    this._isReopening = false;
+    this._reopenUrl = '';
 
     this._wsConn = null;
 
@@ -110,9 +118,6 @@ function BrowserPuppet(opts) {
     };
 
     this._mouseoverSelector = null;
-
-    this._scheduleReopen = false;
-    this._scheduleReopenUrl = '';
 
     this._ssMarkerTL = document.createElement('div');
     this._ssMarkerTL.setAttribute('style', 'position:absolute;top:0;left:0;width:4px;height:4px;z-index:16777000;');
@@ -141,10 +146,13 @@ BrowserPuppet.prototype._startWs = function () {
     };
 };
 
-BrowserPuppet.prototype._sendMessage = function (data) {
+BrowserPuppet.prototype._sendMessage = function (rawData) {
+    var data = rawData;
+
     if (typeof data === 'object') {
         data = JSONF.stringify(data);
     }
+
     this._wsConn.send(data);
 };
 
@@ -154,6 +162,14 @@ BrowserPuppet.prototype.isSelectorVisible = function (selector) {
 
 BrowserPuppet.prototype._onMessage = function (rawData) {
     var self = this;
+
+    if (self._isTerminating) {
+        throw new Error('BrowserPuppet::_onMessage: cannot process message, puppet is terminating');
+    }
+
+    if (self._isReopening) {
+        throw new Error('BrowserPuppet::_onMessage: cannot process message, puppet is reopening');
+    }
 
     // no return
     Promise.try(function () {
@@ -177,18 +193,21 @@ BrowserPuppet.prototype._onMessage = function (rawData) {
                 return self.setTransmitEvents(data.value);
 
             case MESSAGES.DOWNSTREAM.REOPEN_URL:
-                self.reopenUrl(data.url);
-                // self._scheduleReopen = true
-                // self._scheduleReopenUrl = data.url
+                self._isReopening = true;
+                self._reopenUrl = data.url;
                 return;
 
             case MESSAGES.DOWNSTREAM.SET_MOUSEOVER_SELECTORS:
-                self.setMouseoverSelectors(data.selectors)
-                return
+                self.setMouseoverSelectors(data.selectors);
+                return;
 
             case MESSAGES.DOWNSTREAM.SET_IGNORED_CLASSES:
-                self.setIgnoredClasses(data.classes)
-                return
+                self.setIgnoredClasses(data.classes);
+                return;
+
+            case MESSAGES.DOWNSTREAM.TERMINATE_PUPPET:
+                self._isTerminating = true;
+                return;
 
             default:
                 throw new Error('BrowserPuppet: unknown message type: ' + data.type);
@@ -196,11 +215,6 @@ BrowserPuppet.prototype._onMessage = function (rawData) {
     })
     .then(function (result) {
         self._sendMessage({ type: MESSAGES.UPSTREAM.ACK, result: result });
-    })
-    .then(function () {
-        // if (self._scheduleReopen) {
-        //     return self.reopenUrl(self._scheduleReopenUrl)
-        // }
     })
     .catch(function (err) {
         var errorDTO = {};
@@ -218,6 +232,17 @@ BrowserPuppet.prototype._onMessage = function (rawData) {
     })
     .finally(function () {
         self._isExecuting = false;
+
+        if (self._isTerminating) {
+            self._wsConn.close();
+            self._wsConn = null;
+        }
+
+        if (self._isReopening) {
+            self._wsConn.close();
+            self._wsConn = null;
+            self.reopenUrl(self._reopenUrl);
+        }
     });
 };
 
@@ -249,7 +274,7 @@ BrowserPuppet.prototype._onClickCapture = function (event) {
 
     try {
         var selector = this._uniqueSelector.get(target);
-        var fullSelectorPath = this._uniqueSelector.getFullSelectorPath(target)
+        var fullSelectorPath = this._uniqueSelector.getFullSelectorPath(target);
     }
     catch (err) {
         console.error(err);
@@ -279,7 +304,7 @@ BrowserPuppet.prototype._onFocusCapture = function (event) {
 
     try {
         var selector = this._uniqueSelector.get(target);
-        var fullSelectorPath = this._uniqueSelector.getFullSelectorPath(target)
+        var fullSelectorPath = this._uniqueSelector.getFullSelectorPath(target);
     }
     catch (err) {
         console.error(err);
@@ -444,8 +469,8 @@ BrowserPuppet.prototype.setMouseoverSelectors = function (selectors) {
 
 BrowserPuppet.prototype.setIgnoredClasses = function (classes) {
     // TODO ugly
-    this._uniqueSelector._opts.ignoredClasses = classes
-}
+    this._uniqueSelector._opts.ignoredClasses = classes;
+};
 
 BrowserPuppet.prototype.setTransmitEvents = function (value) {
     if (typeof value !== 'boolean') {
@@ -482,14 +507,14 @@ BrowserPuppet.prototype._onExecMessage = Promise.method(function (data) {
         return this.execCommand(data.command);
     }
     else if (data.type === MESSAGES.DOWNSTREAM.EXEC_FUNCTION) {
-        return this.execFunction(data.fn, data.args)
+        return this.execFunction(data.fn, data.args);
     }
-    else {
-        throw new Error('Unknown exec type: ' + data.type);
-    }
+
+    throw new Error('Unknown exec type: ' + data.type);
+
 });
 
-BrowserPuppet.prototype.execFunction=Promise.method(function (fn, args) {
+BrowserPuppet.prototype.execFunction = Promise.method(function (fn/*, args*/) {
     var context = {
         driver: this,
         $: $,
@@ -500,10 +525,10 @@ BrowserPuppet.prototype.execFunction=Promise.method(function (fn, args) {
     };
 
     // TODO args
-    return fn.apply(context)
-})
+    return fn.apply(context);
+});
 
-BrowserPuppet.prototype.execCommand=Promise.method(function(command){
+BrowserPuppet.prototype.execCommand = Promise.method(function (command) {
     switch (command.type) {
         case 'click':
             return this.click(command.selector);
@@ -532,7 +557,7 @@ BrowserPuppet.prototype.execCommand=Promise.method(function(command){
     }
 });
 
-BrowserPuppet.prototype.execCompositeCommand=Promise.method(function (commands) {
+BrowserPuppet.prototype.execCompositeCommand = Promise.method(function (commands) {
     var self = this;
 
     return Promise.each(commands, function (command) {
@@ -584,7 +609,6 @@ BrowserPuppet.prototype._execFn = Promise.method(function (fnData) {
 });
 
 BrowserPuppet.prototype.reopenUrl = Promise.method(function (url) {
-    this._wsConn.close();
     document.cookie = '';
     window.localStorage.clear();
     window.location = url;
@@ -602,7 +626,7 @@ BrowserPuppet.prototype.click = function (selector) {
         throw new Error('Unable to click selector "' + selector + '": not unique');
     }
     else {
-        var el = $el[0];
+        // var el = $el[0];
 
         // TODO detect inaccessible nodes !!!
 
@@ -805,10 +829,6 @@ BrowserPuppet.prototype.setScreenshotMarkerState = function (state) {
 
 
 
-
-
-function noop() {}
-
 function cleanTarget(target) {
     return {
         className: target.className,
@@ -863,217 +883,218 @@ exports.base64 =
 var DOMUtils = exports;
 
 DOMUtils.hasId = function (node) {
-	return Boolean(node && typeof node.id === 'string' && node.id.trim().length > 0)
-}
+    return Boolean(node && typeof node.id === 'string' && node.id.trim().length > 0);
+};
 
 DOMUtils.getId = function (node) {
-	return node.id.trim()
-}
+    return node.id.trim();
+};
 
 DOMUtils.hasClass = function (node) {
-	return Boolean(node && typeof node.className === 'string' && node.className.trim().length > 0)
-}
+    return Boolean(node && typeof node.className === 'string' && node.className.trim().length > 0);
+};
 
 DOMUtils.getClass = function (node) {
-	return node.className.trim()
-}
+    return node.className.trim();
+};
 
 },{}],6:[function(require,module,exports){
 'use strict';
 
 var defaults = require('lodash.defaults');
 var DOMUtils = require('./dom-utils');
-var SelectorElement = require('./selector-element')
-var SelectorElementList=require('./selector-element-list')
+var SelectorElement = require('./selector-element');
+var SelectorElementList = require('./selector-element-list');
 
-exports = module.exports = UniqueSelector
+exports = module.exports = UniqueSelector;
 
 function UniqueSelector(options) {
-	this._opts = defaults({}, options, {
-		querySelectorAll: document.querySelectorAll.bind(document),
-		ignoredClasses: []
-	})
+    this._opts = defaults({}, options, {
+        querySelectorAll: document.querySelectorAll.bind(document),
+        ignoredClasses: [],
+    });
 }
 
-UniqueSelector.prototype.get = function(node) {
-	if (DOMUtils.hasId(node)) {
-		return '#' + DOMUtils.getId(node)
-	}
+UniqueSelector.prototype.get = function (node) {
+    if (DOMUtils.hasId(node)) {
+        return '#' + DOMUtils.getId(node);
+    }
 
-	var selectorElementList = this._getFullSelectorElementList(node);
+    var selectorElementList = this._getFullSelectorElementList(node);
 
-	selectorElementList.simplify()
+    selectorElementList.simplify();
 
-	if (!selectorElementList.isUnique()) {
-		selectorElementList.uniqueify()
-	}
+    if (!selectorElementList.isUnique()) {
+        selectorElementList.uniqueify();
+    }
 
-	return selectorElementList.getSelectorPath()
-}
+    return selectorElementList.getSelectorPath();
+};
 
 UniqueSelector.prototype._getFullSelectorElementList = function (node) {
-	var selectorElementList = new SelectorElementList({
-		querySelectorAll: this._opts.querySelectorAll
-	})
+    var selectorElementList = new SelectorElementList({
+        querySelectorAll: this._opts.querySelectorAll,
+    });
 
-	var currentNode = node
+    var currentNode = node;
 
-	while (currentNode && currentNode.tagName !== 'BODY') {
-		var selectorElement = new SelectorElement(currentNode, this._opts)
+    while (currentNode && currentNode.tagName !== 'BODY') {
+        var selectorElement = new SelectorElement(currentNode, this._opts);
 
-		selectorElementList.addElement(selectorElement);
+        selectorElementList.addElement(selectorElement);
 
-		if (selectorElement.type === SelectorElement.TYPE.ID) {
-			break
-		}
+        if (selectorElement.type === SelectorElement.TYPE.ID) {
+            break;
+        }
 
-		currentNode = currentNode.parentNode
-	}
+        currentNode = currentNode.parentNode;
+    }
 
-	return selectorElementList;
-}
+    return selectorElementList;
+};
 
 UniqueSelector.prototype.getFullSelectorPath = function (node) {
-	return this._getFullSelectorElementList(node).getSelectorPath()
-}
+    return this._getFullSelectorElementList(node).getSelectorPath();
+};
 
 },{"./dom-utils":5,"./selector-element":8,"./selector-element-list":7,"lodash.defaults":17}],7:[function(require,module,exports){
 'use strict';
 
-var defaults=require('lodash.defaults')
+var defaults = require('lodash.defaults');
 
 exports = module.exports = SelectorElementList;
 
 function SelectorElementList(options) {
-	this._opts = defaults({}, options, {
-		querySelectorAll: document.querySelectorAll.bind(document)
-	})
+    this._opts = defaults({}, options, {
+        querySelectorAll: document.querySelectorAll.bind(document),
+    });
 
-	this._selectorElements = []
+    this._selectorElements = [];
 
-	Object.seal(this)
+    Object.seal(this);
 }
 
 SelectorElementList.prototype.getSelectorPath = function () {
-	return this._selectorElements
-		.map(function (selectorElement) {
-			return selectorElement.selector
-		})
-		.filter(function (selector) { return Boolean(selector) })
-		.join(' ')
-		.trim()
-		.replace(/ +/g, ' ');
-}
+    return this._selectorElements
+    .map(function (selectorElement) {
+        return selectorElement.selector;
+    })
+    .filter(function (selector) {
+        return Boolean(selector);
+    })
+    .join(' ')
+    .trim()
+    .replace(/ +/g, ' ');
+};
 
 SelectorElementList.prototype.addElement = function (element) {
-	this._selectorElements.unshift(element)
-}
+    this._selectorElements.unshift(element);
+};
 
 SelectorElementList.prototype.getAmbiguity = function () {
-	return this._opts.querySelectorAll(this.getSelectorPath()).length
-}
+    return this._opts.querySelectorAll(this.getSelectorPath()).length;
+};
 
 SelectorElementList.prototype.isUnique = function () {
-	return this.getAmbiguity() === 1;
-}
+    return this.getAmbiguity() === 1;
+};
 
 SelectorElementList.prototype.simplify = function () {
-	var ambiguity = this.getAmbiguity()
+    var ambiguity = this.getAmbiguity();
 
-	for (var i = 0, len = this._selectorElements.length; i < len - 1; i++) {
-		var selectorElement = this._selectorElements[i]
+    for (var i = 0, len = this._selectorElements.length; i < len - 1; i++) {
+        var selectorElement = this._selectorElements[i];
 
-		if (!selectorElement.active) {
-			continue
-		}
+        if (!selectorElement.active) {
+            continue;
+        }
 
-		selectorElement.active = false
+        selectorElement.active = false;
 
-		var newAmbiguity = this.getAmbiguity()
+        var newAmbiguity = this.getAmbiguity();
 
-		if (ambiguity !== newAmbiguity) {
-			selectorElement.active = true
-		}
+        if (ambiguity !== newAmbiguity) {
+            selectorElement.active = true;
+        }
 
 
 
-	}
-}
+    }
+};
 
 // TODO if selectorElement is type CLASS and >1 classnames: simplify classnames
 
-SelectorElementList.prototype.simplifyClasses = function () {
-	var ambiguity = this.getAmbiguity()
+// SelectorElementList.prototype.simplifyClasses = function () {
+//     for (var i = 0, len = this._selectorElements.length; i < len - 1; i++) {
+//         var selectorElement = this._selectorElements[i];
 
-	for (var i = 0, len = this._selectorElements.length; i < len - 1; i++) {
-		var selectorElement = this._selectorElements[i]
+//         if (!selectorElement.active || selectorElement.type !== SelectorElement.TYPE.CLASS) {
+//             return;
+//         }
 
-		if (!selectorElement.active || selectorElement.type !== SelectorElement.TYPE.CLASS) {
-			return
-		}
+//         //     var originalSelector = selectorElement.rawSelector
+//         //     var classNames = originalSelector.split(/(?=\.)/g)
+//         //     var ignoredClassIdxs = []
 
-		// 	var originalSelector = selectorElement.rawSelector
-		// 	var classNames = originalSelector.split(/(?=\.)/g)
-		// 	var ignoredClassIdxs = []
-		
-		// 	if (classNames.length > 1) {
-		// 		for (var classIdx = 0, classLen = classNames.length; classIdx < classLen; classIdx++) {
-		// 			var className = classNames[classIdx]
+//         //     if (classNames.length > 1) {
+//         //         for (var classIdx = 0, classLen = classNames.length; classIdx < classLen; classIdx++) {
+//         //             var className = classNames[classIdx]
 
-					
-		// 		}
-		// 	}
-	}
 
-}
+//         //         }
+//         //     }
+//     }
+
+// };
 
 /**
  * add "nth-child"s from back until selector becomes unique
  */
 SelectorElementList.prototype.uniqueify = function () {
-	var ambiguity = this.getAmbiguity()
+    var ambiguity = this.getAmbiguity();
 
-	for (var i = this._selectorElements.length - 1; i >= 0; i--) {
-		var selectorElement = this._selectorElements[i]
-		var prevActiveValue = selectorElement.active
+    for (var i = this._selectorElements.length - 1; i >= 0; i--) {
+        var selectorElement = this._selectorElements[i];
+        var prevActiveValue = selectorElement.active;
 
-		selectorElement.active = true
-		selectorElement.useNthChild = true
+        selectorElement.active = true;
+        selectorElement.useNthChild = true;
 
-		var newAmbiguity = this.getAmbiguity()
+        var newAmbiguity = this.getAmbiguity();
 
-		// TODO error check: newAmbiguity < 1
+        // TODO error check: newAmbiguity < 1
 
-		if (newAmbiguity < ambiguity) {
-			ambiguity = newAmbiguity
+        if (newAmbiguity < ambiguity) {
+            ambiguity = newAmbiguity;
 
-			if (ambiguity === 1) {
-				break
-			}
-		}
-		else {
-			selectorElement.useNthChild = false
-			selectorElement.active = prevActiveValue
-		}
-	}
-}
+            if (ambiguity === 1) {
+                break;
+            }
+        }
+        else {
+            selectorElement.useNthChild = false;
+            selectorElement.active = prevActiveValue;
+        }
+    }
+};
+
 },{"lodash.defaults":17}],8:[function(require,module,exports){
 'use strict';
 
 var DOMUtils = require('./dom-utils');
 
-exports =module.exports=SelectorElement
+exports = module.exports = SelectorElement;
 
 SelectorElement.TYPE = {
-	ID: 0,
-	CLASS: 1,
-	ATTR: 2,
-	TAG: 3
-}
+    ID: 0,
+    CLASS: 1,
+    ATTR: 2,
+    TAG: 3,
+};
 
 SelectorElement.ERROR = {
-	INVALID_NODE: 0
-}
+    INVALID_NODE: 0,
+};
 
 /**
  * Represents a single DOM node's selector, e.g.:
@@ -1085,84 +1106,84 @@ SelectorElement.ERROR = {
  */
 
 function SelectorElement(node, options) {
-	var nodeSelectorData = SelectorElement._getNodeSelectorData(node, options)
+    var nodeSelectorData = SelectorElement._getNodeSelectorData(node, options);
 
-	this._node = node
-	this._rawSelector = nodeSelectorData.selector,
-	this._type = nodeSelectorData.type,
-	this._active = true,
-	this._useNthChild = false,
-	this._nthChild = Array.prototype.indexOf.call(node.parentNode.children, node) + 1
+    this._node = node;
+    this._rawSelector = nodeSelectorData.selector;
+    this._type = nodeSelectorData.type;
+    this._active = true;
+    this._useNthChild = false;
+    this._nthChild = Array.prototype.indexOf.call(node.parentNode.children, node) + 1;
 
-	Object.defineProperties(this, {
-		node: {
-			get: function () {
-				return this._node
-			},
-			set: function () {
-				throw new Error('Cannot set read-only property "node"')
-			}
-		},
-		rawSelector: {
-			get: function () {
-				if (!this._active) {
-					return null
-				}
+    Object.defineProperties(this, {
+        node: {
+            get: function () {
+                return this._node;
+            },
+            set: function () {
+                throw new Error('Cannot set read-only property "node"');
+            },
+        },
+        rawSelector: {
+            get: function () {
+                if (!this._active) {
+                    return null;
+                }
 
-				return this._rawSelector
-			},
-			set: function (val) {
-				// TODO enforce selector type?
-				this._rawSelector = val
-			}
-		},
-		selector: {
-			get: function () {
-				if (!this._active) {
-					return null
-				}
+                return this._rawSelector;
+            },
+            set: function (val) {
+                // TODO enforce selector type?
+                this._rawSelector = val;
+            },
+        },
+        selector: {
+            get: function () {
+                if (!this._active) {
+                    return null;
+                }
 
-				return this._rawSelector + (this._useNthChild ? ':nth-child(' + this._nthChild + ')' : '')
-			},
-			set: function () {
-				throw new Error('Cannot set read-only property "selector"')
-			}
-		},
-		type: {
-			get: function () {
-				return this._type
-			},
-			set: function () {
-				throw new Error('Cannot set read-only property "type"')
-			}
-		},
-		active: {
-			get: function () {
-				return this._active
-			},
-			set: function (val) {
-				if (typeof val !== 'boolean') {
-					throw new Error('Invalid type for "active"')
-				}
+                return this._rawSelector + (this._useNthChild ? ':nth-child(' + this._nthChild + ')' : '');
+            },
+            set: function () {
+                throw new Error('Cannot set read-only property "selector"');
+            },
+        },
+        type: {
+            get: function () {
+                return this._type;
+            },
+            set: function () {
+                throw new Error('Cannot set read-only property "type"');
+            },
+        },
+        active: {
+            get: function () {
+                return this._active;
+            },
+            set: function (val) {
+                if (typeof val !== 'boolean') {
+                    throw new Error('Invalid type for "active"');
+                }
 
-				this._active = val
-			}
-		},
-		useNthChild: {
-			get: function () {
-				return this._useNthChild
-			},
-			set: function (val) {
-				if (typeof val !== 'boolean') {
-					throw new Error('Invalid type for "useNthChild"')
-				}
+                this._active = val;
+            },
+        },
+        useNthChild: {
+            get: function () {
+                return this._useNthChild;
+            },
+            set: function (val) {
+                if (typeof val !== 'boolean') {
+                    throw new Error('Invalid type for "useNthChild"');
+                }
 
-				this._useNthChild = val
-			}
-		},
-	})
+                this._useNthChild = val;
+            },
+        },
+    });
 
-	Object.seal(this)
+    Object.seal(this);
 }
 
 
@@ -1171,98 +1192,97 @@ function SelectorElement(node, options) {
  * @param  {[type]} node [description]
  * @return {Object} { selector: String, type: Number }
  */
-SelectorElement._getNodeSelectorData = function (node, options) {
-	if (!node || !('tagName' in node)) {
-		var error = new Error('SelectorElement::_getNodeSelectorData: invalid node');
-		error.type = SelectorElement.ERROR.INVALID_NODE
-		throw error
-	}
+SelectorElement._getNodeSelectorData = function (node, rawOptions) {
+    if (!node || !('tagName' in node)) {
+        var error = new Error('SelectorElement::_getNodeSelectorData: invalid node');
+        error.type = SelectorElement.ERROR.INVALID_NODE;
+        throw error;
+    }
 
-	options=options||{}
-	options.ignoredClasses = options.ignoredClasses||[]
+    var options = rawOptions || {};
+    options.ignoredClasses = options.ignoredClasses || [];
 
-	if (DOMUtils.hasId(node)) {
-		return {
-			selector: '#' + DOMUtils.getId(node),
-			type: SelectorElement.TYPE.ID
-		}
-	}
+    if (DOMUtils.hasId(node)) {
+        return {
+            selector: '#' + DOMUtils.getId(node),
+            type: SelectorElement.TYPE.ID,
+        };
+    }
 
-	if (DOMUtils.hasClass(node)) {
-		var classNames = DOMUtils.getClass(node)
+    if (DOMUtils.hasClass(node)) {
+        var classNames = DOMUtils.getClass(node);
 
-		options.ignoredClasses.forEach(function(ignoredClass) {
-			classNames = classNames.replace(ignoredClass, '')
-		})
+        options.ignoredClasses.forEach(function (ignoredClass) {
+            classNames = classNames.replace(ignoredClass, '');
+        });
 
-		classNames = classNames.trim()
+        classNames = classNames.trim();
 
-		if (classNames.length > 0) {
-			return {
-				selector: '.' + classNames.replace(/ +/g, '.'),
-				type: SelectorElement.TYPE.CLASS
-			}	
-		}
-	}
+        if (classNames.length > 0) {
+            return {
+                selector: '.' + classNames.replace(/ +/g, '.'),
+                type: SelectorElement.TYPE.CLASS,
+            };
+        }
+    }
 
-	var maybeNameAttr = (node.getAttribute('name') || '').trim(); 
+    var maybeNameAttr = (node.getAttribute('name') || '').trim();
 
-	if (maybeNameAttr.length > 0) {
-		return {
-			selector: node.tagName.toLowerCase() + '[name="' + maybeNameAttr + '"]',
-			type: SelectorElement.TYPE.ATTR
-		}
-	}
+    if (maybeNameAttr.length > 0) {
+        return {
+            selector: node.tagName.toLowerCase() + '[name="' + maybeNameAttr + '"]',
+            type: SelectorElement.TYPE.ATTR,
+        };
+    }
 
-	return {
-		selector: node.tagName.toLowerCase(),
-		type: SelectorElement.TYPE.TAG
-	}
-}
+    return {
+        selector: node.tagName.toLowerCase(),
+        type: SelectorElement.TYPE.TAG,
+    };
+};
+
 },{"./dom-utils":5}],9:[function(require,module,exports){
-'use strict'
+'use strict';
 
 // TODO support ES6 arrow fns
 
-var JSONF=exports
+var JSONF = exports;
 
-JSONF.stringify=function(o){
-    return JSON.stringify(o, function(key,val){
-        if (typeof val==='function'){
-            return val.toString()
+JSONF.stringify = function (o) {
+    return JSON.stringify(o, function (key, val) {
+        if (typeof val === 'function') {
+            return val.toString();
         }
-        else {
-            return val
-        }
-    })
-}
 
-JSONF.parse=function(s){
-    var i=0
-    return JSON.parse(s, function(key, val){
-        if (isStringAFunction(val)){
+        return val;
+    });
+};
+
+JSONF.parse = function (s) {
+    return JSON.parse(s, function (key, val) {
+        if (isStringAFunction(val)) {
             try {
                 return new Function(
                     // http://www.kristofdegrave.be/2012/07/json-serialize-and-deserialize.html
                     val.match(/\(([^)]*)\)/)[1],
                     val.match(/\{([\s\S]*)\}/)[1]
-                )
+                );
             }
-            catch (e){
+            catch (e) {
                 // TODO throw a big fat error?
-                console.log('JSONF err: '+val)
-                console.error(e)
-                return val
+                console.log('JSONF err: ' + val);
+                console.error(e);
+                return val;
             }
         }
 
-        return val
-    })
-}
+        return val;
+    });
+};
 
-function isStringAFunction(s){
+function isStringAFunction(s) {
     return /^function\s*\(/.test(s) ||
-        /^function\s+[a-zA-Z0-9_$]+\s*\(/.test(s)
+        /^function\s+[a-zA-Z0-9_$]+\s*\(/.test(s);
 }
 
 },{}],10:[function(require,module,exports){
