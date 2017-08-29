@@ -373,16 +373,11 @@ function renderTestfile(cmds, rawIndent) {
         '\'use strict\';',
         '',
         'exports = module.exports = function (test) {',
-        indent + 'test(\'\', t => {',
+        indent + 'test(\'\', async (t) => {',
     ];
 
     cmds.forEach(function (cmd, i) {
-        if (i === 0) {
-            res.push(indent + indent + 'return ' + renderCmd(cmd, indent));
-        }
-        else {
-            res.push(indent + indent + '.then(() => ' + renderCmd(cmd, indent) + ')');
-        }
+        res.push(indent + indent + 'await ' + renderCmd(cmd, indent) + ';');
     });
 
     res.push(
