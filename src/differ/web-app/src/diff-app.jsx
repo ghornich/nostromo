@@ -30,10 +30,10 @@ function DiffApp(rawConf) {
     }
 
     /*
-         * ref, current: Image(width, height, pixel base64)
-         * id: path + number
-         * 
-         */
+     * ref, current: Image(width, height, pixel base64)
+     * id: path + number
+     * 
+     */
     this._diffDescriptors = [];
     this._currentDiffIdx = 0;
     this._currentImages = null;
