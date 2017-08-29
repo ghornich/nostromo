@@ -113,7 +113,9 @@ BrowserPuppeteer.prototype.waitForPuppet = Promise.method(function () {
     });
 });
 
-BrowserPuppeteer.prototype.reopen = function (url) {
+BrowserPuppeteer.prototype.reopenUrl = function (url) {
+    this._log.debug(`reopenUrl: ${url}`);
+
     return this.sendMessage({
         type: MESSAGES.DOWNSTREAM.REOPEN_URL,
         url: url,
@@ -166,7 +168,7 @@ BrowserPuppeteer.prototype.discardClients = function () {
     }
 };
 
-BrowserPuppeteer.prototype.sendMessage = Promise.method(function (data) {
+BrowserPuppeteer.prototype.sendMessage = async function (data) {
     if (!this._wsConn) {
         throw new Error('Puppet not connected');
     }
@@ -188,7 +190,7 @@ BrowserPuppeteer.prototype.sendMessage = Promise.method(function (data) {
         this._currentMessageHandler.resolve = res;
         this._currentMessageHandler.reject = rej;
     });
-});
+};
 
 BrowserPuppeteer.prototype.execCommand = Promise.method(function (command) {
     return this.sendMessage({
@@ -225,6 +227,14 @@ BrowserPuppeteer.prototype.setMouseoverSelectors = Promise.method(function (sele
         selectors: selectors,
     });
 });
+
+BrowserPuppeteer.prototype.terminatePuppet = async function () {
+    return this.sendMessage({ type: MESSAGES.DOWNSTREAM.TERMINATE_PUPPET });
+};
+
+BrowserPuppeteer.prototype.showScreenshotMarker = async function () {
+    return this.sendMessage({ type: MESSAGES.DOWNSTREAM.SHOW_SCREENSHOT_MARKER });
+};
 
 // TODO promise, resolve when closed
 BrowserPuppeteer.prototype.stop = function () {

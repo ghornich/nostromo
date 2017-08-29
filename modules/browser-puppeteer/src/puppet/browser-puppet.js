@@ -36,6 +36,10 @@ function BrowserPuppet(opts) {
 
     this._transmitEvents = false;
     this._isExecuting = false;
+    this._isTerminating = false;
+
+    this._isReopening = false;
+    this._reopenUrl = '';
 
     this._wsConn = null;
 
@@ -50,9 +54,6 @@ function BrowserPuppet(opts) {
     };
 
     this._mouseoverSelector = null;
-
-    this._scheduleReopen = false;
-    this._scheduleReopenUrl = '';
 
     this._ssMarkerTL = document.createElement('div');
     this._ssMarkerTL.setAttribute('style', 'position:absolute;top:0;left:0;width:4px;height:4px;z-index:16777000;');
@@ -98,6 +99,14 @@ BrowserPuppet.prototype.isSelectorVisible = function (selector) {
 BrowserPuppet.prototype._onMessage = function (rawData) {
     var self = this;
 
+    if (self._isTerminating) {
+        throw new Error('BrowserPuppet::_onMessage: cannot process message, puppet is terminating');
+    }
+
+    if (self._isReopening) {
+        throw new Error('BrowserPuppet::_onMessage: cannot process message, puppet is reopening');
+    }
+
     // no return
     Promise.try(function () {
         var data = JSONF.parse(rawData);
@@ -120,9 +129,8 @@ BrowserPuppet.prototype._onMessage = function (rawData) {
                 return self.setTransmitEvents(data.value);
 
             case MESSAGES.DOWNSTREAM.REOPEN_URL:
-                self.reopenUrl(data.url);
-                // self._scheduleReopen = true
-                // self._scheduleReopenUrl = data.url
+                self._isReopening = true;
+                self._reopenUrl = data.url;
                 return;
 
             case MESSAGES.DOWNSTREAM.SET_MOUSEOVER_SELECTORS:
@@ -133,17 +141,16 @@ BrowserPuppet.prototype._onMessage = function (rawData) {
                 self.setIgnoredClasses(data.classes);
                 return;
 
+            case MESSAGES.DOWNSTREAM.TERMINATE_PUPPET:
+                self._isTerminating = true;
+                return;
+
             default:
                 throw new Error('BrowserPuppet: unknown message type: ' + data.type);
         }
     })
     .then(function (result) {
         self._sendMessage({ type: MESSAGES.UPSTREAM.ACK, result: result });
-    })
-    .then(function () {
-        // if (self._scheduleReopen) {
-        //     return self.reopenUrl(self._scheduleReopenUrl)
-        // }
     })
     .catch(function (err) {
         var errorDTO = {};
@@ -161,6 +168,17 @@ BrowserPuppet.prototype._onMessage = function (rawData) {
     })
     .finally(function () {
         self._isExecuting = false;
+
+        if (self._isTerminating) {
+            self._wsConn.close();
+            self._wsConn = null;
+        }
+
+        if (self._isReopening) {
+            self._wsConn.close();
+            self._wsConn = null;
+            self.reopenUrl(self._reopenUrl);
+        }
     });
 };
 
@@ -527,7 +545,6 @@ BrowserPuppet.prototype._execFn = Promise.method(function (fnData) {
 });
 
 BrowserPuppet.prototype.reopenUrl = Promise.method(function (url) {
-    this._wsConn.close();
     document.cookie = '';
     window.localStorage.clear();
     window.location = url;
@@ -734,9 +751,6 @@ BrowserPuppet.prototype.setScreenshotMarkerState = function (state) {
         document.body.removeChild(this._ssMarkerBR);
     }
 };
-
-
-
 
 
 

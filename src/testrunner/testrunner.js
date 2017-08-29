@@ -218,9 +218,10 @@ Testrunner.prototype.run = Promise.method(function () {
 
                 // TODO beforeBrowser, afterBrowser
 
-
                 // await mkdirpAsync(this._getCurrentBrowserReferenceScreenshotDir())
                 // await mkdirpAsync(this._getCurrentBrowserReferenceErrorDir())
+
+                this._log.info(`Starting browser ${browser.name}`);
 
                 await browser.start(this._conf.appUrl);
 
@@ -228,37 +229,14 @@ Testrunner.prototype.run = Promise.method(function () {
                     // await this._browserPuppeteer.discardClients()
                     // this._assertCount=0
 
-                    await this._browserPuppeteer.waitForPuppet();
-
-                    await this._browserPuppeteer.sendMessage({
-                        type: MESSAGES.DOWNSTREAM.SHOW_SCREENSHOT_MARKER,
-                    });
-
-                    this._log.info('Ensuring browser is visible...');
-
-                    while (true) {
-                        const screenshot = await screenshotjs();
-                        const markerPositions = bufferImageSearch(screenshot, cropMarkerImg);
-                        if (markerPositions.length === 2) {
-                            this._log.info('Browser is visible');
-                            break;
-                        }
-                        else {
-                            this._log.debug(`Screenshot marker count invalid (count: ${markerPositions.length })`);
-                        }
-                        await Promise.delay(2000);
-                    }
+                    // await this._waitUntilBrowserReady();
 
                     await this._runTestFile(testFilePath);
 
                     if (pathIdx < testFilePaths.length - 1) {
-                        this._log.info('sending reopen signal');
-
-                        this._browserPuppeteer._wsConn.send(JSON.stringify({
-                            type: MESSAGES.DOWNSTREAM.REOPEN_URL,
-                            url: this._conf.appUrl,
-                        }));
-                        this._browserPuppeteer.discardClients();
+                        await this._browserPuppeteer.reopenUrl(this._conf.appUrl);
+                        // TODO kell discard? lezarodik-e a WS?
+                        // this._browserPuppeteer.discardClients();
                         // await this._browserPuppeteer.reopen(this._conf.appUrl)
                     }
                 }
@@ -272,6 +250,7 @@ Testrunner.prototype.run = Promise.method(function () {
             finally {
                 // TODO optionally keep browser open for debugging (wait for manual closing?)
                 // if (!this._conf.keepalive) {
+                await this._browserPuppeteer.terminatePuppet();
                 await browser.stop();
                 // }
             }
@@ -407,9 +386,11 @@ Testrunner.prototype._runTestModule = function (fn) {
         this._beforeCommand = testRegistrar.beforeCommand || this._conf.defaultBeforeCommand || noop;
         this._afterCommand = testRegistrar.afterCommand || this._conf.defaultAfterCommand || noop;
 
-        return Promise.each(testDatas, testData => {
+        return Promise.each(testDatas, async (testData, testIndex) => {
             this._tapWriter.diagnostic(testData.name);
             this._log.debug(`Running test: ${testData.name || '(anonymous)'}`);
+
+            await this._waitUntilBrowserReady();
 
             return Promise.try(this._conf.beforeTest)
             .then(() => {
@@ -421,10 +402,41 @@ Testrunner.prototype._runTestModule = function (fn) {
 
                 return maybePromise;
             })
-            .then(this._conf.afterTest);
+            .then(this._conf.afterTest)
+            .then(async () => {
+                if (testIndex < testDatas.length - 1) {
+                    await this._browserPuppeteer.reopenUrl(this._conf.appUrl);
+                }
+            });
 
         });
     });
+};
+
+Testrunner.prototype._waitUntilBrowserReady = async function () {
+    await this._browserPuppeteer.waitForPuppet();
+    await this._browserPuppeteer.showScreenshotMarker();
+    return this._ensureBrowserIsVisible();
+};
+
+Testrunner.prototype._ensureBrowserIsVisible = async function () {
+    this._log.info('Ensuring browser is visible...');
+
+    while (true) {
+        const screenshot = await screenshotjs();
+        const markerPositions = bufferImageSearch(screenshot, cropMarkerImg);
+        if (markerPositions.length === 0) {
+            this._log.debug('Browser not yet visible');
+        }
+        else if (markerPositions.length === 2) {
+            this._log.info('Browser is visible');
+            break;
+        }
+        else {
+            this._log.debug(`Screenshot marker count invalid (count: ${markerPositions.length })`);
+        }
+        await Promise.delay(3000);
+    }
 };
 
 // TODO add next/prev command as param in before/after calls

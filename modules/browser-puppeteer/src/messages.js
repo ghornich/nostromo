@@ -33,6 +33,9 @@ exports.DOWNSTREAM = {
     // { type, value }
     SET_TRANSMIT_EVENTS: 'set-transmit-events',
 
+    // { type }
+    TERMINATE_PUPPET: 'terminate-puppet',
+
     // { type, url }
     REOPEN_URL: 'reopen-url',
 
