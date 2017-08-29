@@ -76,9 +76,9 @@ const PPM = 1 / 1000000;
 const PIXEL_THRESHOLD = 3 / 100;
 const IMG_THRESHOLD = 20 * PPM;
 
-exports = module.exports = TestRunner;
+exports = module.exports = Testrunner;
 
-function TestRunner(conf) {
+function Testrunner(conf) {
     EventEmitter.call(this);
 
     this._conf = defaults({}, conf, {
@@ -95,7 +95,7 @@ function TestRunner(conf) {
     this._log = new Loggr({
         level: this._conf.logLevel,
         showTime: true,
-        namespace: 'TestRunner',
+        namespace: 'Testrunner',
         outStream: {
             write: function (str) {
                 process.stdout.write(`  ${str}`);
@@ -187,9 +187,9 @@ function TestRunner(conf) {
     this._log.trace('instance created');
 }
 
-util.inherits(TestRunner, EventEmitter);
+util.inherits(Testrunner, EventEmitter);
 
-TestRunner.prototype.run = Promise.method(function () {
+Testrunner.prototype.run = Promise.method(function () {
     this._log.debug('running...');
     this._log.trace('input test files: ', this._conf.testFiles);
 
@@ -296,7 +296,7 @@ TestRunner.prototype.run = Promise.method(function () {
     });
 });
 
-TestRunner.prototype._startServers = Promise.method(function () {
+Testrunner.prototype._startServers = Promise.method(function () {
     const self = this;
 
     self._log.trace('_startServers called');
@@ -311,12 +311,12 @@ TestRunner.prototype._startServers = Promise.method(function () {
     // })
 });
 
-TestRunner.prototype._stopServers = function () {
+Testrunner.prototype._stopServers = function () {
     // this._httpServer.close()
     this._browserPuppeteer.stop();
 };
 
-TestRunner.prototype._runTestFile = async function (testFilePath) {
+Testrunner.prototype._runTestFile = async function (testFilePath) {
     try {
         this._currentTestfilePath = testFilePath;
         const absPath = pathlib.resolve(testFilePath);
@@ -336,7 +336,7 @@ TestRunner.prototype._runTestFile = async function (testFilePath) {
     }
 };
 
-/* TestRunner.prototype._runTestFiles = function(testFilePaths){
+/* Testrunner.prototype._runTestFiles = function(testFilePaths){
     var testCount = 0
 
     this._tapWriter.version()
@@ -365,27 +365,27 @@ TestRunner.prototype._runTestFile = async function (testFilePath) {
     })
 }*/
 
-TestRunner.prototype._getCurrentBrowserReferenceScreenshotDir = function () {
+Testrunner.prototype._getCurrentBrowserReferenceScreenshotDir = function () {
     return pathlib.resolve(REF_SCREENSHOT_BASE_DIR, this._currentBrowserName);
 };
 
-TestRunner.prototype._getCurrentTestModuleReferenceScreenshotDir = function () {
+Testrunner.prototype._getCurrentTestModuleReferenceScreenshotDir = function () {
     const testfilePathSlug = slugifyPath(this._currentTestfilePath);
 
     return pathlib.resolve(this._getCurrentBrowserReferenceScreenshotDir(), testfilePathSlug);
 };
 
-TestRunner.prototype._getCurrentBrowserReferenceErrorDir = function () {
+Testrunner.prototype._getCurrentBrowserReferenceErrorDir = function () {
     return pathlib.resolve(ERRORS_SCREENSHOT_BASE_DIR, this._currentBrowserName);
 };
 
-TestRunner.prototype._getCurrentTestModuleReferenceErrorDir = function () {
+Testrunner.prototype._getCurrentTestModuleReferenceErrorDir = function () {
     const testfilePathSlug = slugifyPath(this._currentTestfilePath);
 
     return pathlib.resolve(this._getCurrentBrowserReferenceErrorDir(), testfilePathSlug);
 };
 
-TestRunner.prototype._runTestModule = function (fn) {
+Testrunner.prototype._runTestModule = function (fn) {
     this._log.trace('_runTestModule');
 
     // return mkdirpAsync(this._getCurrentTestModuleReferenceScreenshotDir())
@@ -428,7 +428,7 @@ TestRunner.prototype._runTestModule = function (fn) {
 };
 
 // TODO add next/prev command as param in before/after calls
-TestRunner.prototype._wrapFunctionWithSideEffects = function (fn, cmdType) {
+Testrunner.prototype._wrapFunctionWithSideEffects = function (fn, cmdType) {
     return (...args) => {
         return Promise.try(() => this._beforeCommand(this.directAPI, { type: cmdType }))
         .then(() => fn(...args))
@@ -439,7 +439,7 @@ TestRunner.prototype._wrapFunctionWithSideEffects = function (fn, cmdType) {
     };
 };
 
-TestRunner.prototype._execCommandWithAPI = Promise.method(function (cmd, api) {
+Testrunner.prototype._execCommandWithAPI = Promise.method(function (cmd, api) {
     switch (cmd.type) {
         case 'setValue': return api.setValue(cmd.selector, cmd.value);
         case 'click': return api.click(cmd.selector);
@@ -453,24 +453,24 @@ TestRunner.prototype._execCommandWithAPI = Promise.method(function (cmd, api) {
     }
 });
 
-TestRunner.prototype._execCommandDirect = Promise.method(function (cmd) {
+Testrunner.prototype._execCommandDirect = Promise.method(function (cmd) {
     return this._execCommandWithAPI(cmd, this.directAPI);
 });
 
-TestRunner.prototype._execCommandSideEffect = Promise.method(function (cmd) {
+Testrunner.prototype._execCommandSideEffect = Promise.method(function (cmd) {
     return this._execCommandWithAPI(cmd, this.sideEffectAPI);
 });
 
-TestRunner.prototype._execCommandsDirect = Promise.method(function (cmds) {
+Testrunner.prototype._execCommandsDirect = Promise.method(function (cmds) {
     return Promise.each(cmds, cmd => this._execCommandDirect(cmd));
 });
 
-TestRunner.prototype._execCommandsSideEffect = Promise.method(function (cmds) {
+Testrunner.prototype._execCommandsSideEffect = Promise.method(function (cmds) {
     return Promise.each(cmds, cmd => this._execCommandSideEffect(cmd));
 });
 
 // TODO use
-TestRunner.prototype._selectorEqualDirect = Promise.method(function (selector, expected, rawDescription) {
+Testrunner.prototype._selectorEqualDirect = Promise.method(function (selector, expected, rawDescription) {
     const description = rawDescription || `equal - ${selector }, ${expected}`;
 
     return this._getValue(selector)
@@ -512,7 +512,7 @@ TestRunner.prototype._selectorEqualDirect = Promise.method(function (selector, e
     });
 });
 
-TestRunner.prototype._equal = Promise.method(function (actual, expected, description) {
+Testrunner.prototype._equal = Promise.method(function (actual, expected, description) {
     if (isEqual(actual, expected)) {
         this._tapWriter.ok({
             type: 'equal',
@@ -530,13 +530,13 @@ TestRunner.prototype._equal = Promise.method(function (actual, expected, descrip
 });
 
 // TODO fix+use or remove
-TestRunner.prototype._isEqualDirect = Promise.method(function (selector, expected, description) {
+Testrunner.prototype._isEqualDirect = Promise.method(function (selector, expected, description) {
     return this._getValue(selector)
     .then(actual => expected === actual)
     .catch(err => this._tapWriter.notOk(err.message));
 });
 
-TestRunner.prototype._clickDirect = Promise.method(function (selector, rawDescription) {
+Testrunner.prototype._clickDirect = Promise.method(function (selector, rawDescription) {
     const description = rawDescription || `click - ${selector}`;
 
     return this._browserPuppeteer.execCommand({
@@ -555,14 +555,14 @@ TestRunner.prototype._clickDirect = Promise.method(function (selector, rawDescri
     });
 });
 
-TestRunner.prototype._getValue = Promise.method(function (selector) {
+Testrunner.prototype._getValue = Promise.method(function (selector) {
     return this._browserPuppeteer.execCommand({
         type: 'getValue',
         selector: selector,
     });
 });
 
-TestRunner.prototype._getValueDirect = Promise.method(function (selector) {
+Testrunner.prototype._getValueDirect = Promise.method(function (selector) {
     // TODO logging?
     return this._browserPuppeteer.execCommand({
         type: 'getValue',
@@ -570,7 +570,7 @@ TestRunner.prototype._getValueDirect = Promise.method(function (selector) {
     });
 });
 
-TestRunner.prototype._setValueDirect = Promise.method(function (selector, value, rawDescription) {
+Testrunner.prototype._setValueDirect = Promise.method(function (selector, value, rawDescription) {
     // TODO logging?
     const description = rawDescription || `setValue - ${selector }, ${value}`;
 
@@ -591,7 +591,7 @@ TestRunner.prototype._setValueDirect = Promise.method(function (selector, value,
     });
 });
 
-TestRunner.prototype._pressKeyDirect = Promise.method(function (selector, keyCode, description) {
+Testrunner.prototype._pressKeyDirect = Promise.method(function (selector, keyCode, description) {
     this._log.info(`pressKey: ${keyCode } (${ellipsis(selector, ELLIPSIS_LIMIT) })`);
 
     return this._browserPuppeteer.execCommand({
@@ -601,7 +601,7 @@ TestRunner.prototype._pressKeyDirect = Promise.method(function (selector, keyCod
     });
 });
 
-TestRunner.prototype._waitForVisibleDirect = Promise.method(function (selector, timeout) {
+Testrunner.prototype._waitForVisibleDirect = Promise.method(function (selector, timeout) {
     this._log.info(`waitForVisible: ${ellipsis(selector, ELLIPSIS_LIMIT)}`);
 
     return this._browserPuppeteer.execCommand({
@@ -617,7 +617,7 @@ TestRunner.prototype._waitForVisibleDirect = Promise.method(function (selector, 
     });
 });
 
-TestRunner.prototype._waitWhileVisibleDirect = Promise.method(function (selector) {
+Testrunner.prototype._waitWhileVisibleDirect = Promise.method(function (selector) {
     this._log.info(`waitWhileVisible: ${ellipsis(selector, ELLIPSIS_LIMIT)}`);
 
     return this._browserPuppeteer.execCommand({
@@ -633,7 +633,7 @@ TestRunner.prototype._waitWhileVisibleDirect = Promise.method(function (selector
     });
 });
 
-TestRunner.prototype._focusDirect = Promise.method(function (selector, rawDescription) {
+Testrunner.prototype._focusDirect = Promise.method(function (selector, rawDescription) {
     this._log.info(`focus: ${selector}`);
     const description = rawDescription || `focus - selector: ${selector}`;
 
@@ -654,7 +654,7 @@ TestRunner.prototype._focusDirect = Promise.method(function (selector, rawDescri
     });
 });
 
-TestRunner.prototype._scrollDirect = Promise.method(function (selector, scrollTop) {
+Testrunner.prototype._scrollDirect = Promise.method(function (selector, scrollTop) {
     this._log.info(`scroll: ${selector}`);
 
     return this._browserPuppeteer.execCommand({
@@ -671,11 +671,11 @@ TestRunner.prototype._scrollDirect = Promise.method(function (selector, scrollTo
     });
 });
 
-TestRunner.prototype._isVisibleDirect = Promise.method(function (selector, description) {
+Testrunner.prototype._isVisibleDirect = Promise.method(function (selector, description) {
     throw new Error('TODO _isVisibleDirect');
 });
 
-TestRunner.prototype._compositeDirect = Promise.method(function (commands) {
+Testrunner.prototype._compositeDirect = Promise.method(function (commands) {
     this._log.info(`composite: ${commands.map(cmd => cmd.type).join(', ')}`);
 
     return this._browserPuppeteer.execCommand({
@@ -691,7 +691,7 @@ TestRunner.prototype._compositeDirect = Promise.method(function (commands) {
     });
 });
 
-TestRunner.prototype._mouseoverDirect = Promise.method(function (selector) {
+Testrunner.prototype._mouseoverDirect = Promise.method(function (selector) {
     this._log.info(`mouseover: ${selector}`);
 
     return this._browserPuppeteer.execCommand({
@@ -707,25 +707,25 @@ TestRunner.prototype._mouseoverDirect = Promise.method(function (selector) {
     });
 });
 
-TestRunner.prototype._execFunctionDirect = Promise.method(function (fn, ...args) {
+Testrunner.prototype._execFunctionDirect = Promise.method(function (fn, ...args) {
     this._log.info('execFunction');
 
     return this._browserPuppeteer.execFunction(fn, args);
 });
 
-TestRunner.prototype._delay = Promise.method(function (ms, description) {
+Testrunner.prototype._delay = Promise.method(function (ms, description) {
     this._log.info(`delay ${ms}`);
     return Promise.delay(ms);
 });
 
-TestRunner.prototype._comment = Promise.method(function (comment) {
+Testrunner.prototype._comment = Promise.method(function (comment) {
     this._tapWriter.comment(comment);
 });
 
 
 
 // TODO remove sync codes
-TestRunner.prototype._assert = async function () {
+Testrunner.prototype._assert = async function () {
     const ssCount = this._assertCount;
     const refImgDir = this._getCurrentTestModuleReferenceScreenshotDir();
     const failedImgDir = this._getCurrentTestModuleReferenceErrorDir();
