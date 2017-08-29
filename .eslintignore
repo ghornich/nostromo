@@ -1,2 +1,3 @@
 **/dist/*.js
 babel-temp.js
+*_temp_*
