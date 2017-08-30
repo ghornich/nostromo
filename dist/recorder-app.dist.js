@@ -12743,6 +12743,8 @@ window.RecorderApp = RecorderApp;
 // TODO executable specifications
 // TODO play macro step-by-step
 
+// TODO browserPuppet port as config param
+
 function RecorderApp(rawConf) {
     var self = this;
     var conf = rawConf;
@@ -13035,6 +13037,16 @@ RootComp = {
             m(
                 'div',
                 { 'class': 'content' },
+                m(
+                    'section',
+                    null,
+                    m(
+                        'div',
+                        { 'class': 'info-bar' },
+                        m('div', { 'class': 'info-icon' }),
+                        'Press Ctrl+Shift while recording to insert an assertion.'
+                    )
+                ),
                 m(
                     'section',
                     null,
