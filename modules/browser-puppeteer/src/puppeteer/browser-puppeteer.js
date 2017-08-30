@@ -116,7 +116,7 @@ BrowserPuppeteer.prototype.waitForPuppet = Promise.method(function () {
 BrowserPuppeteer.prototype.reopenUrl = async function (url) {
     this._log.debug(`reopenUrl: ${url}`);
 
-    var result = await this.sendMessage({
+    const result = await this.sendMessage({
         type: MESSAGES.DOWNSTREAM.REOPEN_URL,
         url: url,
     });
@@ -245,14 +245,14 @@ BrowserPuppeteer.prototype.setMouseoverSelectors = Promise.method(function (sele
 });
 
 BrowserPuppeteer.prototype.terminatePuppet = async function () {
-    var result = await this.sendMessage({ type: MESSAGES.DOWNSTREAM.TERMINATE_PUPPET });
+    const result = await this.sendMessage({ type: MESSAGES.DOWNSTREAM.TERMINATE_PUPPET });
 
     this._wsConn = null;
 
     return result;
 };
 
-BrowserPuppeteer.prototype.showScreenshotMarker = async function () {
+BrowserPuppeteer.prototype.showScreenshotMarker = function () {
     return this.sendMessage({ type: MESSAGES.DOWNSTREAM.SHOW_SCREENSHOT_MARKER });
 };
 
