@@ -34,8 +34,13 @@ const DEFAULT_DIFF_CFG_FILE = 'nostromo.diff.conf.js';
             });
         }
         catch (e) {
-            console.log(e.message);
-            console.log('Using default conf');
+            if (e.code === 'ENOENT') {
+                console.log('WARNING: recorder config file not found. Using default settings.');
+            }
+            else {
+                console.log(e.message);
+                process.exit(1);
+            }
         }
 
         const conf = defaults({}, baseConf, {
