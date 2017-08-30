@@ -1,0 +1,2 @@
+before-publish script
+browser-puppeteer autotest: test each command
