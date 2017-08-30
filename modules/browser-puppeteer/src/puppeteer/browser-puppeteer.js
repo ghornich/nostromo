@@ -126,16 +126,18 @@ BrowserPuppeteer.prototype._onWsConnection = function (wsConn) {
     this._log.trace('_onWsConnection');
 
     this._wsConn = wsConn;
-    this._wsConn.on('message', this._onMessage.bind(this));
+    this._wsConn.on('message', this._onWsMessage.bind(this));
+    this._wsConn.on('error', this._onWsError.bind(this));
+    this._wsConn.on('close', this._onWsClose.bind(this));
 
     this.emit('puppetConnected');
 };
 
-BrowserPuppeteer.prototype._onMessage = function (rawData) {
+BrowserPuppeteer.prototype._onWsMessage = function (rawData) {
     const data = JSONF.parse(rawData);
     const _cmh = this._currentMessageHandler;
 
-    this._log.trace(`_onMessage: ${rawData}`);
+    this._log.trace(`_onWsMessage: ${rawData}`);
 
     if (data.type === MESSAGES.UPSTREAM.ACK) {
         _cmh.resolve(data.result);
@@ -157,6 +159,16 @@ BrowserPuppeteer.prototype._onMessage = function (rawData) {
             this._log.info(`unknown event type: ${data.type}`);
         }
     }
+};
+
+BrowserPuppeteer.prototype._onWsError = function (event) {
+    this._log.debug('_onWsError');
+    this._log.trace(event);
+};
+
+BrowserPuppeteer.prototype._onWsClose = function (event) {
+    this._log.debug('_onWsClose');
+    this._log.trace(event);
 };
 
 BrowserPuppeteer.prototype.discardClients = function () {
