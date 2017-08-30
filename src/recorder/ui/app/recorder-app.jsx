@@ -305,6 +305,13 @@ RootComp = {
 
             <div class="content">
                 <section>
+                    <div class="info-bar">
+                        <div class="info-icon"></div>
+                        Press Ctrl+Shift while recording to insert an assertion.
+                    </div>
+                </section>
+
+                <section>
                     <p class="flex-row">
                         Output format:
                         <select class="output-format-dropdown" onchange={ actions.selectOutputFormatter }>{

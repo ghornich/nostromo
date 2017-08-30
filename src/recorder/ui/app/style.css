@@ -103,3 +103,33 @@ button:active {
     font-size: 125%;
     min-width: 30%;
 }
+
+.info-bar {
+    display: inline-flex;
+    margin-right: auto;
+    align-items: center;
+    background: #5992ce;
+    color: #fff;
+    border: 1px #335477 solid;
+    padding: 0.5em 0.7em;
+}
+
+.info-bar .info-icon {
+    margin-right: 0.5em;
+}
+
+.info-icon {
+    display: flex;
+    width: 1em;
+    height: 1em;
+    font-size: 150%;
+    font-weight: 600;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    border: 2px #fff solid;
+}
+
+.info-icon:before {
+    content: 'i';
+}
