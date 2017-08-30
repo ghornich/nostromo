@@ -4,4 +4,5 @@ package-lock.json
 *_temp*
 test/referenceScreenshots*
 bc-test
+bc-test.js
 babel-temp.js
