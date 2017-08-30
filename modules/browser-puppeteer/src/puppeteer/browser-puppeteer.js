@@ -165,14 +165,14 @@ BrowserPuppeteer.prototype._onWsMessage = function (rawData) {
     }
 };
 
-BrowserPuppeteer.prototype._onWsError = function (event) {
+BrowserPuppeteer.prototype._onWsError = function (code) {
     this._log.debug('_onWsError');
-    this._log.trace(event);
+    this._log.trace(`_onWsError code: ${code}`);
 };
 
-BrowserPuppeteer.prototype._onWsClose = function (event) {
+BrowserPuppeteer.prototype._onWsClose = function (code) {
     this._log.debug('_onWsClose');
-    this._log.trace(event);
+    this._log.trace(`_onWsClose code: ${code}`);
 };
 
 BrowserPuppeteer.prototype.discardClients = function () {
