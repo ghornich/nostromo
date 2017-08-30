@@ -27,6 +27,8 @@ window.RecorderApp = RecorderApp;
 // TODO executable specifications
 // TODO play macro step-by-step
 
+// TODO browserPuppet port as config param
+
 function RecorderApp(rawConf) {
     var self = this;
     var conf = rawConf;

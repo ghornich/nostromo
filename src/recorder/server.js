@@ -10,14 +10,44 @@ const pathlib = require('path');
 const Loggr = require(`${MODULES_PATH}loggr`);
 const defaults = require('lodash.defaults');
 
+const DEFAULT_RECORDER_APP_PORT = 7700;
+
 module.exports = Server;
 
-// TODO conf docblock
+/**
+ * @typedef {Object} BeforeCaptureArgs
+ * TODO
+ */
+
+/**
+ * @typedef {Array} SelectorBecameVisibleArgs
+ * TODO
+ */
+
+/**
+ * Recorder server
+ * @param {Object} [conf]
+ * @param {Number} [conf.recorderAppPort=7700]
+ * @param {Number} [conf.logLevel] - See Loggr
+ * @param {Function} [conf.beforeCapture] - Argument: {@link BeforeCaptureArgs}
+ * @param {SelectorBecameVisibleArgs} [conf.onSelectorBecameVisible] - 
+ * @param {String[]} [conf.mouseoverSelectors] - 
+ * @param {String[]} [conf.ignoredClasses] - 
+ * @param {Function} [conf.pressKeyFilter] - 
+ * @param {Function[]} [conf.outputFormatters] - 
+ * @param {String} [conf.selectedOutputFormatter] - 
+ */
 function Server(conf) {
     this._conf = defaults({}, conf, {
+        recorderAppPort: DEFAULT_RECORDER_APP_PORT,
+        // logLevel
         beforeCapture: noop,
+        onSelectorBecameVisible: [],
         mouseoverSelectors: [],
         ignoredClasses: [],
+        // pressKeyFilter
+        // outputFormatters
+        // selectedOutputFormatter
     });
 
     // TODO assert conf
@@ -55,7 +85,7 @@ Server.prototype.start = Promise.method(function () {
         try {
             await this._puppeteer.setTransmitEvents(true);
 
-            const selectors = (this._conf.onSelectorBecameVisible || []).map(data => data.selector);
+            const selectors = (this._conf.onSelectorBecameVisible).map(data => data.selector);
 
             if (selectors.length > 0) {
                 await this._puppeteer.setSelectorBecameVisibleSelectors(selectors);
