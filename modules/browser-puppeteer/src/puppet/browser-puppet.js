@@ -12,6 +12,7 @@ var Ws4ever = require('../../../../modules/ws4ever');
 var defaults = require('lodash.defaults');
 var objectAssign = require('object-assign');
 var BrowserPuppetCommands = require('./browser-puppet-commands.partial');
+var promiseWhile = require('../../../../modules/promise-while')(Promise);
 
 // TODO option to transmit console?
 // TODO transmit uncaught exceptions
@@ -588,13 +589,4 @@ function assert(v, m) {
 }
 
 
-function promiseWhile(condition, action) {
-    return Promise.try(function () {
-        if (!condition()) {
-            return;
-        }
 
-        return action()
-        .then(promiseWhile.bind(null, condition, action));
-    });
-}
