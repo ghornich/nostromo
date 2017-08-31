@@ -518,9 +518,7 @@ BrowserPuppet.prototype._onClickCapture = function (event) {
             $timestamp: Date.now(),
             selector: selector,
             $fullSelectorPath: fullSelectorPath,
-            target: {
-                innerText: target.innerText,
-            },
+            target: cleanTarget(target),
         },
     });
 };
@@ -548,9 +546,7 @@ BrowserPuppet.prototype._onFocusCapture = function (event) {
             $timestamp: Date.now(),
             selector: selector,
             $fullSelectorPath: fullSelectorPath,
-            target: {
-                innerText: target.innerText,
-            },
+            target: cleanTarget(target),
         },
     });
 };
@@ -577,9 +573,7 @@ BrowserPuppet.prototype._onInputCapture = function (event) {
             $timestamp: Date.now(),
             selector: selector,
             value: target.value,
-            target: {
-                innerText: target.innerText,
-            },
+            target: cleanTarget(target),
         },
     });
 };
@@ -601,16 +595,16 @@ BrowserPuppet.prototype._onScrollCapture = debounce(function (event) {
         return;
     }
 
+    var targetDTO = cleanTarget(target);
+    targetDTO.scrollTop=target.scrollTop
+
     this._sendMessage({
         type: MESSAGES.UPSTREAM.CAPTURED_EVENT,
         event: {
             type: 'scroll',
             $timestamp: Date.now(),
             selector: selector,
-            target: {
-                scrollTop: target.scrollTop,
-                innerText: target.innerText,
-            },
+            target: targetDTO,
         },
     });
 }, SCROLL_DEBOUNCE);
@@ -847,12 +841,14 @@ BrowserPuppet.prototype.setScreenshotMarkerState = function (state) {
     }
 };
 
+// TODO rename to getTargetDTO
 function cleanTarget(target) {
     return {
         className: target.className,
         id: target.id,
         innerText: target.innerText,
         tagName: target.tagName,
+        type: target.type,
     };
 }
 

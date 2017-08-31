@@ -13148,6 +13148,9 @@ function renderCmd(cmd, indent) {
                 return indent + indent + indent + inspectObj(cleanCmd(subcmd));
             }).join(',' + EOL) + EOL + indent + indent + '])';
 
+        case 'uploadFileAndAssign':
+            return 't.uploadFileAndAssign({' + EOL + indent + indent + indent + 'filePath: ' + apos(cmd.filePath) + ',' + EOL + indent + indent + indent + 'destinationVariable: ' + apos(cmd.destinationVariable) + EOL + indent + indent + '});';
+
         case 'mouseover':
             return 't.mouseover(' + apos(cmd.selector) + ')';
         // case '': return 't.()'
@@ -13183,6 +13186,8 @@ function inspectVal(v) {
 var Command = require('./command');
 var TYPES = Command.TYPES;
 var CLICK_FOCUS_MIN_SEPARATION = 200;
+
+// TODO ASSERT_SCREENSHOT -> ASSERT
 
 exports = module.exports = CommandList;
 
@@ -13230,6 +13235,9 @@ CommandList.prototype._compact = function () {
         //     newCommands[lastNewIdx]=cmd
         // }
         else if (cmd.type === TYPES.ASSERT_SCREENSHOT && lastNewCmd.type === TYPES.ASSERT_SCREENSHOT) {
+            continue;
+        }
+        else if (cmd.type === TYPES.UPLOAD_FILE_AND_ASSIGN && lastNewCmd.type === TYPES.UPLOAD_FILE_AND_ASSIGN) {
             continue;
         }
         else {
@@ -13286,6 +13294,7 @@ var TYPES = Command.TYPES = {
     FOCUS: 'focus',
     ASSERT: 'assert',
     COMPOSITE: 'composite',
+    UPLOAD_FILE_AND_ASSIGN: 'uploadFileAndAssign',
 };
 
 function Command(data) {
