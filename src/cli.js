@@ -48,7 +48,7 @@ const DEFAULT_DIFF_CFG_FILE = 'nostromo.diff.conf.js';
             logLevel: Loggr.LEVELS.OFF,
         });
 
-        const RecorderServer = require('./recorder/server');
+        const RecorderServer = require('./recorder/recorder-server');
         const recServer = new RecorderServer(conf);
 
         recServer.start();

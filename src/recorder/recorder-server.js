@@ -14,14 +14,15 @@ const DEFAULT_RECORDER_APP_PORT = 7700;
 
 module.exports = Server;
 
+// TODO
 /**
  * @typedef {Object} BeforeCaptureArgs
- * TODO
+ * { event, command, recorderInstance }
  */
 
+// TODO
 /**
  * @typedef {Array} SelectorBecameVisibleArgs
- * TODO
  */
 
 /**
