@@ -2,6 +2,8 @@
 
 var Promise = require('bluebird');
 var promiseWhile = require('../../../../modules/promise-while')(Promise);
+var base64ToFile = require('../../../../modules/base64-to-file');
+var lodashSet = require('lodash.set');
 
 exports = module.exports = BrowserPuppetCommands;
 
@@ -194,3 +196,20 @@ BrowserPuppetCommands.prototype.getValue = function (selector) {
 BrowserPuppetCommands.prototype.isVisible = function (selector) {
     return $(selector).length > 0;
 };
+
+/**
+ * [uploadAndAssignFile description]
+ * @param {Object} fileData
+ * @param {String} fileData.base64
+ * @param {String} fileData.name
+ * @param {String} [fileData.mime='application/octet-stream']
+ * @param  {[type]} variablePath [description]
+ * @return {[type]}              [description]
+ */
+BrowserPuppetCommands.prototype.uploadFileAndAssign = function (fileData, variablePath) {
+    fileData.mime = fileData.mime || 'application/octet-stream'
+
+    var fileInstance = base64ToFile(fileData)
+
+    lodashSet(window, variablePath, fileInstance);
+}

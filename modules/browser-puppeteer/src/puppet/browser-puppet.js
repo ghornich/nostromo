@@ -488,6 +488,8 @@ BrowserPuppet.prototype.execCommand = Promise.method(function (command) {
             return this.execCompositeCommand(command.commands);
         case 'mouseover':
             return this.mouseover(command.selector);
+        case 'uploadFileAndAssign':
+            return this.uploadFileAndAssign(command.fileData, command.destinationVariable);
         default:
             throw new Error('Unknown command type: ' + command.type);
     }

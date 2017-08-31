@@ -5,7 +5,7 @@ const Loggr = require(MODULES_PATH + 'loggr');
 const defaults = require('lodash.defaults');
 const isEqual = require('lodash.isequal');
 const Schema = require('schema-inspector');
-const fs = require('fs');
+const fs = Promise.promisifyAll(require('fs'));
 const pathlib = require('path');
 const util = require('util');
 const TapWriter = require(MODULES_PATH + 'tap-writer');
@@ -153,6 +153,7 @@ function Testrunner(conf) {
         composite: this._compositeDirect.bind(this),
         mouseover: this._mouseoverDirect.bind(this),
         execFunction: this._execFunctionDirect.bind(this),
+        uploadFileAndAssign: this._uploadFileAndAssignDirect.bind(this)
     };
 
     this.sideEffectAPI = {};
@@ -798,6 +799,24 @@ Testrunner.prototype._assert = async function () {
     })
     .finally(() => {
         this._assertCount++;
+    });
+};
+
+Testrunner.prototype._uploadFileAndAssignDirect = async function (data) {
+    const filePath=data.filePath
+    const fileName = pathlib.basename(filePath)
+    const destinationVariable=data.destinationVariable
+
+    const file = await fs.readFileAsync(filePath)
+    const fileBase64=file.toString('base64')
+
+    return this._browserPuppeteer.execCommand({
+        type:'uploadFileAndAssign',
+        fileData:{
+            base64: fileBase64,
+            name: fileName
+        },
+        destinationVariable: destinationVariable
     });
 };
 

@@ -408,6 +408,11 @@ function renderCmd(cmd, indent) {
             }).join(',' + EOL) + EOL +
         indent + indent + '])';
 
+        case 'uploadFileAndAssign':return 't.uploadFileAndAssign({'+ EOL +
+            indent + indent + indent + 'filePath: '+apos(cmd.filePath)+','+EOL+
+            indent + indent + indent+'destinationVariable: '+apos(cmd.destinationVariable)+EOL+
+        indent + indent + '});'
+
         case 'mouseover': return 't.mouseover(' + apos(cmd.selector) + ')';
         // case '': return 't.()'
         default: console.error('unknown cmd type ', cmd.type, cmd); return '<unknown>';
