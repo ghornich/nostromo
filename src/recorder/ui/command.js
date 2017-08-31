@@ -11,6 +11,7 @@ var TYPES = Command.TYPES = {
     FOCUS: 'focus',
     ASSERT: 'assert',
     COMPOSITE: 'composite',
+    UPLOAD_FILE_AND_ASSIGN: 'uploadFileAndAssign',
 };
 
 function Command(data) {

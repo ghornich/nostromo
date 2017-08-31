@@ -2,6 +2,8 @@ var Command = require('./command');
 var TYPES = Command.TYPES;
 var CLICK_FOCUS_MIN_SEPARATION = 200;
 
+// TODO ASSERT_SCREENSHOT -> ASSERT
+
 exports = module.exports = CommandList;
 
 function CommandList(commands) {
@@ -48,6 +50,9 @@ CommandList.prototype._compact = function () {
         //     newCommands[lastNewIdx]=cmd
         // }
         else if (cmd.type === TYPES.ASSERT_SCREENSHOT && lastNewCmd.type === TYPES.ASSERT_SCREENSHOT) {
+            continue;
+        }
+        else if (cmd.type === TYPES.UPLOAD_FILE_AND_ASSIGN && lastNewCmd.type === TYPES.UPLOAD_FILE_AND_ASSIGN) {
             continue;
         }
         else {
