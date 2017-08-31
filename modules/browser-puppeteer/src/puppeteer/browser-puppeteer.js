@@ -16,16 +16,9 @@ const MESSAGES = require('../messages');
 exports = module.exports = BrowserPuppeteer;
 
 /**
- * @typedef {object} LoggerInstance
- * @property {Function} info
- * @property {Function} debug
- * @property {Function} trace
- */
-
-/**
  * @typedef {object} BrowserPuppeteerConfig
  * @property {Number} [port = 47225] port to communicate with browser/BrowserPuppet
- * @property {LoggerInstance} [logger] custom logger instance
+ * @property {Loggr} [logger] custom Loggr instance
  */
 
 /**
