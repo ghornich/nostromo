@@ -1,4 +1,4 @@
-precommit hooks (test, lint)
+precommit hooks (test, lint, doc)
 browser-puppeteer autotest: test each command
 "npm run autotest" script
-replace all local promiseWhile implementations with module impl.
+generate docs from docblock
