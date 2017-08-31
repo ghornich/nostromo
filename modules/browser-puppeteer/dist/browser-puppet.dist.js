@@ -392,11 +392,13 @@ BrowserPuppet.prototype._onMessage = function (rawData) {
                 return;
 
             case MESSAGES.DOWNSTREAM.SET_MOUSEOVER_SELECTORS:
-                self.setMouseoverSelectors(data.selectors);
+                this._mouseoverSelector = data.selectors.join(', ');
+                this._attachMouseoverCaptureEventListener();
                 return;
 
             case MESSAGES.DOWNSTREAM.SET_IGNORED_CLASSES:
-                self.setIgnoredClasses(data.classes);
+                // TODO ugly
+                self._uniqueSelector._opts.ignoredClasses = data.classes;
                 return;
 
             case MESSAGES.DOWNSTREAM.TERMINATE_PUPPET:
@@ -453,6 +455,7 @@ BrowserPuppet.prototype._attachCaptureEventListeners = function () {
 };
 
 BrowserPuppet.prototype._attachMouseoverCaptureEventListener = function () {
+    // TODO check if listener is already attached
     document.body.addEventListener('mouseover', this._onMouseoverCapture.bind(this), true);
 };
 
@@ -654,16 +657,6 @@ BrowserPuppet.prototype.setOnSelectorBecameVisibleSelectors = function (selector
     this._onSelectorBecameVisibleData.states = selectors.map(function () {
         return { previousState: null };
     });
-};
-
-BrowserPuppet.prototype.setMouseoverSelectors = function (selectors) {
-    this._mouseoverSelector = selectors.join(', ');
-    this._attachMouseoverCaptureEventListener();
-};
-
-BrowserPuppet.prototype.setIgnoredClasses = function (classes) {
-    // TODO ugly
-    this._uniqueSelector._opts.ignoredClasses = classes;
 };
 
 BrowserPuppet.prototype.setTransmitEvents = function (value) {
