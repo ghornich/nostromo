@@ -12902,16 +12902,7 @@ RecorderApp.prototype._onCapturedEvent = function (event) {
             return;
     }
 
-    // TODO pass event AND command
-    // type, target, $target, selector
-    var beforeCaptureData = {
-        event: event,
-        type: event.type,
-        target: event.target,
-        selector: event.selector
-    };
-
-    if (this._conf.beforeCapture(beforeCaptureData) === false) {
+    if (this._conf.beforeCapture({ event: event, command: command, recorderInstance: this }) === false) {
         console.log('capture prevented in onBeforeCapture');
         return;
     }
@@ -13149,6 +13140,8 @@ function renderCmd(cmd, indent) {
             return 't.focus(' + apos(cmd.selector) + ')';
         case 'assert':
             return 't.assert()';
+        case 'comment':
+            return 't.comment(' + apos(cmd.comment) + ')';
 
         case 'composite':
             return 't.composite([' + EOL + cmd.commands.map(function (subcmd) {
