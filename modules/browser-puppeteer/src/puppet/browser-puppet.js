@@ -141,8 +141,8 @@ BrowserPuppet.prototype._onMessage = function (rawData) {
                 return;
 
             case MESSAGES.DOWNSTREAM.SET_MOUSEOVER_SELECTORS:
-                this._mouseoverSelector = data.selectors.join(', ');
-                this._attachMouseoverCaptureEventListener();
+                self._mouseoverSelector = data.selectors.join(', ');
+                self._attachMouseoverCaptureEventListener();
                 return;
 
             case MESSAGES.DOWNSTREAM.SET_IGNORED_CLASSES:
