@@ -1,2 +1,4 @@
-before-publish script
+precommit hooks (test, lint)
 browser-puppeteer autotest: test each command
+"npm run autotest" script
+replace all local promiseWhile implementations with module impl.
