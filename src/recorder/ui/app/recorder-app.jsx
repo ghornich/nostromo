@@ -400,6 +400,7 @@ function renderCmd(cmd, indent) {
         case 'waitWhileVisible': return 't.waitWhileVisible(' + apos(cmd.selector) + ')';
         case 'focus': return 't.focus(' + apos(cmd.selector) + ')';
         case 'assert': return 't.assert()';
+        case 'comment': return 't.comment('+apos(cmd.comment)+')';
 
         case 'composite': return 't.composite([' + EOL +
             cmd.commands.map(function (subcmd) {
