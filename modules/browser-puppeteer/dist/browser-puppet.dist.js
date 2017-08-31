@@ -59,7 +59,7 @@ var promiseWhile = require('../../../../modules/promise-while')(Promise);
 exports = module.exports = BrowserPuppetCommands;
 
 function BrowserPuppetCommands() {
-	throw new Error('Can\'t create instance of static class "BrowserPuppetCommands"');
+    throw new Error('Can\'t create instance of static class "BrowserPuppetCommands"');
 }
 
 BrowserPuppetCommands.prototype.scroll = function (selector, scrollTop) {
@@ -708,7 +708,7 @@ BrowserPuppet.prototype._onExecMessage = Promise.method(function (data) {
 
 });
 
-BrowserPuppet.prototype.execFunction = Promise.method(function (fn/*, args*/) {
+BrowserPuppet.prototype.execFunction = Promise.method(function (fn/* , args*/) {
     var context = {
         driver: this,
         $: this.$,
@@ -1272,20 +1272,20 @@ function isStringAFunction(s) {
 var assert = require('assert');
 
 exports = module.exports = function (promiseLib) {
-	assert(typeof promiseLib === 'function', 'promiseLib is not an function');
-	assert(typeof promiseLib.resolve === 'function', 'promiseLib.resolve is not a function');
+    assert(typeof promiseLib === 'function', 'promiseLib is not an function');
+    assert(typeof promiseLib.resolve === 'function', 'promiseLib.resolve is not a function');
 
-	return function promiseWhile(condition, action) {
-	    return promiseLib.resolve()
-	    .then(function () {
-	        if (!condition()) {
-	            return;
-	        }
+    return function promiseWhile(condition, action) {
+        return promiseLib.resolve()
+        .then(function () {
+            if (!condition()) {
+                return;
+            }
 
-	        return action()
-	        .then(promiseWhile.bind(null, condition, action));
-	    });
-	};
+            return action()
+            .then(promiseWhile.bind(null, condition, action));
+        });
+    };
 };
 
 },{"assert":13}],12:[function(require,module,exports){
