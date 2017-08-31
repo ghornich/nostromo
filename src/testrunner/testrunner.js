@@ -433,7 +433,7 @@ Testrunner.prototype._ensureBrowserIsVisible = async function () {
             break;
         }
         else {
-            this._log.debug(`Screenshot marker count invalid (count: ${markerPositions.length })`);
+            this._log.debug(`Screenshot marker count invalid (count: ${markerPositions.length})`);
         }
         await Promise.delay(3000);
     }
@@ -483,7 +483,7 @@ Testrunner.prototype._execCommandsSideEffect = Promise.method(function (cmds) {
 
 // TODO use
 Testrunner.prototype._selectorEqualDirect = Promise.method(function (selector, expected, rawDescription) {
-    const description = rawDescription || `equal - ${selector }, ${expected}`;
+    const description = rawDescription || `equal - ${selector}, ${expected}`;
 
     return this._getValue(selector)
     .then(actual => {
@@ -584,7 +584,7 @@ Testrunner.prototype._getValueDirect = Promise.method(function (selector) {
 
 Testrunner.prototype._setValueDirect = Promise.method(function (selector, value, rawDescription) {
     // TODO logging?
-    const description = rawDescription || `setValue - ${selector }, ${value}`;
+    const description = rawDescription || `setValue - ${selector}, ${value}`;
 
     return this._browserPuppeteer.execCommand({
         type: 'setValue',
@@ -604,7 +604,7 @@ Testrunner.prototype._setValueDirect = Promise.method(function (selector, value,
 });
 
 Testrunner.prototype._pressKeyDirect = Promise.method(function (selector, keyCode, description) {
-    this._log.info(`pressKey: ${keyCode } (${ellipsis(selector, ELLIPSIS_LIMIT) })`);
+    this._log.info(`pressKey: ${keyCode} (${ellipsis(selector, ELLIPSIS_LIMIT)})`);
 
     return this._browserPuppeteer.execCommand({
         type: 'pressKey',
@@ -764,7 +764,7 @@ Testrunner.prototype._assert = async function () {
                 // TODO customizable message
                 this._tapWriter.notOk(`screenshot assert (${toPercent(imgDiffResult.difference)}): ${refImgPathRelative}`);
 
-                const failedImgName = `${ssCount }.png`;
+                const failedImgName = `${ssCount}.png`;
                 const failedImgPath = pathlib.resolve(failedImgDir, failedImgName);
                 const failedImgPathRelative = pathlib.relative(pathlib.resolve(ERRORS_SCREENSHOT_BASE_DIR), failedImgPath);
 
@@ -794,7 +794,7 @@ Testrunner.prototype._assert = async function () {
     })
     .catch(e => {
         // TODO customizable message
-        this._tapWriter.notOk(`screenshot assert: ${refImgName }, ${e}`);
+        this._tapWriter.notOk(`screenshot assert: ${refImgName}, ${e}`);
     })
     .finally(() => {
         this._assertCount++;

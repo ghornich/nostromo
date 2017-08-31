@@ -101,7 +101,7 @@ BrowserPuppeteer.prototype.waitForPuppet = Promise.method(function () {
             else {
                 this._log.trace(`waiting for puppet...${
                     this._wsConn
-                        ? `readyState: ${ this._wsConn.readyState}`
+                        ? `readyState: ${this._wsConn.readyState}`
                         : 'no wsConn'}`
                 );
                 // TODO no magic numbers
@@ -155,7 +155,7 @@ BrowserPuppeteer.prototype._onWsMessage = function (rawData) {
         const validTypes = Object.keys(MESSAGES.UPSTREAM).map(k => MESSAGES.UPSTREAM[k]);
 
         if (validTypes.indexOf(data.type) >= 0) {
-            this._log.trace(`emitting message type ${ data.type}`);
+            this._log.trace(`emitting message type ${data.type}`);
 
             this.emit(data.type, data, rawData);
         }

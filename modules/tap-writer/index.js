@@ -77,11 +77,11 @@ TAPWriter.prototype.reset = function () {
 
 TAPWriter.prototype.version = function (rawVersion) {
     const version = rawVersion === undefined ? TAPWriter.TAP_VERSION : rawVersion;
-    this._writeLn(`TAP version ${ version}`);
+    this._writeLn(`TAP version ${version}`);
 };
 
 TAPWriter.prototype.diagnostic = function (message) {
-    this._writeLn(`${DIAGNOSTIC_MARK } ${ message}`);
+    this._writeLn(`${DIAGNOSTIC_MARK} ${message}`);
 };
 
 // TODO ok/notOk: accept string too, use as message
@@ -93,7 +93,7 @@ TAPWriter.prototype.pass = function (data) {
         ? data
         : data.message || DEFAULT_MESSAGES[data.type] || DEFAULT_MESSAGES.anonymous;
     this._testCount++;
-    this._writeLn(`ok ${ this._testCount } ${ msg}`);
+    this._writeLn(`ok ${this._testCount} ${msg}`);
 };
 
 // TODO use one failure-type function, show expected+actual if provided
@@ -104,7 +104,7 @@ TAPWriter.prototype.notOk = function (rawDescription) {
     this._testCount++;
     this._failCount++;
 
-    this._writeLn(`not ok ${ this._testCount } ${ description}`);
+    this._writeLn(`not ok ${this._testCount} ${description}`);
 };
 
 // type, message, expected, actual
@@ -113,17 +113,17 @@ TAPWriter.prototype.fail = function (data) {
     this._testCount++;
     this._failCount++;
 
-    this._writeLn(`not ok ${ this._testCount } ${ msg}`);
+    this._writeLn(`not ok ${this._testCount} ${msg}`);
     this._writeLn('---', 1);
-    this._writeLn(`operator: ${ data.type}`, 2);
-    this._writeLn(`expected: ${ prettyPrint(data.expected)}`, 2);
-    this._writeLn(`actual:   ${ prettyPrint(data.actual)}`, 2);
+    this._writeLn(`operator: ${data.type}`, 2);
+    this._writeLn(`expected: ${prettyPrint(data.expected)}`, 2);
+    this._writeLn(`actual:   ${prettyPrint(data.actual)}`, 2);
     this._writeLn('...', 1);
 };
 
 TAPWriter.prototype.plan = function (rawTestCount) {
     const testCount = rawTestCount === undefined ? this._testCount : rawTestCount;
-    this._writeLn(`1..${ testCount}`);
+    this._writeLn(`1..${testCount}`);
 };
 
 TAPWriter.prototype.bailout = function (rawReason) {

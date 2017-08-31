@@ -457,7 +457,7 @@ BrowserPuppet.prototype._onExecMessage = Promise.method(function (data) {
 
 });
 
-BrowserPuppet.prototype.execFunction = Promise.method(function (fn/*, args*/) {
+BrowserPuppet.prototype.execFunction = Promise.method(function (fn/* , args*/) {
     var context = {
         driver: this,
         $: this.$,

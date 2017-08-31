@@ -6,7 +6,7 @@ var promiseWhile = require('../../../../modules/promise-while')(Promise);
 exports = module.exports = BrowserPuppetCommands;
 
 function BrowserPuppetCommands() {
-	throw new Error('Can\'t create instance of static class "BrowserPuppetCommands"');
+    throw new Error('Can\'t create instance of static class "BrowserPuppetCommands"');
 }
 
 BrowserPuppetCommands.prototype.scroll = function (selector, scrollTop) {

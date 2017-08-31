@@ -124,7 +124,7 @@ DiffServer.prototype.getDiffableScreenshots = function () {
     let failPaths = [];
 
     this._conf.referenceScreenshotsDir.forEach(dir => {
-        const paths = glob.sync(`${dir }/**/*FAIL.png`);
+        const paths = glob.sync(`${dir}/**/*FAIL.png`);
         failPaths = failPaths.concat(paths);
     });
 
