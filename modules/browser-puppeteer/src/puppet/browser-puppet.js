@@ -10,6 +10,8 @@ var SS_MARKER_IMG = require('../screenshot-marker').base64;
 var debounce = require('lodash.debounce');
 var Ws4ever = require('../../../../modules/ws4ever');
 var defaults = require('lodash.defaults');
+var objectAssign = require('object-assign');
+var BrowserPuppetCommands = require('./browser-puppet-commands.partial');
 
 // TODO option to transmit console?
 // TODO transmit uncaught exceptions
@@ -65,6 +67,8 @@ function BrowserPuppet(opts) {
     this._ssMarkerBR.setAttribute('style', 'position:absolute;bottom:0;right:0;width:4px;height:4px;z-index:16777000;');
     this._ssMarkerBR.style.background = 'url(' + SS_MARKER_IMG + ')';
 }
+
+objectAssign(BrowserPuppet.prototype, BrowserPuppetCommands.prototype);
 
 BrowserPuppet.prototype.start = function () {
     this._startWs();
@@ -552,197 +556,6 @@ BrowserPuppet.prototype.reopenUrl = Promise.method(function (url) {
     window.location = url;
 });
 
-// command
-
-BrowserPuppet.prototype.click = function (selector) {
-    var $el = $(selector);
-
-    if ($el.length === 0) {
-        throw new Error('Unable to click selector "' + selector + '": not found');
-    }
-    else if ($el.length > 1) {
-        throw new Error('Unable to click selector "' + selector + '": not unique');
-    }
-    else {
-        // var el = $el[0];
-
-        // TODO detect inaccessible nodes !!!
-
-        // if (TestToolsBase.isNodeOccluded(el)) {
-        //     var occludingNode = TestToolsBase.getOccludingNode(el)
-        //     console.log('OCCLUSION DETECTED - selector: ' + selector + ', occluded by: ' + occludingNode.outerHTML.substr(0,50) + ' (...)')
-        //     throw new Error('Unable to click selector "'+selector+'": is occluded by other node(s)')
-        // }
-
-        // console.log('No occlusion detected for '+selector)
-
-        // $el.trigger('click');
-        $el[0].click();
-    }
-};
-
-// TODO handle meta keys, arrow keys
-// TODO which event to use? keyup, keydown, keypress?
-BrowserPuppet.prototype.pressKey = function (selector, keyCode) {
-    var $el = $(selector);
-
-    if ($el.length === 0) {
-        throw new Error('Unable to press key ' + keyCode + ' for "' + selector + '": not found');
-    }
-    else if ($el.length > 1) {
-        throw new Error('Unable to press key ' + keyCode + ' for "' + selector + '": not unique');
-    }
-    else {
-        console.log(typeof keyCode, keyCode);
-        // eslint-disable-next-line new-cap
-        $el.trigger($.Event('keydown', { which: Number(keyCode), keyCode: Number(keyCode) }));
-    }
-};
-
-BrowserPuppet.prototype.setValue = function (selector, value) {
-    var $el = $(selector);
-    var el = $el[0];
-    var tagName = el && el.tagName || '';
-
-    if ($el.length === 0) {
-        throw new Error('Unable to set value of "' + selector + '": not found');
-    }
-    else if ($el.length > 1) {
-        throw new Error('Unable to set value of "' + selector + '": not unique');
-    }
-    else if (tagName !== 'INPUT' && tagName !== 'TEXTAREA') {
-        throw new Error('Unable to set value of "' + selector + '": unsupported tag "' + tagName + '"');
-    }
-    else {
-        $el.val(value);
-        $el.trigger('input');
-    }
-};
-
-BrowserPuppet.prototype.focus = function (selector) {
-    var $el = $(selector);
-
-    if ($el.length === 0) {
-        throw new Error('Unable to focus selector "' + selector + '": not found');
-    }
-    else if ($el.length > 1) {
-        throw new Error('Unable to focus selector "' + selector + '": not unique');
-    }
-    else {
-        $el[0].focus();
-    }
-};
-
-// TODO timeout, pollInterval
-// TODO document caveats
-BrowserPuppet.prototype.waitForVisible = Promise.method(function (selector) {
-    var pollInterval = 500;
-    var self = this;
-
-    if (self.isSelectorVisible(selector)) {
-        return;
-    }
-
-    return promiseWhile(
-        function () {
-            return !self.isSelectorVisible(selector);
-        },
-        function () {
-            return Promise.delay(pollInterval);
-        }
-    );
-});
-
-// TODO timeout, pollInterval, initialDelay
-// TODO document caveats
-BrowserPuppet.prototype.waitWhileVisible = Promise.method(function (selector) {
-    var pollInterval = 500;
-    var initialDelay = 500;
-    var self = this;
-
-    console.log('waitWhileVisible: starting, initialDelay: ' + initialDelay);
-
-    return Promise.delay(initialDelay)
-    .then(function () {
-        if (!self.isSelectorVisible(selector)) {
-            console.log('WWV: selector wasnt visible: ' + selector);
-            return;
-        }
-
-        return promiseWhile(
-            function () {
-                var result = self.isSelectorVisible(selector);
-                console.log('WWV: visibility: ' + selector + ', ' + result);
-                return result;
-            },
-            function () {
-                console.log('WWV: delaying');
-                return Promise.delay(pollInterval);
-            }
-        );
-
-    });
-});
-
-
-// query
-
-BrowserPuppet.prototype.getValue = function (selector) {
-    var $el = $(selector);
-    var el = $el[0];
-
-    if ($el.length === 0) {
-        throw new Error('Unable to get value for "' + selector + '": not found');
-    }
-    else if ($el.length > 1) {
-        throw new Error('Unable to get value for "' + selector + '": not unique');
-    }
-
-    // TODO util fn to get node value
-
-    // TODO handle all val() nodes
-    if (el.tagName === 'INPUT' && el.type === 'checkbox') {
-        return el.checked;
-    }
-    else if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
-        /* nl2backslashnl(*/
-        return $el.val().replace(/\n/g, '\\n');
-    }
-    /* nl2backslashnl(*/
-    return $el.text().replace(/\n/g, '\\n');
-
-};
-
-BrowserPuppet.prototype.isVisible = function (selector) {
-    return $(selector).length > 0;
-};
-
-BrowserPuppet.prototype.scroll = function (selector, scrollTop) {
-    var $el = $(selector);
-
-    if ($el.length === 0) {
-        throw new Error('Unable to scroll "' + selector + '": not found');
-    }
-    else if ($el.length > 1) {
-        throw new Error('Unable to scroll "' + selector + '": not unique');
-    }
-
-    $el[0].scrollTop = scrollTop;
-};
-
-BrowserPuppet.prototype.mouseover = function (selector) {
-    var $el = $(selector);
-
-    if ($el.length === 0) {
-        throw new Error('Unable to mouseover "' + selector + '": not found');
-    }
-    else if ($el.length > 1) {
-        throw new Error('Unable to mouseover "' + selector + '": not unique');
-    }
-
-    $el.trigger('mouseover');
-};
-
 BrowserPuppet.prototype.setScreenshotMarkerState = function (state) {
     if (state) {
         document.body.appendChild(this._ssMarkerTL);
@@ -753,19 +566,6 @@ BrowserPuppet.prototype.setScreenshotMarkerState = function (state) {
         document.body.removeChild(this._ssMarkerBR);
     }
 };
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 function cleanTarget(target) {
     return {
