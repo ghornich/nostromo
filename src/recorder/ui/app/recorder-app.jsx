@@ -189,16 +189,7 @@ RecorderApp.prototype._onCapturedEvent = function (event) {
             return;
     }
 
-    // TODO pass event AND command
-    // type, target, $target, selector
-    var beforeCaptureData = {
-        event: event,
-        type: event.type,
-        target: event.target,
-        selector: event.selector,
-    };
-
-    if (this._conf.beforeCapture(beforeCaptureData) === false) {
+    if (this._conf.beforeCapture({ event: event, command: command, recorderInstance: this }) === false) {
         console.log('capture prevented in onBeforeCapture');
         return;
     }
