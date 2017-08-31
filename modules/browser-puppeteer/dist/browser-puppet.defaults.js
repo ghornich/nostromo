@@ -322,13 +322,13 @@ function BrowserPuppet(opts) {
 
     this._mouseoverSelector = null;
 
-    this._ssMarkerTL = document.createElement('div');
-    this._ssMarkerTL.setAttribute('style', 'position:absolute;top:0;left:0;width:4px;height:4px;z-index:16777000;');
-    this._ssMarkerTL.style.background = 'url(' + SS_MARKER_IMG + ')';
+    this._ssMarkerTopLeft = document.createElement('div');
+    this._ssMarkerTopLeft.setAttribute('style', 'position:absolute;top:0;left:0;width:4px;height:4px;z-index:16777000;');
+    this._ssMarkerTopLeft.style.background = 'url(' + SS_MARKER_IMG + ')';
 
-    this._ssMarkerBR = document.createElement('div');
-    this._ssMarkerBR.setAttribute('style', 'position:absolute;bottom:0;right:0;width:4px;height:4px;z-index:16777000;');
-    this._ssMarkerBR.style.background = 'url(' + SS_MARKER_IMG + ')';
+    this._ssMarkerBottomRight = document.createElement('div');
+    this._ssMarkerBottomRight.setAttribute('style', 'position:absolute;bottom:0;right:0;width:4px;height:4px;z-index:16777000;');
+    this._ssMarkerBottomRight.style.background = 'url(' + SS_MARKER_IMG + ')';
 }
 
 objectAssign(BrowserPuppet.prototype, BrowserPuppetCommands.prototype);
@@ -821,12 +821,12 @@ BrowserPuppet.prototype.reopenUrl = Promise.method(function (url) {
 
 BrowserPuppet.prototype.setScreenshotMarkerState = function (state) {
     if (state) {
-        document.body.appendChild(this._ssMarkerTL);
-        document.body.appendChild(this._ssMarkerBR);
+        document.body.appendChild(this._ssMarkerTopLeft);
+        document.body.appendChild(this._ssMarkerBottomRight);
     }
     else {
-        document.body.removeChild(this._ssMarkerTL);
-        document.body.removeChild(this._ssMarkerBR);
+        document.body.removeChild(this._ssMarkerTopLeft);
+        document.body.removeChild(this._ssMarkerBottomRight);
     }
 };
 
