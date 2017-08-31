@@ -6,11 +6,11 @@ const pathlib = require('path');
 const http = require('http');
 const urllib = require('url');
 const qs = require('querystring');
-const JSONF = require(`${MODULES_PATH}jsonf`);
+const JSONF = require(MODULES_PATH + 'jsonf');
 const pngjs = require('pngjs');
 const PNG = pngjs.PNG;
 const glob = require('glob');
-// const visualImgDiff = require(`${MODULES_PATH}buffer-image-visual-diff`);
+// const visualImgDiff = require(MODULES_PATH + 'buffer-image-visual-diff');
 const mkdirpAsync = Promise.promisify(require('mkdirp'));
 const globAsync = Promise.promisify(require('glob'));
 

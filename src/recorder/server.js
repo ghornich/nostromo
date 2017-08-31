@@ -1,13 +1,13 @@
 const MODULES_PATH = '../../modules/';
 const Promise = require('bluebird');
-const BrowserPuppeteer = require(`${MODULES_PATH}browser-puppeteer`).BrowserPuppeteer;
-const MESSAGES = require(`${MODULES_PATH}browser-puppeteer`).MESSAGES;
+const BrowserPuppeteer = require(MODULES_PATH + 'browser-puppeteer').BrowserPuppeteer;
+const MESSAGES = require(MODULES_PATH + 'browser-puppeteer').MESSAGES;
 const WS = require('ws');
 const http = require('http');
 const fs = Promise.promisifyAll(require('fs'));
-const JSONF = require(`${MODULES_PATH}jsonf`);
+const JSONF = require(MODULES_PATH + 'jsonf');
 const pathlib = require('path');
-const Loggr = require(`${MODULES_PATH}loggr`);
+const Loggr = require(MODULES_PATH + 'loggr');
 const defaults = require('lodash.defaults');
 
 const DEFAULT_RECORDER_APP_PORT = 7700;

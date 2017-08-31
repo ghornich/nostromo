@@ -1,24 +1,24 @@
 const MODULES_PATH = '../../modules/';
 const Promise = require('bluebird');
 Promise.config({ longStackTraces: true });
-const Loggr = require(`${MODULES_PATH}loggr`);
+const Loggr = require(MODULES_PATH + 'loggr');
 const defaults = require('lodash.defaults');
 const isEqual = require('lodash.isequal');
 const Schema = require('schema-inspector');
 const fs = require('fs');
 const pathlib = require('path');
 const util = require('util');
-const TapWriter = require(`${MODULES_PATH}tap-writer`);
+const TapWriter = require(MODULES_PATH + 'tap-writer');
 const EventEmitter = require('events').EventEmitter;
-const BrowserPuppeteer = require(`${MODULES_PATH}browser-puppeteer`).BrowserPuppeteer;
-const MESSAGES = require(`${MODULES_PATH}browser-puppeteer`).MESSAGES;
-const cropMarkerImg = require(`${MODULES_PATH}browser-puppeteer`).SCREENSHOT_MARKER;
-const screenshotjs = require(`${MODULES_PATH}screenshot-js`);
+const BrowserPuppeteer = require(MODULES_PATH + 'browser-puppeteer').BrowserPuppeteer;
+const MESSAGES = require(MODULES_PATH + 'browser-puppeteer').MESSAGES;
+const cropMarkerImg = require(MODULES_PATH + 'browser-puppeteer').SCREENSHOT_MARKER;
+const screenshotjs = require(MODULES_PATH + 'screenshot-js');
 const mkdirpAsync = Promise.promisify(require('mkdirp'));
 const PNG = require('pngjs').PNG;
 const globAsync = Promise.promisify(require('glob'));
-const bufferImageSearch = require(`${MODULES_PATH}buffer-image-search`);
-const bufferImageDiff = require(`${MODULES_PATH}buffer-image-diff`);
+const bufferImageSearch = require(MODULES_PATH + 'buffer-image-search');
+const bufferImageDiff = require(MODULES_PATH + 'buffer-image-diff');
 const rimrafAsync = Promise.promisify(require('rimraf'));
 
 // TODO show error if test(...) doesn't return a promise

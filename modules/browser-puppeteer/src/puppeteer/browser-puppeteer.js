@@ -6,9 +6,9 @@ const urllib = require('url');
 const http = require('http');
 const util = require('util');
 const EventEmitter = require('events').EventEmitter;
-const JSONF = require(`${MODULES_PATH}jsonf`);
+const JSONF = require(MODULES_PATH + 'jsonf');
 const WS = require('ws');
-const Loggr = require(`${MODULES_PATH}loggr`);
+const Loggr = require(MODULES_PATH + 'loggr');
 const MESSAGES = require('../messages');
 
 // TODO transparent settings for puppet? (same function interface here & there)
