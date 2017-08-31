@@ -43,6 +43,8 @@ function BrowserPuppet(opts) {
 
     this._wsConn = null;
 
+    this.$ = $;
+
     this._uniqueSelector = new UniqueSelector();
 
     this._onSelectorBecameVisibleData = {
@@ -93,7 +95,7 @@ BrowserPuppet.prototype._sendMessage = function (rawData) {
 };
 
 BrowserPuppet.prototype.isSelectorVisible = function (selector) {
-    return jQuery(selector).is(':visible');
+    return this.$(selector).is(':visible');
 };
 
 BrowserPuppet.prototype._onMessage = function (rawData) {
@@ -365,7 +367,7 @@ BrowserPuppet.prototype._onMouseoverCapture = function (event) {
 
     var target = event.target;
 
-    if ($(target).is(this._mouseoverSelector)) {
+    if (this.$(target).is(this._mouseoverSelector)) {
         try {
             var selector = this._uniqueSelector.get(target);
         }
@@ -453,9 +455,9 @@ BrowserPuppet.prototype._onExecMessage = Promise.method(function (data) {
 BrowserPuppet.prototype.execFunction = Promise.method(function (fn/*, args*/) {
     var context = {
         driver: this,
-        $: $,
+        $: this.$,
         // TODO kell?
-        jQuery: $,
+        jQuery: this.$,
         promiseWhile: promiseWhile,
         Promise: Promise,
     };
@@ -534,9 +536,9 @@ BrowserPuppet.prototype._execFn = Promise.method(function (fnData) {
     // TODO custom context?
     var context = {
         driver: this,
-        $: $,
+        $: this.$,
         // TODO kell?
-        jQuery: $,
+        jQuery: this.$,
         promiseWhile: promiseWhile,
         Promise: Promise,
     };
