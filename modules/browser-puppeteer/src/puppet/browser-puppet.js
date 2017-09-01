@@ -210,6 +210,8 @@ BrowserPuppet.prototype._attachCaptureEventListeners = function () {
     document.addEventListener('input', this._onInputCapture.bind(this), true);
     document.addEventListener('scroll', this._onScrollCapture.bind(this), true);
     document.addEventListener('keydown', this._onKeydownCapture.bind(this), true);
+
+    window.addEventListener('blur', this._onWindowBlur.bind(this));
 };
 
 BrowserPuppet.prototype._attachMouseoverCaptureEventListener = function () {
@@ -254,6 +256,12 @@ BrowserPuppet.prototype._onFocusCapture = function (event) {
     }
 
     var target = event.target;
+
+    if (this._activeElementBeforeWindowBlur === target) {
+        this._log.debug('focus capture prevented during window re-focus');
+        this._activeElementBeforeWindowBlur = null;
+        return;
+    }
 
     try {
         var selector = this._uniqueSelector.get(target);
@@ -398,6 +406,10 @@ BrowserPuppet.prototype._onMouseoverCapture = function (event) {
         });
     }
 
+};
+
+BrowserPuppet.prototype._onWindowBlur = function () {
+    this._activeElementBeforeWindowBlur = document.activeElement;
 };
 
 BrowserPuppet.prototype._sendInsertAssertionDebounced = debounce(function () {
