@@ -116,7 +116,7 @@ function Loggr(config) {
     c.level = c.level || c.logLevel || LEVELS.INFO;
     c.showTime = 'showTime' in c ? Boolean(c.showTime) : true;
     c.namespace = c.namespace || null;
-    c.outStream = c.outStream || process.stdout;
+    c.outStream = c.outStream || process.stdout || { write: console.log.bind(console) };
     c.eol = c.eol || os.EOL;
 
     this.config = c;
@@ -12775,7 +12775,7 @@ function RecorderApp(rawConf) {
     self._log = new Loggr({
         // TODO logLevel
         logLevel: Loggr.LEVELS.ALL,
-        namespace: 'MacroRecorder'
+        namespace: 'RecorderApp'
     });
 
     self._wsConn = null;
@@ -12903,7 +12903,9 @@ RecorderApp.prototype._onCapturedEvent = function (event) {
     }
 
     if (this._conf.beforeCapture({ event: event, command: command, recorderInstance: this }) === false) {
-        console.log('capture prevented in onBeforeCapture');
+        this._log.info('capture prevented by beforeCapture');
+        this._log.trace('prevented event: ' + JSON.stringify(event));
+        this._log.trace('prevented command: ' + JSON.stringify(command));
         return;
     }
 
@@ -13149,13 +13151,13 @@ function renderCmd(cmd, indent) {
             }).join(',' + EOL) + EOL + indent + indent + '])';
 
         case 'uploadFileAndAssign':
-            return 't.uploadFileAndAssign({' + EOL + indent + indent + indent + 'filePath: ' + apos(cmd.filePath) + ',' + EOL + indent + indent + indent + 'destinationVariable: ' + apos(cmd.destinationVariable) + EOL + indent + indent + '});';
+            return 't.uploadFileAndAssign({' + EOL + indent + indent + indent + 'filePath: ' + apos(cmd.filePath) + ',' + EOL + indent + indent + indent + 'destinationVariable: ' + apos(cmd.destinationVariable) + EOL + indent + indent + '})';
 
         case 'mouseover':
             return 't.mouseover(' + apos(cmd.selector) + ')';
         // case '': return 't.()'
         default:
-            console.error('unknown cmd type ', cmd.type, cmd);return '<unknown>';
+            console.error('unknown cmd type ', cmd.type, cmd);return '<unknown: ' + JSON.stringify(cmd) + '>';
     }
 }
 

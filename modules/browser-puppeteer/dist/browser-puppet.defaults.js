@@ -9,7 +9,7 @@ exports = module.exports = function (fileData) {
 		uint8Array[i] = binary.charCodeAt(i);
 	}
 
-	var fileInstance = new File([uint8Array], fileData.name, { mime: fileData.mime })
+	return new File([uint8Array], fileData.name, { mime: fileData.mime })
 };
 
 },{}],2:[function(require,module,exports){
@@ -292,7 +292,7 @@ BrowserPuppetCommands.prototype.uploadFileAndAssign = function (fileData, variab
     lodashSet(window, variablePath, fileInstance);
 }
 
-},{"../../../../modules/base64-to-file":1,"../../../../modules/promise-while":12,"bluebird":16,"lodash.set":22}],5:[function(require,module,exports){
+},{"../../../../modules/base64-to-file":1,"../../../../modules/promise-while":13,"bluebird":17,"lodash.set":23}],5:[function(require,module,exports){
 'use strict';
 
 var Promise = require('bluebird');
@@ -308,13 +308,14 @@ var defaults = require('lodash.defaults');
 var objectAssign = require('object-assign');
 var BrowserPuppetCommands = require('./browser-puppet-commands.partial');
 var promiseWhile = require('../../../../modules/promise-while')(Promise);
+var Loggr = require('../../../../modules/loggr');
 
 // TODO option to transmit console?
 // TODO transmit uncaught exceptions
 // TODO throw error on incorrect argument types/values (e.g. string numbers)
 
 // TODO use MutationObserver if available, fallback to polling ?
-var AUTODETECT_INTERVAL_MS = 300;
+var AUTODETECT_INTERVAL_MS = 200;
 var INSERT_ASSERTION_DEBOUNCE = 500;
 
 var DEFAULT_SERVER_URL = 'ws://localhost:47225';
@@ -354,6 +355,14 @@ function BrowserPuppet(opts) {
     };
 
     this._mouseoverSelector = null;
+
+    this._activeElementBeforeWindowBlur = null;
+
+    this._log = new Loggr({
+        namespace: 'BrowserPuppet',
+        // TODO logLevel
+        logLevel: Loggr.LEVELS.ALL,
+    });
 
     this._ssMarkerTopLeft = document.createElement('div');
     this._ssMarkerTopLeft.setAttribute('style', 'position:absolute;top:0;left:0;width:4px;height:4px;z-index:16777000;');
@@ -496,6 +505,8 @@ BrowserPuppet.prototype._attachCaptureEventListeners = function () {
     document.addEventListener('input', this._onInputCapture.bind(this), true);
     document.addEventListener('scroll', this._onScrollCapture.bind(this), true);
     document.addEventListener('keydown', this._onKeydownCapture.bind(this), true);
+
+    window.addEventListener('blur', this._onWindowBlur.bind(this));
 };
 
 BrowserPuppet.prototype._attachMouseoverCaptureEventListener = function () {
@@ -540,6 +551,12 @@ BrowserPuppet.prototype._onFocusCapture = function (event) {
     }
 
     var target = event.target;
+
+    if (this._activeElementBeforeWindowBlur === target) {
+        this._log.debug('focus capture prevented during window re-focus');
+        this._activeElementBeforeWindowBlur = null;
+        return;
+    }
 
     try {
         var selector = this._uniqueSelector.get(target);
@@ -684,6 +701,10 @@ BrowserPuppet.prototype._onMouseoverCapture = function (event) {
         });
     }
 
+};
+
+BrowserPuppet.prototype._onWindowBlur = function () {
+    this._activeElementBeforeWindowBlur = document.activeElement;
 };
 
 BrowserPuppet.prototype._sendInsertAssertionDebounced = debounce(function () {
@@ -877,7 +898,7 @@ function assert(v, m) {
 
 
 
-},{"../../../../modules/get-unique-selector":8,"../../../../modules/jsonf":11,"../../../../modules/promise-while":12,"../../../../modules/ws4ever":13,"../messages":3,"../screenshot-marker":6,"./browser-puppet-commands.partial":4,"bluebird":16,"jquery":19,"lodash.debounce":20,"lodash.defaults":21,"object-assign":23}],6:[function(require,module,exports){
+},{"../../../../modules/get-unique-selector":8,"../../../../modules/jsonf":11,"../../../../modules/loggr":12,"../../../../modules/promise-while":13,"../../../../modules/ws4ever":14,"../messages":3,"../screenshot-marker":6,"./browser-puppet-commands.partial":4,"bluebird":17,"jquery":20,"lodash.debounce":21,"lodash.defaults":22,"object-assign":24}],6:[function(require,module,exports){
 (function (Buffer){
 exports.width = 4;
 exports.height = 4;
@@ -893,7 +914,7 @@ exports.base64 =
     'kYGD4zwAEM2++YgABJgYg+F+vzpC2zJYBBJhm3nzFAAPp6mIMTAxAMCvqMANj400GEAAAvQYMY6PVnIQAAAAASUVORK5CYII=';
 
 }).call(this,require("buffer").Buffer)
-},{"buffer":17}],7:[function(require,module,exports){
+},{"buffer":18}],7:[function(require,module,exports){
 'use strict';
 
 var DOMUtils = exports;
@@ -973,7 +994,7 @@ UniqueSelector.prototype.getFullSelectorPath = function (node) {
     return this._getFullSelectorElementList(node).getSelectorPath();
 };
 
-},{"./dom-utils":7,"./selector-element":10,"./selector-element-list":9,"lodash.defaults":21}],9:[function(require,module,exports){
+},{"./dom-utils":7,"./selector-element":10,"./selector-element-list":9,"lodash.defaults":22}],9:[function(require,module,exports){
 'use strict';
 
 var defaults = require('lodash.defaults');
@@ -1094,7 +1115,7 @@ SelectorElementList.prototype.uniqueify = function () {
     }
 };
 
-},{"lodash.defaults":21}],10:[function(require,module,exports){
+},{"lodash.defaults":22}],10:[function(require,module,exports){
 'use strict';
 
 var DOMUtils = require('./dom-utils');
@@ -1302,6 +1323,102 @@ function isStringAFunction(s) {
 }
 
 },{}],12:[function(require,module,exports){
+(function (process){
+var os = require('os');
+
+module.exports = Loggr;
+
+var LEVELS = Loggr.LEVELS = {
+    OFF: 0,
+    INFO: 1,
+    DEBUG: 2,
+    TRACE: 3,
+    ALL: Number.POSITIVE_INFINITY,
+};
+
+// TODO accept string levels, normalize internally to numbers
+
+// TODO more/optional outputs
+// TODO string substitution, multiple params, etc
+
+function Loggr(config) {
+    var c = config || {};
+
+    c.level = c.level || c.logLevel || LEVELS.INFO;
+    c.showTime = 'showTime' in c ? Boolean(c.showTime) : true;
+    c.namespace = c.namespace || null;
+    c.outStream = c.outStream || process.stdout || { write: console.log.bind(console) };
+    c.eol = c.eol || os.EOL;
+
+    this.config = c;
+}
+
+Loggr.prototype.fork = function (newNamespace) {
+    var conf = this.config;
+
+    return new Loggr({
+        level: conf.level,
+        showTime: conf.showTime,
+        namespace: newNamespace,
+        outStream: conf.outStream,
+        eol: conf.eol,
+    });
+};
+
+Loggr.prototype._log = function (lvl, messages) {
+    if (lvl <= this.config.level) {
+        var time = '';
+        var namespace = '';
+
+        if (this.config.showTime) {
+            var d = new Date();
+            var h = ('0' + d.getHours()).slice(-2);
+            var m = ('0' + d.getMinutes()).slice(-2);
+            var s = ('0' + d.getSeconds()).slice(-2);
+            var ms = ('00' + d.getMilliseconds()).slice(-3);
+
+            time = '[' + h + ':' + m + ':' + s + '.' + ms + '] ';
+        }
+
+        if (this.config.namespace) {
+            namespace = '[' + this.config.namespace + '] ';
+        }
+
+        var message = messages
+        .map(function (msg) {
+            return String(msg);
+        })
+        .join(' ');
+
+        var levelStr = Loggr.getLevelChar(lvl) + ' ';
+
+        this.config.outStream.write(time + levelStr + namespace + message + this.config.eol);
+    }
+};
+
+Loggr.prototype.info = function () {
+    this._log(LEVELS.INFO, Array.prototype.slice.call(arguments));
+};
+
+Loggr.prototype.debug = function () {
+    this._log(LEVELS.DEBUG, Array.prototype.slice.call(arguments));
+};
+
+Loggr.prototype.trace = function () {
+    this._log(LEVELS.TRACE, Array.prototype.slice.call(arguments));
+};
+
+Loggr.getLevelChar = function (level) {
+    switch (level) {
+        case Loggr.LEVELS.INFO: return 'I';
+        case Loggr.LEVELS.DEBUG: return 'D';
+        case Loggr.LEVELS.TRACE: return 'T';
+        default: return '?';
+    }
+};
+
+}).call(this,require('_process'))
+},{"_process":26,"os":25}],13:[function(require,module,exports){
 'use strict';
 
 var assert = require('assert');
@@ -1323,7 +1440,7 @@ exports = module.exports = function (promiseLib) {
     };
 };
 
-},{"assert":14}],13:[function(require,module,exports){
+},{"assert":15}],14:[function(require,module,exports){
 
 if (isNode()) {
     module.exports = Ws4ever;
@@ -1442,7 +1559,7 @@ function isNode() {
 
 
 
-},{}],14:[function(require,module,exports){
+},{}],15:[function(require,module,exports){
 (function (global){
 'use strict';
 
@@ -1936,7 +2053,7 @@ var objectKeys = Object.keys || function (obj) {
 };
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"util/":27}],15:[function(require,module,exports){
+},{"util/":29}],16:[function(require,module,exports){
 'use strict'
 
 exports.byteLength = byteLength
@@ -2052,7 +2169,7 @@ function fromByteArray (uint8) {
   return parts.join('')
 }
 
-},{}],16:[function(require,module,exports){
+},{}],17:[function(require,module,exports){
 (function (process,global){
 /* @preserve
  * The MIT License (MIT)
@@ -7674,7 +7791,7 @@ module.exports = ret;
 },{"./es5":13}]},{},[4])(4)
 });                    ;if (typeof window !== 'undefined' && window !== null) {                               window.P = window.Promise;                                                     } else if (typeof self !== 'undefined' && self !== null) {                             self.P = self.Promise;                                                         }
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"_process":24}],17:[function(require,module,exports){
+},{"_process":26}],18:[function(require,module,exports){
 /*!
  * The buffer module from node.js, for the browser.
  *
@@ -9390,7 +9507,7 @@ function numberIsNaN (obj) {
   return obj !== obj // eslint-disable-line no-self-compare
 }
 
-},{"base64-js":15,"ieee754":18}],18:[function(require,module,exports){
+},{"base64-js":16,"ieee754":19}],19:[function(require,module,exports){
 exports.read = function (buffer, offset, isLE, mLen, nBytes) {
   var e, m
   var eLen = nBytes * 8 - mLen - 1
@@ -9476,7 +9593,7 @@ exports.write = function (buffer, value, offset, isLE, mLen, nBytes) {
   buffer[offset + i - d] |= s * 128
 }
 
-},{}],19:[function(require,module,exports){
+},{}],20:[function(require,module,exports){
 /*!
  * jQuery JavaScript Library v3.2.1
  * https://jquery.com/
@@ -19731,7 +19848,7 @@ if ( !noGlobal ) {
 return jQuery;
 } );
 
-},{}],20:[function(require,module,exports){
+},{}],21:[function(require,module,exports){
 (function (global){
 /**
  * lodash (Custom Build) <https://lodash.com/>
@@ -20112,7 +20229,7 @@ function toNumber(value) {
 module.exports = debounce;
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],21:[function(require,module,exports){
+},{}],22:[function(require,module,exports){
 /**
  * lodash (Custom Build) <https://lodash.com/>
  * Build: `lodash modularize exports="npm" -o ./`
@@ -20782,7 +20899,7 @@ function keysIn(object) {
 
 module.exports = defaults;
 
-},{}],22:[function(require,module,exports){
+},{}],23:[function(require,module,exports){
 (function (global){
 /**
  * lodash (Custom Build) <https://lodash.com/>
@@ -21776,7 +21893,7 @@ function set(object, path, value) {
 module.exports = set;
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],23:[function(require,module,exports){
+},{}],24:[function(require,module,exports){
 /*
 object-assign
 (c) Sindre Sorhus
@@ -21868,7 +21985,54 @@ module.exports = shouldUseNative() ? Object.assign : function (target, source) {
 	return to;
 };
 
-},{}],24:[function(require,module,exports){
+},{}],25:[function(require,module,exports){
+exports.endianness = function () { return 'LE' };
+
+exports.hostname = function () {
+    if (typeof location !== 'undefined') {
+        return location.hostname
+    }
+    else return '';
+};
+
+exports.loadavg = function () { return [] };
+
+exports.uptime = function () { return 0 };
+
+exports.freemem = function () {
+    return Number.MAX_VALUE;
+};
+
+exports.totalmem = function () {
+    return Number.MAX_VALUE;
+};
+
+exports.cpus = function () { return [] };
+
+exports.type = function () { return 'Browser' };
+
+exports.release = function () {
+    if (typeof navigator !== 'undefined') {
+        return navigator.appVersion;
+    }
+    return '';
+};
+
+exports.networkInterfaces
+= exports.getNetworkInterfaces
+= function () { return {} };
+
+exports.arch = function () { return 'javascript' };
+
+exports.platform = function () { return 'browser' };
+
+exports.tmpdir = exports.tmpDir = function () {
+    return '/tmp';
+};
+
+exports.EOL = '\n';
+
+},{}],26:[function(require,module,exports){
 // shim for using process in browser
 var process = module.exports = {};
 
@@ -22054,7 +22218,7 @@ process.chdir = function (dir) {
 };
 process.umask = function() { return 0; };
 
-},{}],25:[function(require,module,exports){
+},{}],27:[function(require,module,exports){
 if (typeof Object.create === 'function') {
   // implementation from standard node.js 'util' module
   module.exports = function inherits(ctor, superCtor) {
@@ -22079,14 +22243,14 @@ if (typeof Object.create === 'function') {
   }
 }
 
-},{}],26:[function(require,module,exports){
+},{}],28:[function(require,module,exports){
 module.exports = function isBuffer(arg) {
   return arg && typeof arg === 'object'
     && typeof arg.copy === 'function'
     && typeof arg.fill === 'function'
     && typeof arg.readUInt8 === 'function';
 }
-},{}],27:[function(require,module,exports){
+},{}],29:[function(require,module,exports){
 (function (process,global){
 // Copyright Joyent, Inc. and other Node contributors.
 //
@@ -22676,4 +22840,4 @@ function hasOwnProperty(obj, prop) {
 }
 
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./support/isBuffer":26,"_process":24,"inherits":25}]},{},[2]);
+},{"./support/isBuffer":28,"_process":26,"inherits":27}]},{},[2]);
