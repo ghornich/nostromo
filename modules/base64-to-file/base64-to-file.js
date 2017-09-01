@@ -8,5 +8,5 @@ exports = module.exports = function (fileData) {
 		uint8Array[i] = binary.charCodeAt(i);
 	}
 
-	var fileInstance = new File([uint8Array], fileData.name, { mime: fileData.mime })
+	return new File([uint8Array], fileData.name, { mime: fileData.mime })
 };
