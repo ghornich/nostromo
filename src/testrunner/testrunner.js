@@ -462,6 +462,7 @@ Testrunner.prototype._execCommandWithAPI = Promise.method(function (cmd, api) {
         case 'assert': return api.assert();
         // case 'scroll': return api.()
         case 'isVisible': return api.isVisible(cmd.selector);
+        // TODO missing commands
         default: throw new Error(`Unknown cmd.type ${cmd.type}`);
     }
 });
