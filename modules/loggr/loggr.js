@@ -21,7 +21,7 @@ function Loggr(config) {
     c.level = c.level || c.logLevel || LEVELS.INFO;
     c.showTime = 'showTime' in c ? Boolean(c.showTime) : true;
     c.namespace = c.namespace || null;
-    c.outStream = c.outStream || process.stdout;
+    c.outStream = c.outStream || process.stdout || { write: console.log.bind(console) };
     c.eol = c.eol || os.EOL;
 
     this.config = c;

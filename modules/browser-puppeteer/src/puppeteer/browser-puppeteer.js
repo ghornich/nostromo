@@ -186,7 +186,7 @@ BrowserPuppeteer.prototype.sendMessage = async function (data) {
     }
 
     this._log.debug('sending message');
-    this._log.trace(util.inspect(data));
+    this._log.trace(util.inspect(data).slice(300));
 
     return new Promise((res, rej) => {
         let sendableData = data;

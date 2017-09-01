@@ -13,13 +13,14 @@ var defaults = require('lodash.defaults');
 var objectAssign = require('object-assign');
 var BrowserPuppetCommands = require('./browser-puppet-commands.partial');
 var promiseWhile = require('../../../../modules/promise-while')(Promise);
+var Loggr = require('../../../../modules/loggr');
 
 // TODO option to transmit console?
 // TODO transmit uncaught exceptions
 // TODO throw error on incorrect argument types/values (e.g. string numbers)
 
 // TODO use MutationObserver if available, fallback to polling ?
-var AUTODETECT_INTERVAL_MS = 300;
+var AUTODETECT_INTERVAL_MS = 200;
 var INSERT_ASSERTION_DEBOUNCE = 500;
 
 var DEFAULT_SERVER_URL = 'ws://localhost:47225';
@@ -59,6 +60,14 @@ function BrowserPuppet(opts) {
     };
 
     this._mouseoverSelector = null;
+
+    this._activeElementBeforeWindowBlur = null;
+
+    this._log = new Loggr({
+        namespace: 'BrowserPuppet',
+        // TODO logLevel
+        logLevel: Loggr.LEVELS.ALL,
+    });
 
     this._ssMarkerTopLeft = document.createElement('div');
     this._ssMarkerTopLeft.setAttribute('style', 'position:absolute;top:0;left:0;width:4px;height:4px;z-index:16777000;');

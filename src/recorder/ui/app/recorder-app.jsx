@@ -62,7 +62,7 @@ function RecorderApp(rawConf) {
     self._log = new Loggr({
         // TODO logLevel
         logLevel: Loggr.LEVELS.ALL,
-        namespace: 'MacroRecorder',
+        namespace: 'RecorderApp',
     });
 
     self._wsConn = null;
@@ -190,7 +190,9 @@ RecorderApp.prototype._onCapturedEvent = function (event) {
     }
 
     if (this._conf.beforeCapture({ event: event, command: command, recorderInstance: this }) === false) {
-        console.log('capture prevented in onBeforeCapture');
+        this._log.info('capture prevented by beforeCapture');
+        this._log.trace('prevented event: ' + JSON.stringify(event));
+        this._log.trace('prevented command: ' + JSON.stringify(command));
         return;
     }
 
@@ -411,11 +413,11 @@ function renderCmd(cmd, indent) {
         case 'uploadFileAndAssign':return 't.uploadFileAndAssign({'+ EOL +
             indent + indent + indent + 'filePath: '+apos(cmd.filePath)+','+EOL+
             indent + indent + indent+'destinationVariable: '+apos(cmd.destinationVariable)+EOL+
-        indent + indent + '});'
+        indent + indent + '})'
 
         case 'mouseover': return 't.mouseover(' + apos(cmd.selector) + ')';
         // case '': return 't.()'
-        default: console.error('unknown cmd type ', cmd.type, cmd); return '<unknown>';
+        default: console.error('unknown cmd type ', cmd.type, cmd); return '<unknown: '+JSON.stringify(cmd)+'>';
     }
 }
 
