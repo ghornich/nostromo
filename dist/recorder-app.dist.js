@@ -26,7 +26,6 @@ exports.DOWNSTREAM = {
     // { type, selectors }
     SET_SELECTOR_BECAME_VISIBLE_DATA: 'set-selector-became-visible-data',
 
-    // TODO use SET_*
     // { type }
     SHOW_SCREENSHOT_MARKER: 'show-screenshot-marker',
     HIDE_SCREENSHOT_MARKER: 'hide-screenshot-marker',
@@ -97,49 +96,68 @@ var os = require('os');
 
 module.exports = Loggr;
 
+// Apache Log4j 2 levels
 var LEVELS = Loggr.LEVELS = {
     OFF: 0,
-    INFO: 1,
-    DEBUG: 2,
-    TRACE: 3,
+    FATAL: 1,
+    ERROR: 2,
+    WARN: 3,
+    INFO: 4,
+    DEBUG: 5,
+    TRACE: 6,
     ALL: Number.POSITIVE_INFINITY,
 };
 
-// TODO accept string levels, normalize internally to numbers
+var STRING_LEVELS_MAP = {
+    off: LEVELS.OFF,
+    fatal: LEVELS.FATAL,
+    error: LEVELS.ERROR,
+    warn: LEVELS.WARN,
+    info: LEVELS.INFO,
+    debug: LEVELS.DEBUG,
+    trace: LEVELS.TRACE,
+    all: LEVELS.ALL,
+};
 
-// TODO more/optional outputs
-// TODO string substitution, multiple params, etc
+var browserConsoleStream = {
+    write: console.log.bind(console),
+};
 
-function Loggr(config) {
-    var c = config || {};
+function Loggr(conf) {
+    this._conf = Object.assign({
+        logLevel: LEVELS.INFO,
+        showTime: true,
+        namespace: null,
+        outStream: process.stdout || browserConsoleStream,
+        eol: os.EOL,
+    }, conf);
 
-    c.level = c.level || c.logLevel || LEVELS.INFO;
-    c.showTime = 'showTime' in c ? Boolean(c.showTime) : true;
-    c.namespace = c.namespace || null;
-    c.outStream = c.outStream || process.stdout || { write: console.log.bind(console) };
-    c.eol = c.eol || os.EOL;
+    if (typeof this._conf.logLevel === 'string') {
+        var logLevelLower = this._conf.logLevel.toLowerCase();
 
-    this.config = c;
+        if (logLevelLower in STRING_LEVELS_MAP) {
+            this._conf.logLevel = STRING_LEVELS_MAP[logLevelLower];
+        }
+        else {
+            throw new Error('Loggr: unknown logLevel string "'+this._conf.logLevel+'"');
+        }
+    }
 }
 
 Loggr.prototype.fork = function (newNamespace) {
-    var conf = this.config;
-
-    return new Loggr({
-        level: conf.level,
-        showTime: conf.showTime,
+    var newConf = Object.assign({}, this._conf, {
         namespace: newNamespace,
-        outStream: conf.outStream,
-        eol: conf.eol,
     });
+
+    return new Loggr(newConf);
 };
 
-Loggr.prototype._log = function (lvl, messages) {
-    if (lvl <= this.config.level) {
+Loggr.prototype._log = function (level, messages) {
+    if (level <= this._conf.logLevel) {
         var time = '';
         var namespace = '';
 
-        if (this.config.showTime) {
+        if (this._conf.showTime) {
             var d = new Date();
             var h = ('0' + d.getHours()).slice(-2);
             var m = ('0' + d.getMinutes()).slice(-2);
@@ -149,8 +167,8 @@ Loggr.prototype._log = function (lvl, messages) {
             time = '[' + h + ':' + m + ':' + s + '.' + ms + '] ';
         }
 
-        if (this.config.namespace) {
-            namespace = '[' + this.config.namespace + '] ';
+        if (this._conf.namespace) {
+            namespace = '[' + this._conf.namespace + '] ';
         }
 
         var message = messages
@@ -159,10 +177,22 @@ Loggr.prototype._log = function (lvl, messages) {
         })
         .join(' ');
 
-        var levelStr = Loggr.getLevelChar(lvl) + ' ';
+        var levelStr = Loggr.getLevelChar(level) + ' ';
 
-        this.config.outStream.write(time + levelStr + namespace + message + this.config.eol);
+        this._conf.outStream.write(time + levelStr + namespace + message + this._conf.eol);
     }
+};
+
+Loggr.prototype.fatal = function () {
+    this._log(LEVELS.FATAL, Array.prototype.slice.call(arguments));
+};
+
+Loggr.prototype.error = function () {
+    this._log(LEVELS.ERROR, Array.prototype.slice.call(arguments));
+};
+
+Loggr.prototype.warn = function () {
+    this._log(LEVELS.WARN, Array.prototype.slice.call(arguments));
 };
 
 Loggr.prototype.info = function () {
@@ -179,9 +209,12 @@ Loggr.prototype.trace = function () {
 
 Loggr.getLevelChar = function (level) {
     switch (level) {
-        case Loggr.LEVELS.INFO: return 'I';
-        case Loggr.LEVELS.DEBUG: return 'D';
-        case Loggr.LEVELS.TRACE: return 'T';
+        case LEVELS.FATAL: return 'F';
+        case LEVELS.ERROR: return 'E';
+        case LEVELS.WARN: return 'W';
+        case LEVELS.INFO: return 'I';
+        case LEVELS.DEBUG: return 'D';
+        case LEVELS.TRACE: return 'T';
         default: return '?';
     }
 };
