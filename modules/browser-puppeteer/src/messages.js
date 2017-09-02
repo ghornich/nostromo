@@ -25,7 +25,6 @@ exports.DOWNSTREAM = {
     // { type, selectors }
     SET_SELECTOR_BECAME_VISIBLE_DATA: 'set-selector-became-visible-data',
 
-    // TODO use SET_*
     // { type }
     SHOW_SCREENSHOT_MARKER: 'show-screenshot-marker',
     HIDE_SCREENSHOT_MARKER: 'hide-screenshot-marker',

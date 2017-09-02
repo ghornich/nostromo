@@ -145,7 +145,6 @@ function Testrunner(conf) {
         waitWhileVisible: this._waitWhileVisibleDirect.bind(this),
         focus: this._focusDirect.bind(this),
         scroll: this._scrollDirect.bind(this),
-        isVisible: this._isVisibleDirect.bind(this),
         delay: this._delay.bind(this),
         comment: this._comment.bind(this),
         assert: this._assert.bind(this),
@@ -214,34 +213,19 @@ Testrunner.prototype.run = Promise.method(function () {
 
         return Promise.each(this._conf.browsers, async (browser) => {
             try {
-
                 this._currentBrowserName = browser.name;
-
-                // TODO beforeBrowser, afterBrowser
-
-                // await mkdirpAsync(this._getCurrentBrowserReferenceScreenshotDir())
-                // await mkdirpAsync(this._getCurrentBrowserReferenceErrorDir())
 
                 this._log.info(`Starting browser ${browser.name}`);
 
                 await browser.start(this._conf.appUrl);
 
                 for (const [pathIdx, testFilePath] of testFilePaths.entries()) {
-                    // await this._browserPuppeteer.discardClients()
-                    // this._assertCount=0
-
-                    // await this._waitUntilBrowserReady();
-
                     await this._runTestFile(testFilePath);
 
                     if (pathIdx < testFilePaths.length - 1) {
                         await this._browserPuppeteer.reopenUrl(this._conf.appUrl);
-                        // TODO kell discard? lezarodik-e a WS?
-                        // this._browserPuppeteer.discardClients();
-                        // await this._browserPuppeteer.reopen(this._conf.appUrl)
                     }
                 }
-
             }
             catch (err) {
                 // TODO better error handling
@@ -316,35 +300,6 @@ Testrunner.prototype._runTestFile = async function (testFilePath) {
     }
 };
 
-/* Testrunner.prototype._runTestFiles = function(testFilePaths){
-    var testCount = 0
-
-    this._tapWriter.version()
-
-    return mkdirpAsync(this._getCurrentBrowserReferenceScreenshotDir())
-    .then(()=>mkdirpAsync(this._getCurrentBrowserReferenceErrorDir()))
-    .then(() => {
-        return Promise.each(testFilePaths, path => {
-            this._currentTestfilePath=path
-            var absPath = pathlib.resolve(path)
-            this._log.debug(`Requiring testFile "${path}"`)
-            var testModule = require(absPath)
-
-            return this._runTestModule(testModule)
-        })
-    })
-    .then(() => this._tapWriter.plan())
-    .catch(err=>{
-        if (err.type==='BailoutError') {
-            console.log(err.stack)
-            this._tapWriter.bailout(err.message)
-        }
-        else {
-            console.log('_runTestFiles err:',err)
-        }
-    })
-}*/
-
 Testrunner.prototype._getCurrentBrowserReferenceScreenshotDir = function () {
     return pathlib.resolve(REF_SCREENSHOT_BASE_DIR, this._currentBrowserName);
 };
@@ -368,8 +323,6 @@ Testrunner.prototype._getCurrentTestModuleReferenceErrorDir = function () {
 Testrunner.prototype._runTestModule = function (fn) {
     this._log.trace('_runTestModule');
 
-    // return mkdirpAsync(this._getCurrentTestModuleReferenceScreenshotDir())
-    // .then(()=>mkdirpAsync(this._getCurrentTestModuleReferenceErrorDir()))
     return Promise.resolve()
     .then(() => {
         const testDatas = [];
@@ -461,7 +414,6 @@ Testrunner.prototype._execCommandWithAPI = Promise.method(function (cmd, api) {
         case 'focus': return api.focus(cmd.selector);
         case 'assert': return api.assert();
         // case 'scroll': return api.()
-        case 'isVisible': return api.isVisible(cmd.selector);
         // TODO missing commands
         default: throw new Error(`Unknown cmd.type ${cmd.type}`);
     }
@@ -483,49 +435,6 @@ Testrunner.prototype._execCommandsSideEffect = Promise.method(function (cmds) {
     return Promise.each(cmds, cmd => this._execCommandSideEffect(cmd));
 });
 
-// TODO use
-Testrunner.prototype._selectorEqualDirect = Promise.method(function (selector, expected, rawDescription) {
-    const description = rawDescription || `equal - ${selector}, ${expected}`;
-
-    return this._getValue(selector)
-    .then(actual => {
-        if (expected === actual) {
-            this._tapWriter.pass({ type: 'equal', message: description });
-        }
-        else {
-            const err = new Error('not equal');
-            err.type = ERRORS.NOT_EQUAL;
-            err.expected = expected;
-            err.actual = actual;
-            err.description = description;
-            throw err;
-        }
-    })
-    .catch(err => {
-        /* errors:
-        selector not found
-        selector not unique
-        not equal
-        timeout?
-        */
-
-        if (err.type === ERRORS.NOT_EQUAL) {
-            this._tapWriter.fail({
-                type: 'equal',
-                expected: err.expected,
-                actual: err.actual,
-            });
-        }
-        else {
-            this._tapWriter.notOk(err.message);
-        }
-
-        if (this._conf.bailout) {
-            throw createError('BailoutError', err.message);
-        }
-    });
-});
-
 Testrunner.prototype._equal = Promise.method(function (actual, expected, description) {
     if (isEqual(actual, expected)) {
         this._tapWriter.ok({
@@ -541,13 +450,6 @@ Testrunner.prototype._equal = Promise.method(function (actual, expected, descrip
         });
 
     }
-});
-
-// TODO fix+use or remove
-Testrunner.prototype._isEqualDirect = Promise.method(function (selector, expected, description) {
-    return this._getValue(selector)
-    .then(actual => expected === actual)
-    .catch(err => this._tapWriter.notOk(err.message));
 });
 
 Testrunner.prototype._clickDirect = Promise.method(function (selector, rawDescription) {
@@ -683,10 +585,6 @@ Testrunner.prototype._scrollDirect = Promise.method(function (selector, scrollTo
             throw createError('BailoutError', e.message);
         }
     });
-});
-
-Testrunner.prototype._isVisibleDirect = Promise.method(function (selector, description) {
-    throw new Error('TODO _isVisibleDirect');
 });
 
 Testrunner.prototype._compositeDirect = Promise.method(function (commands) {
