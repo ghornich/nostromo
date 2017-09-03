@@ -2,7 +2,6 @@ const MODULES_PATH = '../../modules/';
 const Promise = require('bluebird');
 Promise.config({ longStackTraces: true });
 const Loggr = require(MODULES_PATH + 'loggr');
-const defaults = require('lodash.defaults');
 const isEqual = require('lodash.isequal');
 const Schema = require('schema-inspector');
 const fs = Promise.promisifyAll(require('fs'));
@@ -21,7 +20,6 @@ const bufferImageSearch = require(MODULES_PATH + 'buffer-image-search');
 const bufferImageDiff = require(MODULES_PATH + 'buffer-image-diff');
 const rimrafAsync = Promise.promisify(require('rimraf'));
 
-// TODO show error if test(...) doesn't return a promise
 
 // TODO standard tape API (sync), rename current equal() to valueEquals()
 
@@ -59,6 +57,7 @@ const CONF_SCHEMA = {
 };
 
 const DEFAULT_TEST_PORT = 47225;
+const DEFAULT_TEST_NAME = '(Unnamed test)';
 
 const ELLIPSIS_LIMIT = 60;
 
@@ -81,33 +80,34 @@ exports = module.exports = Testrunner;
 function Testrunner(conf) {
     EventEmitter.call(this);
 
-    this._conf = defaults({}, conf, {
+    this._conf = Object.assign({}, {
         testPort: DEFAULT_TEST_PORT,
         waitForConnectionTimeout: 5000,
-        logLevel: Loggr.LEVELS.INFO,
+        logLevel: Loggr.LEVELS.ALL,
         bailout: false,
         keepalive: false,
         referenceScreenshotDir: REF_SCREENSHOT_BASE_DIR,
-        beforeTest: noop,
-        afterTest: noop,
-    });
+        beforeTest: null,
+        afterTest: null,
+        outStream: process.stdout,
+    }, conf);
 
     this._log = new Loggr({
-        level: this._conf.logLevel,
+        logLevel: this._conf.logLevel,
         showTime: true,
         namespace: 'Testrunner',
-        outStream: {
-            write: function (str) {
-                process.stdout.write(`  ${str}`);
-            },
-        },
+        indent: '  ',
+        outStream: this._conf.outStream
     });
 
+    this._currentBeforeCommand = null;
+    this._currentAfterCommand = null;
 
-    this._beforeCommand = null;
-    this._afterCommand = null;
+    this._tapWriter = new TapWriter({
+        outStream: this._conf.outStream
+    });
 
-    this._tapWriter = new TapWriter();
+    this._isBailingOut = false;
 
     // -------------------
 
@@ -189,9 +189,11 @@ function Testrunner(conf) {
 
 util.inherits(Testrunner, EventEmitter);
 
-Testrunner.prototype.run = Promise.method(function () {
+Testrunner.prototype.run = async function () {
+    process.exitCode = 0;
+
     this._log.debug('running...');
-    this._log.trace('input test files: ', this._conf.testFiles);
+    this._log.trace('input test files: ', this._conf.testFiles.join(', '));
 
     let testFilePaths = [];
 
@@ -208,57 +210,69 @@ Testrunner.prototype.run = Promise.method(function () {
 
     .then(() => this._startServers())
 
-    .then(() => {
+    .then(async () => {
         this._tapWriter.version();
 
-        return Promise.each(this._conf.browsers, async (browser) => {
-            try {
-                this._currentBrowserName = browser.name;
+        try {
+            for (const browser of this._conf.browsers) {
+                try {
+                    this._currentBrowserName = browser.name;
 
-                this._log.info(`Starting browser ${browser.name}`);
+                    this._tapWriter.comment(`Starting browser ${browser.name}`);
 
-                await browser.start(this._conf.appUrl);
+                    await browser.start(this._conf.appUrl);
 
-                for (const [pathIdx, testFilePath] of testFilePaths.entries()) {
-                    await this._runTestFile(testFilePath);
+                    for (const [pathIdx, testFilePath] of testFilePaths.entries()) {
+                        await this._runTestFile(testFilePath);
 
-                    if (pathIdx < testFilePaths.length - 1) {
-                        await this._browserPuppeteer.reopenUrl(this._conf.appUrl);
+                        if (pathIdx < testFilePaths.length - 1) {
+                            await this._browserPuppeteer.reopenUrl(this._conf.appUrl);
+                        }
                     }
                 }
+                catch (err) {
+                    process.exitCode = 1;
+
+                    this._log.fatal(err.stack || err.toString());
+
+                    if (err.type === 'BailoutError') {
+                        this._isBailingOut = true;
+                        this._tapWriter.bailout(err.message)
+                    }
+                }
+                finally {
+                    // TODO optionally keep browser open for debugging (wait for manual closing?)
+                    // if (!this._conf.keepalive) {
+
+                    if (this._browserPuppeteer.isPuppetConnected()) {
+                        await this._browserPuppeteer.terminatePuppet();
+                    }
+
+                    await browser.stop();
+                    // }
+                }
             }
-            catch (err) {
-                // TODO better error handling
-                console.error(err);
-                console.error(err.stack);
-            }
-            finally {
-                // TODO optionally keep browser open for debugging (wait for manual closing?)
-                // if (!this._conf.keepalive) {
-                await this._browserPuppeteer.terminatePuppet();
-                await browser.stop();
-                // }
-            }
-        })
-        .catch(err => {
+        }
+        catch (err) {
             // TODO better error handling
             console.error(err);
             console.error(err.stack);
-        })
-        .finally(async () => {
-            this._tapWriter.plan();
+        }
+        finally {
+            if (!this._isBailingOut) {
+                this._tapWriter.plan();
+                this._tapWriter.diagnostic(`tests ${this._tapWriter.testCount}`);
+                this._tapWriter.diagnostic(`pass ${this._tapWriter.passCount}`);
+                this._tapWriter.diagnostic(`fail ${this._tapWriter.failCount}`);
+            }
 
             await this._stopServers();
-
-            this._tapWriter.diagnostic(`tests ${this._tapWriter.testCount}`);
-            this._tapWriter.diagnostic(`pass ${this._tapWriter.passCount}`);
-            this._tapWriter.diagnostic(`fail ${this._tapWriter.failCount}`);
-        });
+        }
     })
     .catch(error => {
         this._log.info(`ERROR: ${error.toString()}`);
     });
-});
+};
 
 Testrunner.prototype._startServers = Promise.method(function () {
     const self = this;
@@ -281,21 +295,69 @@ Testrunner.prototype._stopServers = function () {
 };
 
 Testrunner.prototype._runTestFile = async function (testFilePath) {
-    try {
-        this._currentTestfilePath = testFilePath;
-        const absPath = pathlib.resolve(testFilePath);
-        this._log.debug(`Requiring testFile "${testFilePath}"`);
-        const testModule = require(absPath);
+    this._log.trace('_runTestFile');
 
-        await this._runTestModule(testModule);
-    }
-    catch (err) {
-        if (err.type === 'BailoutError') {
-            console.log(err.stack);
-            this._tapWriter.bailout(err.message);
+    this._currentTestfilePath = testFilePath;
+    const absPath = pathlib.resolve(testFilePath);
+    this._log.debug(`Requiring testFile "${testFilePath}"`);
+
+    const testFileFn = require(absPath);
+
+    const testDatas = [];
+
+    function testRegistrar(arg0, arg1) {
+        let name, testFn;
+
+        if (arg1 === undefined) {
+            name = DEFAULT_TEST_NAME;
+            testFn = arg0;
         }
         else {
-            console.log('_runTestFile err:', err);
+            name = arg0;
+            testFn = arg1;
+        }
+
+        testDatas.push({ name: name, testFn: testFn });
+    }
+
+    testFileFn(testRegistrar);
+
+    // TODO show before/after commands in logging
+    this._currentBeforeCommand = testRegistrar.beforeCommand || this._conf.defaultBeforeCommand || noop;
+    this._currentAfterCommand = testRegistrar.afterCommand || this._conf.defaultAfterCommand || noop;
+
+    let currentBeforeTest = testRegistrar.beforeTest || this._conf.defaultBeforeTest;
+    let currentAfterTest = testRegistrar.afterTest || this._conf.defaultAfterTest;
+
+    for (const [testIndex, testData] of testDatas.entries()) {
+        this._log.debug(`Running test: ${testData.name}`);
+
+        this._tapWriter.diagnostic(testData.name);
+
+        await this._waitUntilBrowserReady();
+
+        if (currentBeforeTest) {
+            this._log.debug('Running beforeTest')
+            await currentBeforeTest(this.directAPI);
+            this._log.debug('Completed beforeTest')
+        }
+
+        const maybeTestPromise = testData.testFn(this.tAPI);
+
+        if (typeof maybeTestPromise !== 'object' || typeof maybeTestPromise.then !== 'function') {
+            throw new Error(`test function didn't return a promise (name: ${testData.name})`);
+        }
+
+        await maybeTestPromise;
+
+        if (currentAfterTest) {
+            this._log.debug('Running afterTest')
+            await currentAfterTest(this.directAPI);
+            this._log.debug('Completed afterTest')
+        }
+
+        if (testIndex < testDatas.length - 1) {
+            await this._browserPuppeteer.reopenUrl(this._conf.appUrl);
         }
     }
 };
@@ -318,53 +380,6 @@ Testrunner.prototype._getCurrentTestModuleReferenceErrorDir = function () {
     const testfilePathSlug = slugifyPath(this._currentTestfilePath);
 
     return pathlib.resolve(this._getCurrentBrowserReferenceErrorDir(), testfilePathSlug);
-};
-
-Testrunner.prototype._runTestModule = function (fn) {
-    this._log.trace('_runTestModule');
-
-    return Promise.resolve()
-    .then(() => {
-        const testDatas = [];
-
-        // TODO optional name
-        function testRegistrar(name, testFn) {
-            testDatas.push({ name: name, testFn: testFn });
-        }
-
-        testRegistrar.Promise = Promise;
-
-        fn(testRegistrar);
-
-        // TODO show before/after commands in logging
-        this._beforeCommand = testRegistrar.beforeCommand || this._conf.defaultBeforeCommand || noop;
-        this._afterCommand = testRegistrar.afterCommand || this._conf.defaultAfterCommand || noop;
-
-        return Promise.each(testDatas, async (testData, testIndex) => {
-            this._tapWriter.diagnostic(testData.name);
-            this._log.debug(`Running test: ${testData.name || '(anonymous)'}`);
-
-            await this._waitUntilBrowserReady();
-
-            return Promise.try(this._conf.beforeTest)
-            .then(() => {
-                const maybePromise = testData.testFn(this.tAPI);
-
-                if (typeof maybePromise.then !== 'function') {
-                    throw new Error(`test function didn't return a promise (name: ${testData.name})`);
-                }
-
-                return maybePromise;
-            })
-            .then(this._conf.afterTest)
-            .then(async () => {
-                if (testIndex < testDatas.length - 1) {
-                    await this._browserPuppeteer.reopenUrl(this._conf.appUrl);
-                }
-            });
-
-        });
-    });
 };
 
 Testrunner.prototype._waitUntilBrowserReady = async function () {
@@ -393,13 +408,12 @@ Testrunner.prototype._ensureBrowserIsVisible = async function () {
     }
 };
 
-// TODO add next/prev command as param in before/after calls
 Testrunner.prototype._wrapFunctionWithSideEffects = function (fn, cmdType) {
     return (...args) => {
-        return Promise.try(() => this._beforeCommand(this.directAPI, { type: cmdType }))
+        return Promise.try(() => this._currentBeforeCommand(this.directAPI, { type: cmdType }))
         .then(() => fn(...args))
         .then(async fnResult => {
-            await this._afterCommand(this.directAPI, { type: cmdType });
+            await this._currentAfterCommand(this.directAPI, { type: cmdType });
             return fnResult;
         });
     };
@@ -452,24 +466,25 @@ Testrunner.prototype._equal = Promise.method(function (actual, expected, descrip
     }
 });
 
-Testrunner.prototype._clickDirect = Promise.method(function (selector, rawDescription) {
-    const description = rawDescription || `click - ${selector}`;
+Testrunner.prototype._clickDirect = async function (selector, rawDescription) {
+    const description = rawDescription || `click - '${selector}'`;
 
-    return this._browserPuppeteer.execCommand({
-        type: 'click',
-        selector: selector,
-    })
-    .then(() => {
+    try {
+        await this._browserPuppeteer.execCommand({
+            type: 'click',
+            selector: selector,
+        })
+
         this._tapWriter.pass({ type: 'click', message: description });
-    })
-    .catch(e => {
-        this._tapWriter.notOk(e.message);
+    }
+    catch (err) {
+        this._tapWriter.notOk(err.message);
 
         if (this._conf.bailout) {
-            throw createError('BailoutError', e.message);
+            throw createError('BailoutError', err.message);
         }
-    });
-});
+    }
+};
 
 Testrunner.prototype._getValue = Promise.method(function (selector) {
     return this._browserPuppeteer.execCommand({
