@@ -36,6 +36,7 @@ function Loggr(conf) {
         namespace: null,
         outStream: process.stdout || browserConsoleStream,
         eol: os.EOL,
+        indent: '',
     }, conf);
 
     if (typeof this._conf.logLevel === 'string') {
@@ -85,7 +86,11 @@ Loggr.prototype._log = function (level, messages) {
 
         var levelStr = Loggr.getLevelChar(level) + ' ';
 
-        this._conf.outStream.write(time + levelStr + namespace + message + this._conf.eol);
+        var output = time + levelStr + namespace + message
+
+        output = output.replace(/[\r\n]+/g, this._conf.eol + this._conf.indent + this._conf.indent).trim();
+
+        this._conf.outStream.write(this._conf.indent + output + this._conf.eol);
     }
 };
 
