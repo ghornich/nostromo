@@ -41,7 +41,7 @@ function BrowserPuppeteer(config) {
     };
 
     this._log = this._conf.logger || new Loggr({
-        level: Loggr.LEVELS.INFO,
+        logLevel: Loggr.LEVELS.INFO,
         namespace: 'BrowserPuppeteer',
     });
 }
@@ -105,6 +105,10 @@ BrowserPuppeteer.prototype.waitForPuppet = Promise.method(function () {
         checker();
     });
 });
+
+BrowserPuppeteer.prototype.isPuppetConnected = function () {
+    return this._wsConn !== null;
+};
 
 BrowserPuppeteer.prototype.reopenUrl = async function (url) {
     this._log.debug(`reopenUrl: ${url}`);
@@ -186,7 +190,7 @@ BrowserPuppeteer.prototype.sendMessage = async function (data) {
     }
 
     this._log.debug('sending message');
-    this._log.trace(util.inspect(data).slice(300));
+    this._log.trace(util.inspect(data).slice(0, 300));
 
     return new Promise((res, rej) => {
         let sendableData = data;

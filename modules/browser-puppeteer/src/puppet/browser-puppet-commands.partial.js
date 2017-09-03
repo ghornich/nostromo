@@ -5,10 +5,12 @@ var promiseWhile = require('../../../../modules/promise-while')(Promise);
 var base64ToFile = require('../../../../modules/base64-to-file');
 var lodashSet = require('lodash.set');
 
+var DEFAULT_FILE_MIME = 'application/octet-stream';
+
 exports = module.exports = BrowserPuppetCommands;
 
 function BrowserPuppetCommands() {
-    throw new Error('Can\'t create instance of static class "BrowserPuppetCommands"');
+    throw new Error('Can\'t create instance of abstract class "BrowserPuppetCommands"');
 }
 
 BrowserPuppetCommands.prototype.scroll = function (selector, scrollTop) {
@@ -168,7 +170,7 @@ BrowserPuppetCommands.prototype.focus = function (selector) {
 };
 
 BrowserPuppetCommands.prototype.getValue = function (selector) {
-    var $el = $(selector);
+    var $el = this.$(selector);
     var el = $el[0];
 
     if ($el.length === 0) {
@@ -194,22 +196,20 @@ BrowserPuppetCommands.prototype.getValue = function (selector) {
 };
 
 BrowserPuppetCommands.prototype.isVisible = function (selector) {
-    return $(selector).length > 0;
+    return this.$(selector).length > 0;
 };
 
 /**
- * [uploadAndAssignFile description]
+ * Upload file and assign the generated File instance to a variable.
+ *
  * @param {Object} fileData
  * @param {String} fileData.base64
  * @param {String} fileData.name
- * @param {String} [fileData.mime='application/octet-stream']
- * @param  {[type]} variablePath [description]
+ * @param {String} [fileData.mime] - default: {@link DEFAULT_FILE_MIME}
+ * @param  {[type]} destinationVariable [description]
  * @return {[type]}              [description]
  */
-BrowserPuppetCommands.prototype.uploadFileAndAssign = function (fileData, variablePath) {
-    fileData.mime = fileData.mime || 'application/octet-stream'
-
-    var fileInstance = base64ToFile(fileData)
-
-    lodashSet(window, variablePath, fileInstance);
+BrowserPuppetCommands.prototype.uploadFileAndAssign = function (fileData, destinationVariable) {
+    fileData.mime = fileData.mime || DEFAULT_FILE_MIME;
+    lodashSet(window, destinationVariable, base64ToFile(fileData));
 }
