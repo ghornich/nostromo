@@ -82,10 +82,12 @@ var promiseWhile = require('../../../../modules/promise-while')(Promise);
 var base64ToFile = require('../../../../modules/base64-to-file');
 var lodashSet = require('lodash.set');
 
+var DEFAULT_FILE_MIME = 'application/octet-stream';
+
 exports = module.exports = BrowserPuppetCommands;
 
 function BrowserPuppetCommands() {
-    throw new Error('Can\'t create instance of static class "BrowserPuppetCommands"');
+    throw new Error('Can\'t create instance of abstract class "BrowserPuppetCommands"');
 }
 
 BrowserPuppetCommands.prototype.scroll = function (selector, scrollTop) {
@@ -245,7 +247,7 @@ BrowserPuppetCommands.prototype.focus = function (selector) {
 };
 
 BrowserPuppetCommands.prototype.getValue = function (selector) {
-    var $el = $(selector);
+    var $el = this.$(selector);
     var el = $el[0];
 
     if ($el.length === 0) {
@@ -271,24 +273,22 @@ BrowserPuppetCommands.prototype.getValue = function (selector) {
 };
 
 BrowserPuppetCommands.prototype.isVisible = function (selector) {
-    return $(selector).length > 0;
+    return this.$(selector).length > 0;
 };
 
 /**
- * [uploadAndAssignFile description]
+ * Upload file and assign the generated File instance to a variable.
+ *
  * @param {Object} fileData
  * @param {String} fileData.base64
  * @param {String} fileData.name
- * @param {String} [fileData.mime='application/octet-stream']
- * @param  {[type]} variablePath [description]
+ * @param {String} [fileData.mime] - default: {@link DEFAULT_FILE_MIME}
+ * @param  {[type]} destinationVariable [description]
  * @return {[type]}              [description]
  */
-BrowserPuppetCommands.prototype.uploadFileAndAssign = function (fileData, variablePath) {
-    fileData.mime = fileData.mime || 'application/octet-stream'
-
-    var fileInstance = base64ToFile(fileData)
-
-    lodashSet(window, variablePath, fileInstance);
+BrowserPuppetCommands.prototype.uploadFileAndAssign = function (fileData, destinationVariable) {
+    fileData.mime = fileData.mime || DEFAULT_FILE_MIME;
+    lodashSet(window, destinationVariable, base64ToFile(fileData));
 }
 
 },{"../../../../modules/base64-to-file":1,"../../../../modules/promise-while":13,"bluebird":17,"lodash.set":23}],5:[function(require,module,exports){
@@ -1361,6 +1361,7 @@ function Loggr(conf) {
         namespace: null,
         outStream: process.stdout || browserConsoleStream,
         eol: os.EOL,
+        indent: '',
     }, conf);
 
     if (typeof this._conf.logLevel === 'string') {
@@ -1410,7 +1411,11 @@ Loggr.prototype._log = function (level, messages) {
 
         var levelStr = Loggr.getLevelChar(level) + ' ';
 
-        this._conf.outStream.write(time + levelStr + namespace + message + this._conf.eol);
+        var output = time + levelStr + namespace + message
+
+        output = output.replace(/[\r\n]+/g, this._conf.eol + this._conf.indent + this._conf.indent).trim();
+
+        this._conf.outStream.write(this._conf.indent + output + this._conf.eol);
     }
 };
 
