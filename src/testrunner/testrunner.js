@@ -27,8 +27,8 @@ const CONF_SCHEMA = {
     type: 'object',
     properties: {
         appUrl: {
-            type: 'string',
-            pattern: /^(http:\/\/|file:\/\/\/?)[^ ]+$/,
+            type: ['string','object'],
+            // pattern: /^(http:\/\/|file:\/\/\/?)[^ ]+$/,
         },
         testPort: {
             type: 'number',
@@ -87,8 +87,8 @@ function Testrunner(conf) {
         bailout: false,
         keepalive: false,
         referenceScreenshotDir: REF_SCREENSHOT_BASE_DIR,
-        beforeTest: null,
-        afterTest: null,
+        defaultBeforeTest: null,
+        defaultAfterTest: null,
         outStream: process.stdout,
     }, conf);
 
@@ -187,13 +187,15 @@ function Testrunner(conf) {
     this._log.trace('instance created');
 
     this._runStartTime = null;
+
+    this._currentTestAppUrl = null
 }
 
 
 util.inherits(Testrunner, EventEmitter);
 
 Testrunner.prototype.setConfig = function (conf) {
-    
+
 }
 
 Testrunner.prototype.run = async function () {
@@ -229,16 +231,17 @@ Testrunner.prototype.run = async function () {
 
                     this._tapWriter.comment(`Starting browser ${browser.name}`);
 
-                    await browser.start(this._conf.appUrl);
+                    await browser.start();
 
                     for (const [pathIdx, testFilePath] of testFilePaths.entries()) {
                         this._assertCount = 0;
 
-                        await this._runTestFile(testFilePath);
+                        const isLastTestfile = pathIdx === testFilePaths.length - 1
 
-                        if (pathIdx < testFilePaths.length - 1) {
-                            await this._browserPuppeteer.reopenUrl(this._conf.appUrl);
-                        }
+                        await this._runTestFile(testFilePath, {
+                            browser,
+                            isLastTestfile
+                        });
                     }
                 }
                 catch (err) {
@@ -256,7 +259,8 @@ Testrunner.prototype.run = async function () {
                     // if (!this._conf.keepalive) {
 
                     if (this._browserPuppeteer.isPuppetConnected()) {
-                        await this._browserPuppeteer.terminatePuppet();
+                        // await this._browserPuppeteer.terminatePuppet();
+                        browser.open('')
                     }
 
                     await browser.stop();
@@ -287,6 +291,27 @@ Testrunner.prototype.run = async function () {
     });
 };
 
+Testrunner.prototype._getCurrentAppUrl = function(){
+    const confUrl = this._conf.appUrl
+    const testUrl = this._currentTestAppUrl
+
+    if (typeof testUrl === 'string'){
+        return testUrl
+    }
+    if (typeof confUrl === 'string'){
+        return confUrl
+    }
+    else if (typeof confUrl === 'object'){
+        if (typeof testUrl === 'object') {
+            const mergedUrl=Object.assign({}, confUrl, testUrl)
+            return urllib.format(mergedUrl)
+        }
+    }
+    else {
+        throw new Error('Config error: unknown appUrl type');
+    }
+}
+
 Testrunner.prototype._startServers = Promise.method(function () {
     const self = this;
 
@@ -307,8 +332,11 @@ Testrunner.prototype._stopServers = function () {
     this._browserPuppeteer.stop();
 };
 
-Testrunner.prototype._runTestFile = async function (testFilePath) {
+Testrunner.prototype._runTestFile = async function (testFilePath, data) {
     this._log.trace('_runTestFile');
+
+    const isLastTestfile=data.isLastTestfile
+    const browser=data.browser
 
     this._currentTestfilePath = testFilePath;
     const absPath = pathlib.resolve(testFilePath);
@@ -342,6 +370,12 @@ Testrunner.prototype._runTestFile = async function (testFilePath) {
     let currentBeforeTest = testRegistrar.beforeTest || this._conf.defaultBeforeTest;
     let currentAfterTest = testRegistrar.afterTest || this._conf.defaultAfterTest;
 
+    this._currentTestAppUrl = testRegistrar.appUrl;
+
+    const currentAppUrl = this._getCurrentAppUrl()
+
+    browser.open(currentAppUrl)
+
     for (const [testIndex, testData] of testDatas.entries()) {
         this._log.debug(`Running test: ${testData.name}`);
 
@@ -370,7 +404,7 @@ Testrunner.prototype._runTestFile = async function (testFilePath) {
         }
 
         if (testIndex < testDatas.length - 1) {
-            await this._browserPuppeteer.reopenUrl(this._conf.appUrl);
+            await this._browserPuppeteer.clearPersistentData();
         }
     }
 };
