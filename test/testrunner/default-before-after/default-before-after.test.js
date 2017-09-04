@@ -1,26 +1,26 @@
-const test=require('tape')
-const cp=require('child_process')
-const pathlib=require('path')
-const cliPath=pathlib.resolve(__dirname,'../../../src/cli.js')
-test('default before/after', t=>{
-	const proc = cp.spawn('node',[cliPath, '--run'], {cwd:__dirname})
+const test = require('tape');
+const cp = require('child_process');
+const pathlib = require('path');
+const cliPath = pathlib.resolve(__dirname, '../../../src/cli.js');
+test('default before/after', t => {
+    const proc = cp.spawn('node', [cliPath, '--run'], { cwd: __dirname });
 
-	let stdout=''
+    let stdout = '';
 
-	process.stdout.write('  Running test...')
+    process.stdout.write('  Running test...');
 
-	proc.stdout.on('data',d=>{
-		stdout+=d
-		process.stdout.write('.')
-	})
+    proc.stdout.on('data', d => {
+        stdout += d;
+        process.stdout.write('.');
+    });
 
-	proc.stdout.on('end',()=>{
-		console.log('')
-	})
+    proc.stdout.on('end', () => {
+        console.log('');
+    });
 
-	const expectedCode=0
+    const expectedCode = 0;
 
-	const expectedStdout=
+    const expectedStdout =
 `TAP version 13
   Starting browser Chrome
 # default before/after commands 1
@@ -100,18 +100,18 @@ ok 16 click - '.h'
 # tests 16
 # pass 16
 # fail 0
-`.replace(/\r/g, '')
+`.replace(/\r/g, '');
 
 
 
-	proc.on('error',e=>{
-		console.log('  ',e)
-	})
+    proc.on('error', e => {
+        console.log('  ', e);
+    });
 
-	proc.on('exit',code=>{
-		t.equals(code, expectedCode)
-		t.equals(stdout.replace(/\r/g, ''), expectedStdout)
-		t.end()
-	})
+    proc.on('exit', code => {
+        t.equals(code, expectedCode);
+        t.equals(stdout.replace(/\r/g, ''), expectedStdout);
+        t.end();
+    });
 
-})
+});

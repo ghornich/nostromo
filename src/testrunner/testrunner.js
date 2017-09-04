@@ -27,7 +27,7 @@ const CONF_SCHEMA = {
     type: 'object',
     properties: {
         appUrl: {
-            type: ['string','object'],
+            type: ['string', 'object'],
             // pattern: /^(http:\/\/|file:\/\/\/?)[^ ]+$/,
         },
         testPort: {
@@ -97,14 +97,14 @@ function Testrunner(conf) {
         showTime: true,
         namespace: 'Testrunner',
         indent: '  ',
-        outStream: this._conf.outStream
+        outStream: this._conf.outStream,
     });
 
     this._currentBeforeCommand = null;
     this._currentAfterCommand = null;
 
     this._tapWriter = new TapWriter({
-        outStream: this._conf.outStream
+        outStream: this._conf.outStream,
     });
 
     this._isBailingOut = false;
@@ -152,7 +152,7 @@ function Testrunner(conf) {
         composite: this._compositeDirect.bind(this),
         mouseover: this._mouseoverDirect.bind(this),
         execFunction: this._execFunctionDirect.bind(this),
-        uploadFileAndAssign: this._uploadFileAndAssignDirect.bind(this)
+        uploadFileAndAssign: this._uploadFileAndAssignDirect.bind(this),
     };
 
     this.sideEffectAPI = {};
@@ -188,7 +188,7 @@ function Testrunner(conf) {
 
     this._runStartTime = null;
 
-    this._currentTestAppUrl = null
+    this._currentTestAppUrl = null;
 }
 
 
@@ -196,12 +196,12 @@ util.inherits(Testrunner, EventEmitter);
 
 Testrunner.prototype.setConfig = function (conf) {
 
-}
+};
 
 Testrunner.prototype.run = async function () {
     process.exitCode = 0;
 
-    this._runStartTime = Date.now()
+    this._runStartTime = Date.now();
 
     this._log.debug('running...');
     this._log.trace('input test files: ', this._conf.testFiles.join(', '));
@@ -236,11 +236,11 @@ Testrunner.prototype.run = async function () {
                     for (const [pathIdx, testFilePath] of testFilePaths.entries()) {
                         this._assertCount = 0;
 
-                        const isLastTestfile = pathIdx === testFilePaths.length - 1
+                        const isLastTestfile = pathIdx === testFilePaths.length - 1;
 
                         await this._runTestFile(testFilePath, {
                             browser,
-                            isLastTestfile
+                            isLastTestfile,
                         });
                     }
                 }
@@ -251,7 +251,7 @@ Testrunner.prototype.run = async function () {
 
                     if (err.type === 'BailoutError') {
                         this._isBailingOut = true;
-                        this._tapWriter.bailout(err.message)
+                        this._tapWriter.bailout(err.message);
                     }
                 }
                 finally {
@@ -260,7 +260,7 @@ Testrunner.prototype.run = async function () {
 
                     if (this._browserPuppeteer.isPuppetConnected()) {
                         // await this._browserPuppeteer.terminatePuppet();
-                        browser.open('')
+                        browser.open('');
                     }
 
                     await browser.stop();
@@ -283,7 +283,7 @@ Testrunner.prototype.run = async function () {
 
             await this._stopServers();
 
-            this._log.info('Finished in ' + formatDuration(Math.floor(Date.now() - this._runStartTime/1000)) )
+            this._log.info('Finished in ' + formatDuration(Math.floor(Date.now() - this._runStartTime / 1000)));
         }
     })
     .catch(error => {
@@ -291,26 +291,26 @@ Testrunner.prototype.run = async function () {
     });
 };
 
-Testrunner.prototype._getCurrentAppUrl = function(){
-    const confUrl = this._conf.appUrl
-    const testUrl = this._currentTestAppUrl
+Testrunner.prototype._getCurrentAppUrl = function () {
+    const confUrl = this._conf.appUrl;
+    const testUrl = this._currentTestAppUrl;
 
-    if (typeof testUrl === 'string'){
-        return testUrl
+    if (typeof testUrl === 'string') {
+        return testUrl;
     }
-    if (typeof confUrl === 'string'){
-        return confUrl
+    if (typeof confUrl === 'string') {
+        return confUrl;
     }
-    else if (typeof confUrl === 'object'){
+    else if (typeof confUrl === 'object') {
         if (typeof testUrl === 'object') {
-            const mergedUrl=Object.assign({}, confUrl, testUrl)
-            return urllib.format(mergedUrl)
+            const mergedUrl = Object.assign({}, confUrl, testUrl);
+            return urllib.format(mergedUrl);
         }
     }
     else {
         throw new Error('Config error: unknown appUrl type');
     }
-}
+};
 
 Testrunner.prototype._startServers = Promise.method(function () {
     const self = this;
@@ -335,8 +335,8 @@ Testrunner.prototype._stopServers = function () {
 Testrunner.prototype._runTestFile = async function (testFilePath, data) {
     this._log.trace('_runTestFile');
 
-    const isLastTestfile=data.isLastTestfile
-    const browser=data.browser
+    const isLastTestfile = data.isLastTestfile;
+    const browser = data.browser;
 
     this._currentTestfilePath = testFilePath;
     const absPath = pathlib.resolve(testFilePath);
@@ -367,14 +367,14 @@ Testrunner.prototype._runTestFile = async function (testFilePath, data) {
     this._currentBeforeCommand = testRegistrar.beforeCommand || this._conf.defaultBeforeCommand || noop;
     this._currentAfterCommand = testRegistrar.afterCommand || this._conf.defaultAfterCommand || noop;
 
-    let currentBeforeTest = testRegistrar.beforeTest || this._conf.defaultBeforeTest;
-    let currentAfterTest = testRegistrar.afterTest || this._conf.defaultAfterTest;
+    const currentBeforeTest = testRegistrar.beforeTest || this._conf.defaultBeforeTest;
+    const currentAfterTest = testRegistrar.afterTest || this._conf.defaultAfterTest;
 
     this._currentTestAppUrl = testRegistrar.appUrl;
 
-    const currentAppUrl = this._getCurrentAppUrl()
+    const currentAppUrl = this._getCurrentAppUrl();
 
-    browser.open(currentAppUrl)
+    browser.open(currentAppUrl);
 
     for (const [testIndex, testData] of testDatas.entries()) {
         this._log.debug(`Running test: ${testData.name}`);
@@ -384,9 +384,9 @@ Testrunner.prototype._runTestFile = async function (testFilePath, data) {
         await this._waitUntilBrowserReady();
 
         if (currentBeforeTest) {
-            this._log.debug('Running beforeTest')
+            this._log.debug('Running beforeTest');
             await currentBeforeTest(this.directAPI);
-            this._log.debug('Completed beforeTest')
+            this._log.debug('Completed beforeTest');
         }
 
         const maybeTestPromise = testData.testFn(this.tAPI);
@@ -398,9 +398,9 @@ Testrunner.prototype._runTestFile = async function (testFilePath, data) {
         await maybeTestPromise;
 
         if (currentAfterTest) {
-            this._log.debug('Running afterTest')
+            this._log.debug('Running afterTest');
             await currentAfterTest(this.directAPI);
-            this._log.debug('Completed afterTest')
+            this._log.debug('Completed afterTest');
         }
 
         if (testIndex < testDatas.length - 1) {
@@ -520,7 +520,7 @@ Testrunner.prototype._clickDirect = async function (selector, rawDescription) {
         await this._browserPuppeteer.execCommand({
             type: 'click',
             selector: selector,
-        })
+        });
 
         this._tapWriter.pass({ type: 'click', message: description });
     }
@@ -764,20 +764,20 @@ Testrunner.prototype._assert = async function () {
 };
 
 Testrunner.prototype._uploadFileAndAssignDirect = async function (data) {
-    const filePath=data.filePath
-    const fileName = pathlib.basename(filePath)
-    const destinationVariable=data.destinationVariable
+    const filePath = data.filePath;
+    const fileName = pathlib.basename(filePath);
+    const destinationVariable = data.destinationVariable;
 
-    const file = await fs.readFileAsync(filePath)
-    const fileBase64=file.toString('base64')
+    const file = await fs.readFileAsync(filePath);
+    const fileBase64 = file.toString('base64');
 
     return this._browserPuppeteer.execCommand({
-        type:'uploadFileAndAssign',
-        fileData:{
+        type: 'uploadFileAndAssign',
+        fileData: {
             base64: fileBase64,
-            name: fileName
+            name: fileName,
         },
-        destinationVariable: destinationVariable
+        destinationVariable: destinationVariable,
     });
 };
 
@@ -820,19 +820,21 @@ function toPercent(v, decimals = 4) {
     return (v * 100).toFixed(decimals);
 }
 
-function formatDuration(val){
-    if (val<60){return `${val}s`}
-    else if (val>=60&&val<60*60){
-        const m=Math.floor(val/60)
-        const s=val-m*60
-
-        return `${m}m ${s}s`
+function formatDuration(val) {
+    if (val < 60) {
+        return `${val}s`;
     }
-    else {
-        const h=Math.floor(val/60/60)
-        const m=Math.floor( (val-h*60*60)/60 )
-        const s=val-m*60-h*60*60
+    else if (val >= 60 && val < 60 * 60) {
+        const m = Math.floor(val / 60);
+        const s = val - m * 60;
 
-        return `${h}h ${m}m ${s}s`
+        return `${m}m ${s}s`;
     }
+
+    const h = Math.floor(val / 60 / 60);
+    const m = Math.floor((val - h * 60 * 60) / 60);
+    const s = val - m * 60 - h * 60 * 60;
+
+    return `${h}h ${m}m ${s}s`;
+
 }

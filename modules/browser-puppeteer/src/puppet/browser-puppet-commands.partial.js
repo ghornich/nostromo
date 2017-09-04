@@ -45,7 +45,7 @@ BrowserPuppetCommands.prototype.waitForVisible = Promise.method(function (select
     var pollInterval = 500;
     var self = this;
 
-    self._log.debug('waitForVisible: starting')
+    self._log.debug('waitForVisible: starting');
 
     if (self.isSelectorVisible(selector)) {
         self._log.debug('waitForVisible: selector wasnt visible: ' + selector);
@@ -55,7 +55,7 @@ BrowserPuppetCommands.prototype.waitForVisible = Promise.method(function (select
 
     return promiseWhile(
         function () {
-            var result = self.isSelectorVisible(selector)
+            var result = self.isSelectorVisible(selector);
             self._log.debug('waitForVisible: visibility: ' + selector + ', ' + result);
             return !result;
         },
@@ -219,4 +219,4 @@ BrowserPuppetCommands.prototype.isVisible = function (selector) {
 BrowserPuppetCommands.prototype.uploadFileAndAssign = function (fileData, destinationVariable) {
     fileData.mime = fileData.mime || DEFAULT_FILE_MIME;
     lodashSet(window, destinationVariable, base64ToFile(fileData));
-}
+};

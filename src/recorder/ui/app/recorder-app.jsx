@@ -402,7 +402,7 @@ function renderCmd(cmd, indent) {
         case 'waitWhileVisible': return 't.waitWhileVisible(' + apos(cmd.selector) + ')';
         case 'focus': return 't.focus(' + apos(cmd.selector) + ')';
         case 'assert': return 't.assert()';
-        case 'comment': return 't.comment('+apos(cmd.comment)+')';
+        case 'comment': return 't.comment(' + apos(cmd.comment) + ')';
 
         case 'composite': return 't.composite([' + EOL +
             cmd.commands.map(function (subcmd) {
@@ -410,14 +410,14 @@ function renderCmd(cmd, indent) {
             }).join(',' + EOL) + EOL +
         indent + indent + '])';
 
-        case 'uploadFileAndAssign':return 't.uploadFileAndAssign({'+ EOL +
-            indent + indent + indent + 'filePath: '+apos(cmd.filePath)+','+EOL+
-            indent + indent + indent+'destinationVariable: '+apos(cmd.destinationVariable)+EOL+
-        indent + indent + '})'
+        case 'uploadFileAndAssign': return 't.uploadFileAndAssign({' + EOL +
+            indent + indent + indent + 'filePath: ' + apos(cmd.filePath) + ',' + EOL +
+            indent + indent + indent + 'destinationVariable: ' + apos(cmd.destinationVariable) + EOL +
+        indent + indent + '})';
 
         case 'mouseover': return 't.mouseover(' + apos(cmd.selector) + ')';
         // case '': return 't.()'
-        default: console.error('unknown cmd type ', cmd.type, cmd); return '<unknown: '+JSON.stringify(cmd)+'>';
+        default: console.error('unknown cmd type ', cmd.type, cmd); return '<unknown: ' + JSON.stringify(cmd) + '>';
     }
 }
 

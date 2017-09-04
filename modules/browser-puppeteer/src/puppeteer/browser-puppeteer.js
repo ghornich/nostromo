@@ -111,7 +111,7 @@ BrowserPuppeteer.prototype.isPuppetConnected = function () {
 };
 
 BrowserPuppeteer.prototype.clearPersistentData = async function () {
-    this._log.debug(`clearPersistentData`);
+    this._log.debug('clearPersistentData');
 
     const result = await this.sendMessage({
         type: MESSAGES.DOWNSTREAM.CLEAR_PERSISTENT_DATA,

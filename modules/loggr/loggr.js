@@ -46,7 +46,7 @@ function Loggr(conf) {
             this._conf.logLevel = STRING_LEVELS_MAP[logLevelLower];
         }
         else {
-            throw new Error('Loggr: unknown logLevel string "'+this._conf.logLevel+'"');
+            throw new Error('Loggr: unknown logLevel string "' + this._conf.logLevel + '"');
         }
     }
 }
@@ -86,7 +86,7 @@ Loggr.prototype._log = function (level, messages) {
 
         var levelStr = Loggr.getLevelChar(level) + ' ';
 
-        var output = time + levelStr + namespace + message
+        var output = time + levelStr + namespace + message;
 
         output = output.replace(/[\r\n]+/g, this._conf.eol + this._conf.indent + this._conf.indent).trim();
 

@@ -7,19 +7,19 @@ exports = module.exports = function (config) {
     return {
         logLevel: config.LOG_LEVELS.OFF,
         defaultBeforeCommand: function (t) {
-            t.comment('  -- defaultBeforeCommand')
+            t.comment('  -- defaultBeforeCommand');
         },
 
         defaultAfterCommand: function (t) {
-            t.comment('  -- defaultAfterCommand')
+            t.comment('  -- defaultAfterCommand');
         },
 
         defaultBeforeTest: function (t) {
-            t.comment('  -- defaultBeforeTest')
+            t.comment('  -- defaultBeforeTest');
         },
 
         defaultAfterTest: function (t) {
-            t.comment('  -- defaultAfterTest')
+            t.comment('  -- defaultAfterTest');
         },
 
         appUrl: `file:///${pathlib.resolve(__dirname, 'test.html')}`,
