@@ -54,7 +54,7 @@ exports.DOWNSTREAM = {
     TERMINATE_PUPPET: 'terminate-puppet',
 
     // { type, url }
-    REOPEN_URL: 'reopen-url',
+    CLEAR_PERSISTENT_DATA: 'clear-persistent-data',
 
     // { type, selectors }
     SET_MOUSEOVER_SELECTORS: 'set-mouseover-selectors',
@@ -332,9 +332,6 @@ function BrowserPuppet(opts) {
     this._isExecuting = false;
     this._isTerminating = false;
 
-    this._isReopening = false;
-    this._reopenUrl = '';
-
     this._wsConn = null;
 
     this.$ = $;
@@ -426,10 +423,6 @@ BrowserPuppet.prototype._onMessage = function (rawData) {
         throw new Error('BrowserPuppet::_onMessage: cannot process message, puppet is terminating');
     }
 
-    if (self._isReopening) {
-        throw new Error('BrowserPuppet::_onMessage: cannot process message, puppet is reopening');
-    }
-
     // no return
     Promise.try(function () {
         var data = JSONF.parse(rawData);
@@ -451,10 +444,8 @@ BrowserPuppet.prototype._onMessage = function (rawData) {
             case MESSAGES.DOWNSTREAM.SET_TRANSMIT_EVENTS:
                 return self.setTransmitEvents(data.value);
 
-            case MESSAGES.DOWNSTREAM.REOPEN_URL:
-                self._isReopening = true;
-                self._reopenUrl = data.url;
-                return;
+            case MESSAGES.DOWNSTREAM.CLEAR_PERSISTENT_DATA:
+                return self.clearPersistentData();
 
             case MESSAGES.DOWNSTREAM.SET_MOUSEOVER_SELECTORS:
                 self._mouseoverSelector = data.selectors.join(', ');
@@ -466,9 +457,9 @@ BrowserPuppet.prototype._onMessage = function (rawData) {
                 self._uniqueSelector._opts.ignoredClasses = data.classes;
                 return;
 
-            case MESSAGES.DOWNSTREAM.TERMINATE_PUPPET:
-                self._isTerminating = true;
-                return;
+            // case MESSAGES.DOWNSTREAM.TERMINATE_PUPPET:
+            //     self._isTerminating = true;
+            //     return;
 
             default:
                 throw new Error('BrowserPuppet: unknown message type: ' + data.type);
@@ -498,12 +489,6 @@ BrowserPuppet.prototype._onMessage = function (rawData) {
         if (self._isTerminating) {
             self._wsConn.close();
             self._wsConn = null;
-        }
-
-        if (self._isReopening) {
-            self._wsConn.close();
-            self._wsConn = null;
-            self.reopenUrl(self._reopenUrl);
         }
     });
 };
@@ -869,11 +854,10 @@ BrowserPuppet.prototype._execFn = Promise.method(function (fnData) {
     return fn.apply(context, argValues);
 });
 
-BrowserPuppet.prototype.reopenUrl = Promise.method(function (url) {
+BrowserPuppet.prototype.clearPersistentData=function(){
     document.cookie = '';
     window.localStorage.clear();
-    window.location = url;
-});
+}
 
 BrowserPuppet.prototype.setScreenshotMarkerState = function (state) {
     if (state) {
