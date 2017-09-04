@@ -185,12 +185,21 @@ function Testrunner(conf) {
     this._currentBrowserName = null;
 
     this._log.trace('instance created');
+
+    this._runStartTime = null;
 }
+
 
 util.inherits(Testrunner, EventEmitter);
 
+Testrunner.prototype.setConfig = function (conf) {
+    
+}
+
 Testrunner.prototype.run = async function () {
     process.exitCode = 0;
+
+    this._runStartTime = Date.now()
 
     this._log.debug('running...');
     this._log.trace('input test files: ', this._conf.testFiles.join(', '));
@@ -223,6 +232,8 @@ Testrunner.prototype.run = async function () {
                     await browser.start(this._conf.appUrl);
 
                     for (const [pathIdx, testFilePath] of testFilePaths.entries()) {
+                        this._assertCount = 0;
+
                         await this._runTestFile(testFilePath);
 
                         if (pathIdx < testFilePaths.length - 1) {
@@ -267,6 +278,8 @@ Testrunner.prototype.run = async function () {
             }
 
             await this._stopServers();
+
+            this._log.info('Finished in ' + formatDuration(Math.floor(Date.now() - this._runStartTime/1000)) )
         }
     })
     .catch(error => {
@@ -771,4 +784,21 @@ function multiGlobAsync(globs) {
 
 function toPercent(v, decimals = 4) {
     return (v * 100).toFixed(decimals);
+}
+
+function formatDuration(val){
+    if (val<60){return `${val}s`}
+    else if (val>=60&&val<60*60){
+        const m=Math.floor(val/60)
+        const s=val-m*60
+
+        return `${m}m ${s}s`
+    }
+    else {
+        const h=Math.floor(val/60/60)
+        const m=Math.floor( (val-h*60*60)/60 )
+        const s=val-m*60-h*60*60
+
+        return `${h}h ${m}m ${s}s`
+    }
 }

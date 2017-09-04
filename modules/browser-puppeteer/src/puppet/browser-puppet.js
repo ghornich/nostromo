@@ -185,6 +185,7 @@ BrowserPuppet.prototype._onMessage = function (rawData) {
         }
     })
     .then(function (result) {
+        self._log.info('Sending ACK message')
         self._sendMessage({ type: MESSAGES.UPSTREAM.ACK, result: result });
     })
     .catch(function (err) {
