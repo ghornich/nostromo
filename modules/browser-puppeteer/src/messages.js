@@ -36,7 +36,7 @@ exports.DOWNSTREAM = {
     TERMINATE_PUPPET: 'terminate-puppet',
 
     // { type, url }
-    REOPEN_URL: 'reopen-url',
+    CLEAR_PERSISTENT_DATA: 'clear-persistent-data',
 
     // { type, selectors }
     SET_MOUSEOVER_SELECTORS: 'set-mouseover-selectors',

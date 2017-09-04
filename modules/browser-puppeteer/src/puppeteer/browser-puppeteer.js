@@ -110,12 +110,11 @@ BrowserPuppeteer.prototype.isPuppetConnected = function () {
     return this._wsConn !== null;
 };
 
-BrowserPuppeteer.prototype.reopenUrl = async function (url) {
-    this._log.debug(`reopenUrl: ${url}`);
+BrowserPuppeteer.prototype.clearPersistentData = async function () {
+    this._log.debug(`clearPersistentData`);
 
     const result = await this.sendMessage({
-        type: MESSAGES.DOWNSTREAM.REOPEN_URL,
-        url: url,
+        type: MESSAGES.DOWNSTREAM.CLEAR_PERSISTENT_DATA,
     });
 
     this._wsConn = null;
