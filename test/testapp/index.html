@@ -1,0 +1,184 @@
+ <!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <title>title</title>
+
+        <style type="text/css">
+            #dialog{
+                position:absolute;top:0;left:0;right:0;bottom:0;
+                background:rgba(0,0,0,0.3);
+                display:flex;
+                align-items:center;
+                justify-content: center;
+            }
+
+            .dialog-body{
+                width:25em;
+                height: 15em;
+                background:#fff;
+                border:#aaa;
+                display:flex;
+                align-items:center;
+                justify-content: center;
+                flex-direction: column;
+            }
+
+            .delete{
+                color:blue;
+                text-decoration: underline;
+                cursor:pointer;
+            }
+
+            #toast{
+                position: absolute;
+                display:inline-block;
+                top:0;
+                left:50%;
+                transform:translateX(-50%);
+                background:wheat;
+                border:1px #aaa solid;
+                padding: 0.5em;
+            }
+        </style>
+
+    </head>
+    <body>
+        <button id="show-dialog">Add item</button> <span id="loading1" class="loading">Loading...</span>
+
+        <h2>Items</h2>
+        <p id="noitems">No items.</p>
+        <ul id="list"></ul>
+
+        <div id="dialog" tabindex=0>
+            <div class="dialog-body">
+                <h2>Add item</h2>
+                <p><input id="input" /></p>
+                <p><button id="add-btn">Add</button> <span id="loading2" class="loading">Loading...</span></p>
+            </div>
+        </div>
+
+        <div id="toast"></div>
+
+        <script src="https://code.jquery.com/jquery-3.2.1.slim.js"></script>
+
+        <script>
+            var state = {
+                dialogOpen:false,
+                _prevDialogOpen:false,
+                loading1:false,
+                loading2:false,
+                list:[],
+                showToast:false,
+                toastMsg:'',
+            }
+
+            var $dialog=$('#dialog')
+            var $list=$('#list')
+            var $showDialogBtn=$('#show-dialog')
+            var $loading1=$('#loading1')
+            var $loading2=$('#loading2')
+            var $input=$('#input')
+            var $addBtn=$('#add-btn')
+            var $noItems=$('#noitems')
+            var $toast=$('#toast')
+
+            var actions={
+                showDialog:function(){
+                    state.loading1=true
+
+                    setTimeout(function(){
+                        state.dialogOpen=true
+                        render()
+                    }, randDelay())
+                },
+
+                dialogKeypress:function(event){
+                    if (event.keyCode===27){
+                        state.dialogOpen=false
+                        state.loading1=false
+                    }
+                },
+
+                dialogSubmit:function(){
+                    var val=$input.val()
+                    state.loading2=true
+
+                    setTimeout(function(){
+                        state.loading1=false
+                        state.loading2=false
+                        state.dialogOpen=false
+                        state.list.push(val)
+                        showToastThenHide('Item added')
+                        // render()
+                    }, randDelay())
+                },
+
+                delete:function(event){
+                    state.loading1=true
+
+                    var idx=event.target.getAttribute('data-idx')
+
+                    setTimeout(function(){
+                        state.list.splice(idx, 1)
+                        state.loading1=false
+                        showToastThenHide('Item removed')
+                        // render()
+                    }, randDelay())
+                }
+            }
+
+
+            function showToastThenHide(msg){
+                state.toastMsg=msg
+                state.showToast=true
+                render()
+
+                setTimeout(function(){
+                    state.toastMsg=''
+                    state.showToast=false
+                    render()
+                }, 2000)
+            }
+
+            function render(){
+                $list.find('li').remove()
+
+                state.list.forEach(function(item, i) {
+                    $list.append('<li>'+item+' <span class="delete" data-idx="'+i+'">(x)</span></li>')
+                })
+
+                $dialog.toggle(state.dialogOpen)
+
+                $loading1.toggle(state.loading1)
+                $loading2.toggle(state.loading2)
+
+                $noItems.toggle(state.list.length===0)
+
+                $toast.toggle(state.showToast)
+                $toast.text(state.toastMsg)
+
+                if (!state._prevDialogOpen && state.dialogOpen) {
+                    $dialog[0].focus()
+                }
+
+                state._prevDialogOpen=state.dialogOpen
+            }
+
+            function randDelay(){
+                var max=3000
+                var min = 1000
+                return Math.floor(Math.random() * (max - min + 1)) + min
+            }
+
+            $showDialogBtn.on('click',actions.showDialog)
+            $dialog.on('keypress', actions.dialogKeypress)
+            $addBtn.on('click',actions.dialogSubmit)
+            $(document.body).on('click', '.delete', actions.delete)
+            $(document.body).on('click focus keypress input', render)
+
+            render()
+
+        </script>
+    </body>
+</html>
