@@ -5,7 +5,7 @@ const browserBounds = { size: { width: 800, height: 600 }, position: { x: 10, y:
 
 exports = module.exports = function (config) {
     return {
-        logLevel: config.LOG_LEVELS.ALL,
+        logLevel: config.LOG_LEVELS.OFF,
         defaultBeforeCommand: function (t) {
             t.comment('  -- defaultBeforeCommand')
         },
@@ -36,6 +36,6 @@ exports = module.exports = function (config) {
                 bounds: browserBounds,
             }),
         ],
-        testFiles: ['default-before-after1.test.js', 'default-before-after2.test.js'],
+        testFiles: ['default-before-after1.js', 'default-before-after2.js'],
     };
 };
