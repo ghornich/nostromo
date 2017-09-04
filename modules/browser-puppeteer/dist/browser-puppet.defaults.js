@@ -122,15 +122,22 @@ BrowserPuppetCommands.prototype.waitForVisible = Promise.method(function (select
     var pollInterval = 500;
     var self = this;
 
+    self._log.debug('waitForVisible: starting')
+
     if (self.isSelectorVisible(selector)) {
+        self._log.debug('waitForVisible: selector wasnt visible: ' + selector);
         return;
     }
 
+
     return promiseWhile(
         function () {
-            return !self.isSelectorVisible(selector);
+            var result = self.isSelectorVisible(selector)
+            self._log.debug('waitForVisible: visibility: ' + selector + ', ' + result);
+            return !result;
         },
         function () {
+            self._log.debug('waitForVisible: delaying');
             return Promise.delay(pollInterval);
         }
     );
@@ -143,23 +150,23 @@ BrowserPuppetCommands.prototype.waitWhileVisible = Promise.method(function (sele
     var initialDelay = 500;
     var self = this;
 
-    console.log('waitWhileVisible: starting, initialDelay: ' + initialDelay);
+    self._log.debug('waitWhileVisible: starting, initialDelay: ' + initialDelay);
 
     return Promise.delay(initialDelay)
     .then(function () {
         if (!self.isSelectorVisible(selector)) {
-            console.log('WWV: selector wasnt visible: ' + selector);
+            self._log.debug('waitWhileVisible: selector wasnt visible: ' + selector);
             return;
         }
 
         return promiseWhile(
             function () {
                 var result = self.isSelectorVisible(selector);
-                console.log('WWV: visibility: ' + selector + ', ' + result);
+                self._log.debug('waitWhileVisible: visibility: ' + selector + ', ' + result);
                 return result;
             },
             function () {
-                console.log('WWV: delaying');
+                self._log.debug('waitWhileVisible: delaying');
                 return Promise.delay(pollInterval);
             }
         );
@@ -403,7 +410,24 @@ BrowserPuppet.prototype._sendMessage = function (rawData) {
 };
 
 BrowserPuppet.prototype.isSelectorVisible = function (selector) {
-    return this.$(selector).is(':visible');
+    var $els = this.$(selector)
+
+    if ($els.length===0)return false
+    if (!$els.is(':visible'))return false
+
+    for (var i=0;i<$els.length;i++){
+        var el=$els[i]
+        var rect = el.getBoundingClientRect()
+        var elCenterX = rect.left + rect.width/2
+        var elCenterY = rect.top + rect.height/2
+        var elFromPoint = document.elementFromPoint(elCenterX,elCenterY)
+
+        if (elFromPoint === el || el.contains(elFromPoint)){
+            return true
+        }
+    }
+
+    return false
 };
 
 BrowserPuppet.prototype._onMessage = function (rawData) {
@@ -462,6 +486,7 @@ BrowserPuppet.prototype._onMessage = function (rawData) {
         }
     })
     .then(function (result) {
+        self._log.info('Sending ACK message')
         self._sendMessage({ type: MESSAGES.UPSTREAM.ACK, result: result });
     })
     .catch(function (err) {
