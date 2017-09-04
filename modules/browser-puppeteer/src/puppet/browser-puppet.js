@@ -109,7 +109,24 @@ BrowserPuppet.prototype._sendMessage = function (rawData) {
 };
 
 BrowserPuppet.prototype.isSelectorVisible = function (selector) {
-    return this.$(selector).is(':visible');
+    var $els = this.$(selector)
+
+    if ($els.length===0)return false
+    if (!$els.is(':visible'))return false
+
+    for (var i=0;i<$els.length;i++){
+        var el=$els[i]
+        var rect = el.getBoundingClientRect()
+        var elCenterX = rect.left + rect.width/2
+        var elCenterY = rect.top + rect.height/2
+        var elFromPoint = document.elementFromPoint(elCenterX,elCenterY)
+
+        if (elFromPoint === el || el.contains(elFromPoint)){
+            return true
+        }
+    }
+
+    return false
 };
 
 BrowserPuppet.prototype._onMessage = function (rawData) {
