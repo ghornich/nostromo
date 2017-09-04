@@ -12,8 +12,8 @@ function BrowserSpawnerChrome(options) {
 
 util.inherits(BrowserSpawnerChrome, BrowserSpanwerBase);
 
-BrowserSpawnerChrome.prototype.start = function (url) {
-    if (this._processRunning) {
+BrowserSpawnerChrome.prototype._startBrowser = async function (spawnerControlUrl) {
+    if (this._process) {
         throw new Error('Process is already running');
     }
 
@@ -50,25 +50,15 @@ BrowserSpawnerChrome.prototype.start = function (url) {
         params.push('--start-maximized');
     }
 
-    params.push(url);
+    params.push(spawnerControlUrl);
 
     this._process = spawn(this._opts.path, params);
-    this._processRunning = true;
 
     this._process.on('error', () => this.emit('error'));
     this._process.on('close', () => {
         this.emit('close');
         this._deleteTempDir();
     });
-};
-
-BrowserSpawnerChrome.prototype.stop = function () {
-    if (this._processRunning) {
-        this._process.kill();
-    }
-    else {
-        throw new Error('Process is not running');
-    }
 };
 
 BrowserSpawnerChrome.prototype._getDefaultTempDir = function () {
