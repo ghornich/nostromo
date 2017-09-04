@@ -63,6 +63,8 @@
         <script src="https://code.jquery.com/jquery-3.2.1.slim.js"></script>
 
         <script>
+            var qs = getQSFromUrl(window.location)
+
             var state = {
                 dialogOpen:false,
                 _prevDialogOpen:false,
@@ -82,6 +84,7 @@
             var $addBtn=$('#add-btn')
             var $noItems=$('#noitems')
             var $toast=$('#toast')
+            var $body=$(document.body)
 
             var actions={
                 showDialog:function(){
@@ -129,6 +132,8 @@
             }
 
 
+
+
             function showToastThenHide(msg){
                 state.toastMsg=msg
                 state.showToast=true
@@ -171,13 +176,32 @@
                 return Math.floor(Math.random() * (max - min + 1)) + min
             }
 
+            function getQSFromUrl(url){
+                var matches=String(url).match(/\?(.+$)/)
+                if (matches===null)return {}
+
+                var pairs=matches[1].split('&')
+                var result={}
+
+                pairs.forEach(function(pair){
+                    var pairParts=pair.split('=')
+                    result[pairParts[0]]=pairParts[1]
+
+                })
+                return result
+            }
+
             $showDialogBtn.on('click',actions.showDialog)
             $dialog.on('keypress', actions.dialogKeypress)
             $addBtn.on('click',actions.dialogSubmit)
-            $(document.body).on('click', '.delete', actions.delete)
-            $(document.body).on('click focus keypress input', render)
+            $body.on('click', '.delete', actions.delete)
+            $body.on('click focus keypress input', render)
 
             render()
+
+            if (qs.color){
+                $body.css('background','#'+qs.color)
+            }
 
         </script>
     </body>
