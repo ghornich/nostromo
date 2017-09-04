@@ -2,14 +2,14 @@
 'use strict';
 
 exports = module.exports = function (fileData) {
-	var binary = atob(fileData.base64);
-	var uint8Array = new Uint8Array(binary.length);
+    var binary = atob(fileData.base64);
+    var uint8Array = new Uint8Array(binary.length);
 
-	for (var i = 0, len = binary.length; i < len; i++) {
-		uint8Array[i] = binary.charCodeAt(i);
-	}
+    for (var i = 0, len = binary.length; i < len; i++) {
+        uint8Array[i] = binary.charCodeAt(i);
+    }
 
-	return new File([uint8Array], fileData.name, { mime: fileData.mime })
+    return new File([uint8Array], fileData.name, { mime: fileData.mime });
 };
 
 },{}],2:[function(require,module,exports){
@@ -122,7 +122,7 @@ BrowserPuppetCommands.prototype.waitForVisible = Promise.method(function (select
     var pollInterval = 500;
     var self = this;
 
-    self._log.debug('waitForVisible: starting')
+    self._log.debug('waitForVisible: starting');
 
     if (self.isSelectorVisible(selector)) {
         self._log.debug('waitForVisible: selector wasnt visible: ' + selector);
@@ -132,7 +132,7 @@ BrowserPuppetCommands.prototype.waitForVisible = Promise.method(function (select
 
     return promiseWhile(
         function () {
-            var result = self.isSelectorVisible(selector)
+            var result = self.isSelectorVisible(selector);
             self._log.debug('waitForVisible: visibility: ' + selector + ', ' + result);
             return !result;
         },
@@ -296,7 +296,7 @@ BrowserPuppetCommands.prototype.isVisible = function (selector) {
 BrowserPuppetCommands.prototype.uploadFileAndAssign = function (fileData, destinationVariable) {
     fileData.mime = fileData.mime || DEFAULT_FILE_MIME;
     lodashSet(window, destinationVariable, base64ToFile(fileData));
-}
+};
 
 },{"../../../../modules/base64-to-file":1,"../../../../modules/promise-while":13,"bluebird":17,"lodash.set":23}],5:[function(require,module,exports){
 'use strict';
@@ -407,24 +407,28 @@ BrowserPuppet.prototype._sendMessage = function (rawData) {
 };
 
 BrowserPuppet.prototype.isSelectorVisible = function (selector) {
-    var $els = this.$(selector)
+    var $els = this.$(selector);
 
-    if ($els.length===0)return false
-    if (!$els.is(':visible'))return false
+    if ($els.length === 0) {
+        return false;
+    }
+    if (!$els.is(':visible')) {
+        return false;
+    }
 
-    for (var i=0;i<$els.length;i++){
-        var el=$els[i]
-        var rect = el.getBoundingClientRect()
-        var elCenterX = rect.left + rect.width/2
-        var elCenterY = rect.top + rect.height/2
-        var elFromPoint = document.elementFromPoint(elCenterX,elCenterY)
+    for (var i = 0; i < $els.length; i++) {
+        var el = $els[i];
+        var rect = el.getBoundingClientRect();
+        var elCenterX = rect.left + rect.width / 2;
+        var elCenterY = rect.top + rect.height / 2;
+        var elFromPoint = document.elementFromPoint(elCenterX, elCenterY);
 
-        if (elFromPoint === el || el.contains(elFromPoint)){
-            return true
+        if (elFromPoint === el || el.contains(elFromPoint)) {
+            return true;
         }
     }
 
-    return false
+    return false;
 };
 
 BrowserPuppet.prototype._onMessage = function (rawData) {
@@ -477,7 +481,7 @@ BrowserPuppet.prototype._onMessage = function (rawData) {
         }
     })
     .then(function (result) {
-        self._log.info('Sending ACK message')
+        self._log.info('Sending ACK message');
         self._sendMessage({ type: MESSAGES.UPSTREAM.ACK, result: result });
     })
     .catch(function (err) {
@@ -633,7 +637,7 @@ BrowserPuppet.prototype._onScrollCapture = debounce(function (event) {
     }
 
     var targetDTO = cleanTarget(target);
-    targetDTO.scrollTop=target.scrollTop
+    targetDTO.scrollTop = target.scrollTop;
 
     this._sendMessage({
         type: MESSAGES.UPSTREAM.CAPTURED_EVENT,
@@ -865,10 +869,10 @@ BrowserPuppet.prototype._execFn = Promise.method(function (fnData) {
     return fn.apply(context, argValues);
 });
 
-BrowserPuppet.prototype.clearPersistentData=function(){
+BrowserPuppet.prototype.clearPersistentData = function () {
     document.cookie = '';
     window.localStorage.clear();
-}
+};
 
 BrowserPuppet.prototype.setScreenshotMarkerState = function (state) {
     if (state) {
@@ -1380,7 +1384,7 @@ function Loggr(conf) {
             this._conf.logLevel = STRING_LEVELS_MAP[logLevelLower];
         }
         else {
-            throw new Error('Loggr: unknown logLevel string "'+this._conf.logLevel+'"');
+            throw new Error('Loggr: unknown logLevel string "' + this._conf.logLevel + '"');
         }
     }
 }
@@ -1420,7 +1424,7 @@ Loggr.prototype._log = function (level, messages) {
 
         var levelStr = Loggr.getLevelChar(level) + ' ';
 
-        var output = time + levelStr + namespace + message
+        var output = time + levelStr + namespace + message;
 
         output = output.replace(/[\r\n]+/g, this._conf.eol + this._conf.indent + this._conf.indent).trim();
 

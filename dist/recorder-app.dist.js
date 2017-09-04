@@ -37,7 +37,7 @@ exports.DOWNSTREAM = {
     TERMINATE_PUPPET: 'terminate-puppet',
 
     // { type, url }
-    REOPEN_URL: 'reopen-url',
+    CLEAR_PERSISTENT_DATA: 'clear-persistent-data',
 
     // { type, selectors }
     SET_MOUSEOVER_SELECTORS: 'set-mouseover-selectors',
@@ -140,7 +140,7 @@ function Loggr(conf) {
             this._conf.logLevel = STRING_LEVELS_MAP[logLevelLower];
         }
         else {
-            throw new Error('Loggr: unknown logLevel string "'+this._conf.logLevel+'"');
+            throw new Error('Loggr: unknown logLevel string "' + this._conf.logLevel + '"');
         }
     }
 }
@@ -180,7 +180,7 @@ Loggr.prototype._log = function (level, messages) {
 
         var levelStr = Loggr.getLevelChar(level) + ' ';
 
-        var output = time + levelStr + namespace + message
+        var output = time + levelStr + namespace + message;
 
         output = output.replace(/[\r\n]+/g, this._conf.eol + this._conf.indent + this._conf.indent).trim();
 
