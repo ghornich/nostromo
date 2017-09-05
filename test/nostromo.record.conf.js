@@ -6,11 +6,11 @@ module.exports = function (config) {
 
         onSelectorBecameVisible: [
             {
-                selector: '.dialog--wrap',
+                selector: '.dialog-body',
                 listener: function (recorderInstance) {
                     recorderInstance.addCommand({
                         type: 'waitForVisible',
-                        selector: '.dialog--wrap',
+                        selector: '.dialog-body',
                     });
                 },
             },

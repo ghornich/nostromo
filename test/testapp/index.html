@@ -40,6 +40,14 @@
                 border:1px #aaa solid;
                 padding: 0.5em;
             }
+
+            #app-loading-overlay {
+                position:absolute;top:0;left:0;right:0;bottom:0;
+                background: #eee;
+                display:flex;
+                align-items:center;
+                justify-content: center;
+            }
         </style>
 
     </head>
@@ -60,6 +68,9 @@
 
         <div id="toast"></div>
 
+        <div class="loading" id="app-loading-overlay">Loading...</div>
+
+
         <script src="https://code.jquery.com/jquery-3.2.1.slim.js"></script>
 
         <script>
@@ -75,6 +86,10 @@
                 toastMsg:'',
             }
 
+            if ('listData' in localStorage) {
+                state.list=JSON.parse(localStorage.getItem('listData'))
+            }
+
             var $dialog=$('#dialog')
             var $list=$('#list')
             var $showDialogBtn=$('#show-dialog')
@@ -85,6 +100,7 @@
             var $noItems=$('#noitems')
             var $toast=$('#toast')
             var $body=$(document.body)
+            var $appLoadingOverlay=$('#app-loading-overlay')
 
             var actions={
                 showDialog:function(){
@@ -96,10 +112,11 @@
                     }, randDelay())
                 },
 
-                dialogKeypress:function(event){
+                dialogKeyup:function(event){
                     if (event.keyCode===27){
                         state.dialogOpen=false
                         state.loading1=false
+                        render()
                     }
                 },
 
@@ -112,6 +129,7 @@
                         state.loading2=false
                         state.dialogOpen=false
                         state.list.push(val)
+                        localStorage.setItem('listData', JSON.stringify(state.list))
                         showToastThenHide('Item added')
                         // render()
                     }, randDelay())
@@ -167,12 +185,14 @@
                     $dialog[0].focus()
                 }
 
+                $appLoadingOverlay.hide()
+
                 state._prevDialogOpen=state.dialogOpen
             }
 
             function randDelay(){
                 var max=3000
-                var min = 1000
+                var min = 300
                 return Math.floor(Math.random() * (max - min + 1)) + min
             }
 
@@ -192,17 +212,19 @@
             }
 
             $showDialogBtn.on('click',actions.showDialog)
-            $dialog.on('keypress', actions.dialogKeypress)
+            $dialog.on('keyup', actions.dialogKeyup)
             $addBtn.on('click',actions.dialogSubmit)
             $body.on('click', '.delete', actions.delete)
             $body.on('click focus keypress input', render)
 
-            render()
+            setTimeout(render, randDelay())
 
             if (qs.color){
                 $body.css('background','#'+qs.color)
             }
 
         </script>
+
+        <script src="http://localhost:47225/browser-puppet.defaults.js"></script>
     </body>
 </html>
