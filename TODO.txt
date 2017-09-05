@@ -2,3 +2,8 @@ precommit hooks (test, lint, doc)
 browser-puppeteer autotest: test each command
 "npm run autotest" script
 generate docs from docblock
+create referenceErrors folder on-demand
+separate per-test and per-run bailout
+
+
+
