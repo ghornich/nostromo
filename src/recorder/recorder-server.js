@@ -76,7 +76,6 @@ Server.prototype.start = Promise.method(function () {
     this._puppeteer.start();
 
     console.log(`--- Open the recording app in your browser: http://localhost:${this._conf.recorderAppPort} ---`);
-    // TODO add "open the tested app" text
 
     this._puppeteer.on(MESSAGES.UPSTREAM.SELECTOR_BECAME_VISIBLE, this._proxyMessage);
     this._puppeteer.on(MESSAGES.UPSTREAM.CAPTURED_EVENT, this._proxyMessage);
@@ -125,7 +124,7 @@ Server.prototype._onRecRequest = async function (req, resp) {
     if (req.url === '/') {
         resp.end(
             (await fs.readFileAsync(pathlib.resolve(__dirname, 'ui/recorder-ui.html'), { encoding: 'utf-8' }))
-            .replace('[[CONFIG]]', JSONF.stringify(this._conf).replace(/\\/g, '\\\\').replace(/'/g, '\\\''))
+            .replace('[[CONFIG]]', JSONF.stringify(this._conf).replace(/\\/g, '\\\\').replace(/'/g, "\\'"))
             .replace('[[STYLE]]', await fs.readFileAsync(pathlib.resolve(__dirname, 'ui/app/style.css')))
         );
     }
