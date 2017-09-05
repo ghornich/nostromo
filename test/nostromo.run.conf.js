@@ -2,10 +2,10 @@ const Promise = require('bluebird');
 module.exports = function (config) {
     return {
         logLevel: config.LOG_LEVELS.INFO,
-        defaultBeforeCommand: function (t, command) {
+        beforeCommand: function (t, command) {
         },
 
-        defaultAfterCommand: function (t, command) {
+        afterCommand: function (t, command) {
             // return Promise.delay(2000)
         },
 

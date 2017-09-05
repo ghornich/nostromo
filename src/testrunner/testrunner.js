@@ -6,6 +6,7 @@ const isEqual = require('lodash.isequal');
 const Schema = require('schema-inspector');
 const fs = Promise.promisifyAll(require('fs'));
 const pathlib = require('path');
+const urllib = require('url');
 const util = require('util');
 const TapWriter = require(MODULES_PATH + 'tap-writer');
 const EventEmitter = require('events').EventEmitter;
@@ -80,17 +81,22 @@ exports = module.exports = Testrunner;
 function Testrunner(conf) {
     EventEmitter.call(this);
 
-    this._conf = Object.assign({}, {
+    const defaultConf = {
         testPort: DEFAULT_TEST_PORT,
         waitForConnectionTimeout: 5000,
         logLevel: Loggr.LEVELS.ALL,
         bailout: false,
         keepalive: false,
         referenceScreenshotDir: REF_SCREENSHOT_BASE_DIR,
-        defaultBeforeTest: null,
-        defaultAfterTest: null,
+        beforeTest: null,
+        afterTest: null,
+        globalBeforeTest:null,
+        globalAfterTest:null,
         outStream: process.stdout,
-    }, conf);
+        context: {},
+    };
+
+    this._conf = Object.assign(defaultConf, conf);
 
     this._log = new Loggr({
         logLevel: this._conf.logLevel,
@@ -99,6 +105,16 @@ function Testrunner(conf) {
         indent: '  ',
         outStream: this._conf.outStream,
     });
+
+
+    // check for configs not in defaultConf
+    const confKeys = Object.keys(conf);
+    const unknownKeys = confKeys.filter(key=>!(key in defaultConf))
+
+    if (unknownKeys.length>0){
+        this._log.warn(`unknown config keys: ${unknownKeys.join(', ')}`)
+    }
+
 
     this._currentBeforeCommand = null;
     this._currentAfterCommand = null;
@@ -187,8 +203,6 @@ function Testrunner(conf) {
     this._log.trace('instance created');
 
     this._runStartTime = null;
-
-    this._currentTestAppUrl = null;
 }
 
 
@@ -252,6 +266,8 @@ Testrunner.prototype.run = async function () {
                     if (err.type === 'BailoutError') {
                         this._isBailingOut = true;
                         this._tapWriter.bailout(err.message);
+                        throw err;
+
                     }
                 }
                 finally {
@@ -283,7 +299,7 @@ Testrunner.prototype.run = async function () {
 
             await this._stopServers();
 
-            this._log.info('Finished in ' + formatDuration(Math.floor(Date.now() - this._runStartTime / 1000)));
+            this._log.info('Finished in ' + formatDuration(Math.floor((Date.now() - this._runStartTime) / 1000)));
         }
     })
     .catch(error => {
@@ -291,25 +307,27 @@ Testrunner.prototype.run = async function () {
     });
 };
 
-Testrunner.prototype._getCurrentAppUrl = function () {
-    const confUrl = this._conf.appUrl;
-    const testUrl = this._currentTestAppUrl;
+Testrunner.prototype._getCurrentAppUrl = function (testAppUrl) {
+    const confAppUrl = this._conf.appUrl;
 
-    if (typeof testUrl === 'string') {
-        return testUrl;
+    if (typeof testAppUrl === 'string') {
+        return testAppUrl;
     }
-    if (typeof confUrl === 'string') {
-        return confUrl;
+
+    if (typeof confAppUrl === 'string') {
+        return confAppUrl;
     }
-    else if (typeof confUrl === 'object') {
-        if (typeof testUrl === 'object') {
-            const mergedUrl = Object.assign({}, confUrl, testUrl);
-            return urllib.format(mergedUrl);
-        }
+
+    if (typeof confAppUrl === 'object' && typeof testAppUrl === 'object') {
+        const mergedUrl = Object.assign({}, confAppUrl, testAppUrl);
+        return urllib.format(mergedUrl);
     }
-    else {
-        throw new Error('Config error: unknown appUrl type');
+
+    if (typeof confAppUrl === 'object' && testAppUrl === undefined) {
+        return urllib.format(confAppUrl);
     }
+
+    throw new Error('Config error: cannot resolve appUrl, mismatched conf and test appUrl types');
 };
 
 Testrunner.prototype._startServers = Promise.method(function () {
@@ -363,31 +381,37 @@ Testrunner.prototype._runTestFile = async function (testFilePath, data) {
 
     testFileFn(testRegistrar);
 
-    // TODO show before/after commands in logging
-    this._currentBeforeCommand = testRegistrar.beforeCommand || this._conf.defaultBeforeCommand || noop;
-    this._currentAfterCommand = testRegistrar.afterCommand || this._conf.defaultAfterCommand || noop;
+    this._currentBeforeCommand = testRegistrar.beforeCommand || this._conf.beforeCommand || noop;
+    this._currentAfterCommand = testRegistrar.afterCommand || this._conf.afterCommand || noop;
 
-    const currentBeforeTest = testRegistrar.beforeTest || this._conf.defaultBeforeTest;
-    const currentAfterTest = testRegistrar.afterTest || this._conf.defaultAfterTest;
+    const currentBeforeTest = testRegistrar.beforeTest || this._conf.beforeTest;
+    const currentAfterTest = testRegistrar.afterTest || this._conf.afterTest;
 
-    this._currentTestAppUrl = testRegistrar.appUrl;
+    const currentAppUrl = this._getCurrentAppUrl(testRegistrar.appUrl);
 
-    const currentAppUrl = this._getCurrentAppUrl();
+    // TODO most config params should be overridable in testfiles
 
-    browser.open(currentAppUrl);
 
     for (const [testIndex, testData] of testDatas.entries()) {
         this._log.debug(`Running test: ${testData.name}`);
 
         this._tapWriter.diagnostic(testData.name);
 
-        await this._waitUntilBrowserReady();
+        if (this._conf.globalBeforeTest) {
+            this._log.debug('Running globalBeforeTest');
+            await this._conf.globalBeforeTest(this.directAPI);
+            this._log.debug('Completed globalBeforeTest');
+        }
 
         if (currentBeforeTest) {
             this._log.debug('Running beforeTest');
-            await currentBeforeTest(this.directAPI);
+            await currentBeforeTest(this.directAPI, this._conf.context);
             this._log.debug('Completed beforeTest');
         }
+
+        browser.open(currentAppUrl);
+
+        await this._waitUntilBrowserReady();
 
         const maybeTestPromise = testData.testFn(this.tAPI);
 
@@ -395,16 +419,35 @@ Testrunner.prototype._runTestFile = async function (testFilePath, data) {
             throw new Error(`test function didn't return a promise (name: ${testData.name})`);
         }
 
-        await maybeTestPromise;
+        let maybeTestError = null
+
+        try {
+            await maybeTestPromise;
+        }
+        catch (err) {
+            maybeTestError = err;
+
+        }
+
+        // if (testIndex < testDatas.length - 1) {
+            await this._browserPuppeteer.clearPersistentData();
+            browser.open('');
+        // }
 
         if (currentAfterTest) {
             this._log.debug('Running afterTest');
-            await currentAfterTest(this.directAPI);
+            await currentAfterTest(this.directAPI, this._conf.context);
             this._log.debug('Completed afterTest');
         }
 
-        if (testIndex < testDatas.length - 1) {
-            await this._browserPuppeteer.clearPersistentData();
+        if (this._conf.globalAfterTest) {
+            this._log.debug('Running globalAfterTest');
+            await this._conf.globalAfterTest(this.directAPI);
+            this._log.debug('Completed globalAfterTest');
+        }
+
+        if (maybeTestError) {
+            throw maybeTestError;
         }
     }
 };
