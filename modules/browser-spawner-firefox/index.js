@@ -21,6 +21,9 @@ user_pref('extensions.autoDisableScopes', 0);
 user_pref('browser.tabs.remote.autostart', false);
 user_pref('browser.tabs.remote.autostart.2', false);
 user_pref('extensions.enabledScopes', 15);
+user_pref("signon.rememberSignons", false);
+user_pref("browser.customizemode.tip0.shown", true);
+user_pref("browser.search.suggest.enabled", false);
 `;
 
 function BrowserSpawnerFirefox(options) {

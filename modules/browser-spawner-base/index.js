@@ -43,7 +43,8 @@ function BrowserSpawnerBase(options) {
     this._opts.bounds = this._opts.bounds || null;
     this._opts.tempDir = resolvePath(this._opts.tempDir || this._getDefaultTempDir());
     this._log = options.logger || new Loggr({
-        namespace: `[BrowserSpawner ${this._opts.name}]`,
+        namespace: `BrowserSpawner ${this._opts.name}`,
+        indent: '  ',
     });
 
     this._process = null;
@@ -73,7 +74,7 @@ BrowserSpawnerBase.prototype.start = async function () {
 
     await new Promise(res => this._httpServer.listen(DEFAULT_SPAWNER_PORT, res));
 
-    await this._startBrowser(resolvePath(__dirname, 'browser-spawner.html'));
+    await this._startBrowser(resolvePath(__dirname, 'browser-spawner-context.html'));
     await this._waitForConnection();
 };
 
@@ -95,6 +96,9 @@ BrowserSpawnerBase.prototype.open = function (url) {
     if (!this._wsConn) {
         throw new Error('BrowserSpawnerBase::open: not connected');
     }
+
+    this._log.info(`opening address "${url}"`);
+
     this._sendWsMessage({ type: 'open', url: url });
 };
 
