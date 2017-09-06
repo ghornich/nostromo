@@ -14,13 +14,12 @@ var objectAssign = require('object-assign');
 var BrowserPuppetCommands = require('./browser-puppet-commands.partial');
 var promiseWhile = require('../../../../modules/promise-while')(Promise);
 var Loggr = require('../../../../modules/loggr');
+var SelectorObserver=require('../../../../modules/selector-observer');
 
 // TODO option to transmit console?
 // TODO transmit uncaught exceptions
 // TODO throw error on incorrect argument types/values (e.g. string numbers)
 
-// TODO use MutationObserver if available, fallback to polling ?
-var AUTODETECT_INTERVAL_MS = 200;
 var INSERT_ASSERTION_DEBOUNCE = 500;
 
 var DEFAULT_SERVER_URL = 'ws://localhost:47225';
@@ -48,13 +47,7 @@ function BrowserPuppet(opts) {
 
     this._uniqueSelector = new UniqueSelector();
 
-    this._onSelectorBecameVisibleData = {
-        intervalId: null,
-        // Array<String>
-        selectors: [],
-        // Array<{previousState:Boolean}>
-        states: [],
-    };
+    this._selectorObserver = null;
 
     this._mouseoverSelector = null;
 
@@ -80,7 +73,6 @@ objectAssign(BrowserPuppet.prototype, BrowserPuppetCommands.prototype);
 BrowserPuppet.prototype.start = function () {
     this._startWs();
     this._attachCaptureEventListeners();
-    this._startOnSelectorBecameVisiblePolling();
 };
 
 BrowserPuppet.prototype._startWs = function () {
@@ -424,10 +416,21 @@ BrowserPuppet.prototype._sendInsertAssertionDebounced = debounce(function () {
 }, INSERT_ASSERTION_DEBOUNCE);
 
 BrowserPuppet.prototype.setOnSelectorBecameVisibleSelectors = function (selectors) {
-    this._onSelectorBecameVisibleData.selectors = deepCopy(selectors);
-    this._onSelectorBecameVisibleData.states = selectors.map(function () {
-        return { previousState: null };
+    var self = this;
+
+    if (self._selectorObserver !== null) {
+        self._selectorObserver.disconnect();
+        self._selectorObserver = null;
+    }
+
+    var observeList = selectors.map(function (selector) {
+        return {
+            selector: selector,
+            listener: self._sendMessage.bind(self, { type: MESSAGES.UPSTREAM.SELECTOR_BECAME_VISIBLE, selector: selector })
+        };
     });
+
+    this._selectorObserver = new SelectorObserver({ observeList: observeList });
 };
 
 BrowserPuppet.prototype.setTransmitEvents = function (value) {
@@ -435,29 +438,6 @@ BrowserPuppet.prototype.setTransmitEvents = function (value) {
         throw new Error('BrowserPuppet::setTransmitEvents: invalid type for value');
     }
     this._transmitEvents = value;
-};
-
-BrowserPuppet.prototype._startOnSelectorBecameVisiblePolling = function () {
-    this._onSelectorBecameVisibleData.intervalId =
-        setInterval(this._onSelectorBecameVisiblePoll.bind(this), AUTODETECT_INTERVAL_MS);
-};
-
-BrowserPuppet.prototype._onSelectorBecameVisiblePoll = function () {
-    var self = this;
-
-    self._onSelectorBecameVisibleData.selectors.forEach(function (selector, i) {
-        var state = self._onSelectorBecameVisibleData.states[i];
-
-        // TODO send warning in message if selector is ambiguous
-
-        var currentState = self.isSelectorVisible(selector);
-
-        if (state.previousState !== null && !state.previousState && currentState) {
-            self._sendMessage({ type: MESSAGES.UPSTREAM.SELECTOR_BECAME_VISIBLE, selector: selector });
-        }
-
-        state.previousState = currentState;
-    });
 };
 
 BrowserPuppet.prototype._onExecMessage = Promise.method(function (data) {
