@@ -106,7 +106,7 @@ Server.prototype.start = Promise.method(function () {
             }
         }
         catch (err) {
-            console.log(err);
+            this._log.error(err.stack || err.message);
         }
     });
 });
