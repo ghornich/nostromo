@@ -4,6 +4,6 @@ browser-puppeteer autotest: test each command
 generate docs from docblock
 create referenceErrors folder on-demand
 separate per-test and per-run bailout
-
+testrunner: keepalive flag: stop execution and browser on first error (exit/continue on request)
 
 

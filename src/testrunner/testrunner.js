@@ -271,16 +271,12 @@ Testrunner.prototype.run = async function () {
                     }
                 }
                 finally {
-                    // TODO optionally keep browser open for debugging (wait for manual closing?)
-                    // if (!this._conf.keepalive) {
-
                     if (this._browserPuppeteer.isPuppetConnected()) {
                         // await this._browserPuppeteer.terminatePuppet();
                         browser.open('');
                     }
 
                     await browser.stop();
-                    // }
                 }
             }
         }
