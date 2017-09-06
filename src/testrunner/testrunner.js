@@ -45,12 +45,10 @@ const CONF_SCHEMA = {
             type: 'number',
             optional: true,
         },
-        bailout: {
-            type: 'boolean',
-            optional: true,
-        },
-        // TODO "autoclose": close browser and test server when tests complete - default: true
-        //      if false, wait for browser to close
+        // bailout: {
+        //     type: 'boolean',
+        //     optional: true,
+        // },
 
 
 
@@ -69,6 +67,8 @@ const ERRORS_SCREENSHOT_BASE_DIR = 'referenceErrors';
 const ERRORS = {
     TIMEOUT: 0,
     NOT_EQUAL: 1,
+    PARTIAL_BAILOUT: 2,
+    TOTAL_BAILOUT: 3,
 };
 
 const PPM = 1 / 1000000;
@@ -85,7 +85,8 @@ function Testrunner(conf) {
         testPort: DEFAULT_TEST_PORT,
         waitForConnectionTimeout: 5000,
         logLevel: Loggr.LEVELS.ALL,
-        bailout: false,
+        partialBailout: true,
+        totalBailout: false,
         keepalive: false,
         referenceScreenshotDir: REF_SCREENSHOT_BASE_DIR,
         beforeTest: null,
@@ -123,7 +124,7 @@ function Testrunner(conf) {
         outStream: this._conf.outStream,
     });
 
-    this._isBailingOut = false;
+    this._inTotalBailout = false; //X
 
     // -------------------
 
@@ -261,13 +262,13 @@ Testrunner.prototype.run = async function () {
                 catch (err) {
                     process.exitCode = 1;
 
-                    this._log.fatal(err.stack || err.toString());
-
-                    if (err.type === 'BailoutError') {
-                        this._isBailingOut = true;
+                    if (err.type === ERRORS.TOTAL_BAILOUT) {
+                        this._inTotalBailout = true;
                         this._tapWriter.bailout(err.message);
                         throw err;
-
+                    }
+                    else {
+                        this._log.error(err.stack || err.toString());
                     }
                 }
                 finally {
@@ -281,12 +282,10 @@ Testrunner.prototype.run = async function () {
             }
         }
         catch (err) {
-            // TODO better error handling
-            console.error(err);
-            console.error(err.stack);
+            this._log.fatal(err.stack || err.toString());
         }
         finally {
-            if (!this._isBailingOut) {
+            if (!this._inTotalBailout) {
                 this._tapWriter.plan();
                 this._tapWriter.diagnostic(`tests ${this._tapWriter.testCount}`);
                 this._tapWriter.diagnostic(`pass ${this._tapWriter.passCount}`);
@@ -421,8 +420,8 @@ Testrunner.prototype._runTestFile = async function (testFilePath, data) {
             await maybeTestPromise;
         }
         catch (err) {
+            process.exitCode = 1;
             maybeTestError = err;
-
         }
 
         // if (testIndex < testDatas.length - 1) {
@@ -442,7 +441,12 @@ Testrunner.prototype._runTestFile = async function (testFilePath, data) {
             this._log.debug('Completed globalAfterTest');
         }
 
-        if (maybeTestError) {
+        if (maybeTestError.type === ERRORS.PARTIAL_BAILOUT) {
+            // ignore error
+            this._log.warn(`partial bailout: halting test "${testData.name}" due to error`);
+            this._log.warn(maybeTestError.stack || maybeTestError.toString());
+        }
+        else {
             throw maybeTestError;
         }
     }
@@ -566,9 +570,7 @@ Testrunner.prototype._clickDirect = async function (selector, rawDescription) {
     catch (err) {
         this._tapWriter.notOk(err.message);
 
-        if (this._conf.bailout) {
-            throw createError('BailoutError', err.message);
-        }
+        this._handleCommandError(err);
     }
 };
 
@@ -599,12 +601,10 @@ Testrunner.prototype._setValueDirect = Promise.method(function (selector, value,
     .then(() => {
         this._tapWriter.pass({ type: 'setValue', message: description });
     })
-    .catch(e => {
-        this._tapWriter.notOk(e.message);
+    .catch(err => {
+        this._tapWriter.notOk(err.message);
 
-        if (this._conf.bailout) {
-            throw createError('BailoutError', e.message);
-        }
+        this._handleCommandError(err);
     });
 });
 
@@ -625,12 +625,10 @@ Testrunner.prototype._waitForVisibleDirect = Promise.method(function (selector, 
         type: 'waitForVisible',
         selector: selector,
     })
-    .catch(e => {
-        this._tapWriter.notOk(`waitForVisible - ${e.message}`);
+    .catch(err => {
+        this._tapWriter.notOk(`waitForVisible - ${err.message}`);
 
-        if (this._conf.bailout) {
-            throw createError('BailoutError', e.message);
-        }
+        this._handleCommandError(err);
     });
 });
 
@@ -641,12 +639,10 @@ Testrunner.prototype._waitWhileVisibleDirect = Promise.method(function (selector
         type: 'waitWhileVisible',
         selector: selector,
     })
-    .catch(e => {
-        this._tapWriter.notOk(`waitWhileVisible - ${e.message}`);
+    .catch(err => {
+        this._tapWriter.notOk(`waitWhileVisible - ${err.message}`);
 
-        if (this._conf.bailout) {
-            throw createError('BailoutError', e.message);
-        }
+        this._handleCommandError(err);
     });
 });
 
@@ -661,13 +657,12 @@ Testrunner.prototype._focusDirect = Promise.method(function (selector, rawDescri
     .then(() => {
         // this._tapWriter.pass({type:'focus',message:description})
     })
-    .catch(e => {
+    .catch(err => {
         // this._tapWriter.notOk('focus - '+ e.message)
-        this._tapWriter.diagnostic(`WARNING - focus - ${e.message}`);
+        // TODO handle as error?
+        this._tapWriter.diagnostic(`WARNING - focus - ${err.message}`);
 
-        if (this._conf.bailout) {
-            throw createError('BailoutError', e.message);
-        }
+        // this._handleCommandError(err);
     });
 });
 
@@ -679,12 +674,10 @@ Testrunner.prototype._scrollDirect = Promise.method(function (selector, scrollTo
         selector: selector,
         scrollTop: scrollTop,
     })
-    .catch(e => {
-        this._tapWriter.notOk(`scroll - ${e.message}`);
+    .catch(err => {
+        this._tapWriter.notOk(`scroll - ${err.message}`);
 
-        if (this._conf.bailout) {
-            throw createError('BailoutError', e.message);
-        }
+        this._handleCommandError(err);
     });
 });
 
@@ -695,12 +688,10 @@ Testrunner.prototype._compositeDirect = Promise.method(function (commands) {
         type: 'composite',
         commands: commands,
     })
-    .catch(e => {
-        this._tapWriter.notOk(`composite - ${e.message}`);
+    .catch(err => {
+        this._tapWriter.notOk(`composite - ${err.message}`);
 
-        if (this._conf.bailout) {
-            throw createError('BailoutError', e.message);
-        }
+        this._handleCommandError(err);
     });
 });
 
@@ -711,12 +702,10 @@ Testrunner.prototype._mouseoverDirect = Promise.method(function (selector) {
         type: 'mouseover',
         selector: selector,
     })
-    .catch(e => {
-        this._tapWriter.notOk(`mouseover - ${e.message}`);
+    .catch(err => {
+        this._tapWriter.notOk(`mouseover - ${err.message}`);
 
-        if (this._conf.bailout) {
-            throw createError('BailoutError', e.message);
-        }
+        this._handleCommandError(err);
     });
 });
 
@@ -735,7 +724,15 @@ Testrunner.prototype._comment = Promise.method(function (comment) {
     this._tapWriter.comment(comment);
 });
 
+Testrunner.prototype._handleCommandError = function (err) {
+    if (this._conf.partialBailout) {
+        throw createError(ERRORS.PARTIAL_BAILOUT, err);
+    }
 
+    if (this._conf.totalBailout) {
+        throw createError(ERRORS.TOTAL_BAILOUT, err);
+    }
+};
 
 // TODO remove sync codes
 Testrunner.prototype._assert = async function () {
