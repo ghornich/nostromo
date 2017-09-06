@@ -298,7 +298,7 @@ BrowserPuppetCommands.prototype.uploadFileAndAssign = function (fileData, destin
     lodashSet(window, destinationVariable, base64ToFile(fileData));
 };
 
-},{"../../../../modules/base64-to-file":1,"../../../../modules/promise-while":13,"bluebird":17,"lodash.set":23}],5:[function(require,module,exports){
+},{"../../../../modules/base64-to-file":1,"../../../../modules/promise-while":13,"bluebird":18,"lodash.set":24}],5:[function(require,module,exports){
 'use strict';
 
 var Promise = require('bluebird');
@@ -315,13 +315,12 @@ var objectAssign = require('object-assign');
 var BrowserPuppetCommands = require('./browser-puppet-commands.partial');
 var promiseWhile = require('../../../../modules/promise-while')(Promise);
 var Loggr = require('../../../../modules/loggr');
+var SelectorObserver=require('../../../../modules/selector-observer');
 
 // TODO option to transmit console?
 // TODO transmit uncaught exceptions
 // TODO throw error on incorrect argument types/values (e.g. string numbers)
 
-// TODO use MutationObserver if available, fallback to polling ?
-var AUTODETECT_INTERVAL_MS = 200;
 var INSERT_ASSERTION_DEBOUNCE = 500;
 
 var DEFAULT_SERVER_URL = 'ws://localhost:47225';
@@ -349,13 +348,7 @@ function BrowserPuppet(opts) {
 
     this._uniqueSelector = new UniqueSelector();
 
-    this._onSelectorBecameVisibleData = {
-        intervalId: null,
-        // Array<String>
-        selectors: [],
-        // Array<{previousState:Boolean}>
-        states: [],
-    };
+    this._selectorObserver = null;
 
     this._mouseoverSelector = null;
 
@@ -381,7 +374,6 @@ objectAssign(BrowserPuppet.prototype, BrowserPuppetCommands.prototype);
 BrowserPuppet.prototype.start = function () {
     this._startWs();
     this._attachCaptureEventListeners();
-    this._startOnSelectorBecameVisiblePolling();
 };
 
 BrowserPuppet.prototype._startWs = function () {
@@ -725,10 +717,21 @@ BrowserPuppet.prototype._sendInsertAssertionDebounced = debounce(function () {
 }, INSERT_ASSERTION_DEBOUNCE);
 
 BrowserPuppet.prototype.setOnSelectorBecameVisibleSelectors = function (selectors) {
-    this._onSelectorBecameVisibleData.selectors = deepCopy(selectors);
-    this._onSelectorBecameVisibleData.states = selectors.map(function () {
-        return { previousState: null };
+    var self = this;
+
+    if (self._selectorObserver !== null) {
+        self._selectorObserver.disconnect();
+        self._selectorObserver = null;
+    }
+
+    var observeList = selectors.map(function (selector) {
+        return {
+            selector: selector,
+            listener: self._sendMessage.bind(self, { type: MESSAGES.UPSTREAM.SELECTOR_BECAME_VISIBLE, selector: selector })
+        };
     });
+
+    this._selectorObserver = new SelectorObserver({ observeList: observeList });
 };
 
 BrowserPuppet.prototype.setTransmitEvents = function (value) {
@@ -736,29 +739,6 @@ BrowserPuppet.prototype.setTransmitEvents = function (value) {
         throw new Error('BrowserPuppet::setTransmitEvents: invalid type for value');
     }
     this._transmitEvents = value;
-};
-
-BrowserPuppet.prototype._startOnSelectorBecameVisiblePolling = function () {
-    this._onSelectorBecameVisibleData.intervalId =
-        setInterval(this._onSelectorBecameVisiblePoll.bind(this), AUTODETECT_INTERVAL_MS);
-};
-
-BrowserPuppet.prototype._onSelectorBecameVisiblePoll = function () {
-    var self = this;
-
-    self._onSelectorBecameVisibleData.selectors.forEach(function (selector, i) {
-        var state = self._onSelectorBecameVisibleData.states[i];
-
-        // TODO send warning in message if selector is ambiguous
-
-        var currentState = self.isSelectorVisible(selector);
-
-        if (state.previousState !== null && !state.previousState && currentState) {
-            self._sendMessage({ type: MESSAGES.UPSTREAM.SELECTOR_BECAME_VISIBLE, selector: selector });
-        }
-
-        state.previousState = currentState;
-    });
 };
 
 BrowserPuppet.prototype._onExecMessage = Promise.method(function (data) {
@@ -923,7 +903,7 @@ function assert(v, m) {
 
 
 
-},{"../../../../modules/get-unique-selector":8,"../../../../modules/jsonf":11,"../../../../modules/loggr":12,"../../../../modules/promise-while":13,"../../../../modules/ws4ever":14,"../messages":3,"../screenshot-marker":6,"./browser-puppet-commands.partial":4,"bluebird":17,"jquery":20,"lodash.debounce":21,"lodash.defaults":22,"object-assign":24}],6:[function(require,module,exports){
+},{"../../../../modules/get-unique-selector":8,"../../../../modules/jsonf":11,"../../../../modules/loggr":12,"../../../../modules/promise-while":13,"../../../../modules/selector-observer":14,"../../../../modules/ws4ever":15,"../messages":3,"../screenshot-marker":6,"./browser-puppet-commands.partial":4,"bluebird":18,"jquery":21,"lodash.debounce":22,"lodash.defaults":23,"object-assign":25}],6:[function(require,module,exports){
 (function (Buffer){
 exports.width = 4;
 exports.height = 4;
@@ -939,7 +919,7 @@ exports.base64 =
     'kYGD4zwAEM2++YgABJgYg+F+vzpC2zJYBBJhm3nzFAAPp6mIMTAxAMCvqMANj400GEAAAvQYMY6PVnIQAAAAASUVORK5CYII=';
 
 }).call(this,require("buffer").Buffer)
-},{"buffer":18}],7:[function(require,module,exports){
+},{"buffer":19}],7:[function(require,module,exports){
 'use strict';
 
 var DOMUtils = exports;
@@ -1019,7 +999,7 @@ UniqueSelector.prototype.getFullSelectorPath = function (node) {
     return this._getFullSelectorElementList(node).getSelectorPath();
 };
 
-},{"./dom-utils":7,"./selector-element":10,"./selector-element-list":9,"lodash.defaults":22}],9:[function(require,module,exports){
+},{"./dom-utils":7,"./selector-element":10,"./selector-element-list":9,"lodash.defaults":23}],9:[function(require,module,exports){
 'use strict';
 
 var defaults = require('lodash.defaults');
@@ -1140,7 +1120,7 @@ SelectorElementList.prototype.uniqueify = function () {
     }
 };
 
-},{"lodash.defaults":22}],10:[function(require,module,exports){
+},{"lodash.defaults":23}],10:[function(require,module,exports){
 'use strict';
 
 var DOMUtils = require('./dom-utils');
@@ -1482,7 +1462,7 @@ Loggr.getLevelChar = function (level) {
 };
 
 }).call(this,require('_process'))
-},{"_process":26,"os":25}],13:[function(require,module,exports){
+},{"_process":27,"os":26}],13:[function(require,module,exports){
 'use strict';
 
 var assert = require('assert');
@@ -1504,7 +1484,70 @@ exports = module.exports = function (promiseLib) {
     };
 };
 
-},{"assert":15}],14:[function(require,module,exports){
+},{"assert":16}],14:[function(require,module,exports){
+'use strict';
+
+var assert = require('assert');
+var $ = require('jquery'); $.noConflict();
+
+exports = module.exports = SelectorObserver;
+
+/**
+ * @param {Object} conf
+ * @param {String} conf.observeList
+ */
+function SelectorObserver(conf) {
+    assert(typeof conf === 'object', 'conf is not an object');
+    assert(__isArray(conf.observeList), 'conf.observeList is not an array');
+    // TODO observeList.selector's must be unique
+
+    this._conf = conf;
+
+    this._selectorPrevVisible = this._conf.observeList.map(function () {
+        return false;
+    })
+
+    if ('MutationObserver' in window) {
+        this._mutationObserver = new window.MutationObserver(this._onMutation.bind(this));
+        this._mutationObserver.observe(document.body, { childList: true, subtree: true, attributeFilter: ['style', 'class'] });
+    }
+    else {
+        // TODO implement polling?
+        throw new Error('MutationObserver not supported');
+    }
+}
+
+SelectorObserver.prototype._onMutation = function (/* mutationRecords */) {
+    var self = this;
+
+    self._conf.observeList.forEach(function (item, i) {
+        var prevIsVisible = self._selectorPrevVisible[i];
+        var isVisible = $(item.selector).is(':visible');
+        
+        console.log('[SelectorObserver] '+item.selector+(isVisible?' visible':' not visible'))
+
+        try {
+            if (!prevIsVisible && isVisible) {
+                item.listener();
+            }
+        }
+        catch (error) {
+            console.error(error);
+        }
+        
+        self._selectorPrevVisible[i] = isVisible;    
+    });
+};
+
+SelectorObserver.prototype.disconnect = function () {
+    this._mutationObserver.disconnect();
+}
+
+function __isArray(val){
+    return Object.prototype.toString.call(val) === '[object Array]';
+}
+
+},{"assert":16,"jquery":21}],15:[function(require,module,exports){
 
 if (isNode()) {
     module.exports = Ws4ever;
@@ -1623,7 +1666,7 @@ function isNode() {
 
 
 
-},{}],15:[function(require,module,exports){
+},{}],16:[function(require,module,exports){
 (function (global){
 'use strict';
 
@@ -2117,7 +2160,7 @@ var objectKeys = Object.keys || function (obj) {
 };
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"util/":29}],16:[function(require,module,exports){
+},{"util/":30}],17:[function(require,module,exports){
 'use strict'
 
 exports.byteLength = byteLength
@@ -2233,7 +2276,7 @@ function fromByteArray (uint8) {
   return parts.join('')
 }
 
-},{}],17:[function(require,module,exports){
+},{}],18:[function(require,module,exports){
 (function (process,global){
 /* @preserve
  * The MIT License (MIT)
@@ -7855,7 +7898,7 @@ module.exports = ret;
 },{"./es5":13}]},{},[4])(4)
 });                    ;if (typeof window !== 'undefined' && window !== null) {                               window.P = window.Promise;                                                     } else if (typeof self !== 'undefined' && self !== null) {                             self.P = self.Promise;                                                         }
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"_process":26}],18:[function(require,module,exports){
+},{"_process":27}],19:[function(require,module,exports){
 /*!
  * The buffer module from node.js, for the browser.
  *
@@ -9571,7 +9614,7 @@ function numberIsNaN (obj) {
   return obj !== obj // eslint-disable-line no-self-compare
 }
 
-},{"base64-js":16,"ieee754":19}],19:[function(require,module,exports){
+},{"base64-js":17,"ieee754":20}],20:[function(require,module,exports){
 exports.read = function (buffer, offset, isLE, mLen, nBytes) {
   var e, m
   var eLen = nBytes * 8 - mLen - 1
@@ -9657,7 +9700,7 @@ exports.write = function (buffer, value, offset, isLE, mLen, nBytes) {
   buffer[offset + i - d] |= s * 128
 }
 
-},{}],20:[function(require,module,exports){
+},{}],21:[function(require,module,exports){
 /*!
  * jQuery JavaScript Library v3.2.1
  * https://jquery.com/
@@ -19912,7 +19955,7 @@ if ( !noGlobal ) {
 return jQuery;
 } );
 
-},{}],21:[function(require,module,exports){
+},{}],22:[function(require,module,exports){
 (function (global){
 /**
  * lodash (Custom Build) <https://lodash.com/>
@@ -20293,7 +20336,7 @@ function toNumber(value) {
 module.exports = debounce;
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],22:[function(require,module,exports){
+},{}],23:[function(require,module,exports){
 /**
  * lodash (Custom Build) <https://lodash.com/>
  * Build: `lodash modularize exports="npm" -o ./`
@@ -20963,7 +21006,7 @@ function keysIn(object) {
 
 module.exports = defaults;
 
-},{}],23:[function(require,module,exports){
+},{}],24:[function(require,module,exports){
 (function (global){
 /**
  * lodash (Custom Build) <https://lodash.com/>
@@ -21957,7 +22000,7 @@ function set(object, path, value) {
 module.exports = set;
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],24:[function(require,module,exports){
+},{}],25:[function(require,module,exports){
 /*
 object-assign
 (c) Sindre Sorhus
@@ -22049,7 +22092,7 @@ module.exports = shouldUseNative() ? Object.assign : function (target, source) {
 	return to;
 };
 
-},{}],25:[function(require,module,exports){
+},{}],26:[function(require,module,exports){
 exports.endianness = function () { return 'LE' };
 
 exports.hostname = function () {
@@ -22096,7 +22139,7 @@ exports.tmpdir = exports.tmpDir = function () {
 
 exports.EOL = '\n';
 
-},{}],26:[function(require,module,exports){
+},{}],27:[function(require,module,exports){
 // shim for using process in browser
 var process = module.exports = {};
 
@@ -22282,7 +22325,7 @@ process.chdir = function (dir) {
 };
 process.umask = function() { return 0; };
 
-},{}],27:[function(require,module,exports){
+},{}],28:[function(require,module,exports){
 if (typeof Object.create === 'function') {
   // implementation from standard node.js 'util' module
   module.exports = function inherits(ctor, superCtor) {
@@ -22307,14 +22350,14 @@ if (typeof Object.create === 'function') {
   }
 }
 
-},{}],28:[function(require,module,exports){
+},{}],29:[function(require,module,exports){
 module.exports = function isBuffer(arg) {
   return arg && typeof arg === 'object'
     && typeof arg.copy === 'function'
     && typeof arg.fill === 'function'
     && typeof arg.readUInt8 === 'function';
 }
-},{}],29:[function(require,module,exports){
+},{}],30:[function(require,module,exports){
 (function (process,global){
 // Copyright Joyent, Inc. and other Node contributors.
 //
@@ -22904,4 +22947,4 @@ function hasOwnProperty(obj, prop) {
 }
 
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./support/isBuffer":28,"_process":26,"inherits":27}]},{},[2]);
+},{"./support/isBuffer":29,"_process":27,"inherits":28}]},{},[2]);
