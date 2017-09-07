@@ -5,5 +5,5 @@ generate docs from docblock
 create referenceErrors folder on-demand
 separate per-test and per-run bailout
 testrunner: keepalive flag: stop execution and browser on first error (exit/continue on request)
-
+testrunner: handle ctrl+c gracefully (exit browser, stop servers, etc)
 
