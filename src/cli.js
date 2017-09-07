@@ -70,22 +70,28 @@ const DEFAULT_DIFF_CFG_FILE = 'nostromo.diff.conf.js';
 
     }
     else if (args.run) {
-        const configPath = args.config || args.c || DEFAULT_RUN_CFG_FILE;
-        const configFn = require(pathlib.resolve(configPath));
-        const baseConf = configFn({
-            browsers: BrowserSpawners,
-            LOG_LEVELS: Loggr.LEVELS,
-        });
+        try {
 
-        const conf = defaults({}, baseConf, {
+            const configPath = args.config || args.c || DEFAULT_RUN_CFG_FILE;
+            const configFn = require(pathlib.resolve(configPath));
+            const baseConf = configFn({
+                browsers: BrowserSpawners,
+                LOG_LEVELS: Loggr.LEVELS,
+            });
 
-        });
+            const conf = defaults({}, baseConf, {
 
-        const Testrunner = require('./testrunner/testrunner');
+            });
 
-        const tr = new Testrunner(baseConf);
+            const Testrunner = require('./testrunner/testrunner');
 
-        tr.run();
+            const tr = new Testrunner(baseConf);
+
+            tr.run();
+        }
+        catch (err) {
+            console.error(err);
+        }
     }
     else {
         console.log('Missing task type (run, diff, rec)');
