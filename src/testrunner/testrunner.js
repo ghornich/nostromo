@@ -27,17 +27,17 @@ const rimrafAsync = Promise.promisify(require('rimraf'));
 const CONF_SCHEMA = {
     type: 'object',
     properties: {
-        appUrl: {
-            type: ['string', 'object'],
-            // pattern: /^(http:\/\/|file:\/\/\/?)[^ ]+$/,
-        },
+        // appUrl: {
+        //     type: ['string', 'object'],
+        //     // pattern: /^(http:\/\/|file:\/\/\/?)[^ ]+$/,
+        // },
         testPort: {
             type: 'number',
             optional: true,
         },
-        testFiles: {
-            type: ['string', 'array'],
-        },
+        // testFiles: {
+        //     type: ['string', 'array'],
+        // },
         browsers: {
             type: ['function', 'array'],
         },
@@ -60,6 +60,8 @@ const DEFAULT_TEST_NAME = '(Unnamed test)';
 
 const ELLIPSIS_LIMIT = 60;
 
+const DEFAULT_SUITE_NAME='(Unnamed suite)'
+
 // TODO customizable dir for different screen resolution tests
 const REF_SCREENSHOT_BASE_DIR = 'referenceScreenshots';
 const ERRORS_SCREENSHOT_BASE_DIR = 'referenceErrors';
@@ -67,8 +69,8 @@ const ERRORS_SCREENSHOT_BASE_DIR = 'referenceErrors';
 const ERRORS = {
     TIMEOUT: 0,
     NOT_EQUAL: 1,
-    PARTIAL_BAILOUT: 2,
-    TOTAL_BAILOUT: 3,
+    TEST_BAILOUT: 2,
+    BAILOUT: 3,
 };
 
 const PPM = 1 / 1000000;
@@ -85,16 +87,22 @@ function Testrunner(conf) {
         testPort: DEFAULT_TEST_PORT,
         waitForConnectionTimeout: 5000,
         logLevel: Loggr.LEVELS.ALL,
-        partialBailout: true,
-        totalBailout: false,
+
+        testBailout: true,
+        bailout: false,
+
         keepalive: false,
         referenceScreenshotDir: REF_SCREENSHOT_BASE_DIR,
+
         beforeTest: null,
         afterTest: null,
+
         globalBeforeTest:null,
         globalAfterTest:null,
+
+        suites:[],
+
         outStream: process.stdout,
-        context: {},
     };
 
     this._conf = Object.assign(defaultConf, conf);
@@ -124,7 +132,7 @@ function Testrunner(conf) {
         outStream: this._conf.outStream,
     });
 
-    this._inTotalBailout = false; //X
+    this._inBailout = false;
 
     // -------------------
 
@@ -214,23 +222,18 @@ Testrunner.prototype.setConfig = function (conf) {
 };
 
 Testrunner.prototype.run = async function () {
-    process.exitCode = 0;
+    const conf = this._conf;
+
+    if (conf.suites.length===0){
+        throw new Error('No test suites specified')
+    }
 
     this._runStartTime = Date.now();
 
     this._log.debug('running...');
-    this._log.trace('input test files: ', this._conf.testFiles.join(', '));
+    this._log.trace('input test files: ', conf.testFiles.join(', '));
 
-    let testFilePaths = [];
-
-    return multiGlobAsync(this._conf.testFiles)
-    .then((paths) => {
-        if (paths.length === 0) {
-            throw new Error('No testfiles found');
-        }
-
-        testFilePaths = paths;
-    })
+    return Promise.resolve()
 
     .then(() => rimrafAsync(ERRORS_SCREENSHOT_BASE_DIR))
 
@@ -240,30 +243,82 @@ Testrunner.prototype.run = async function () {
         this._tapWriter.version();
 
         try {
-            for (const browser of this._conf.browsers) {
+            for (const browser of conf.browsers) {
+                this._currentBrowserName = browser.name;
+
+                this._tapWriter.comment(`Starting browser: ${browser.name}`);
+
+                await browser.start();
+
+
+
                 try {
-                    this._currentBrowserName = browser.name;
+                
+                    for (const suite of conf.suites) {
+                        this._tapWriter.comment(`starting suite: ${suite.name||DEFAULT_SUITE_NAME}`)
 
-                    this._tapWriter.comment(`Starting browser ${browser.name}`);
+                        const beforeSuite = conf.defaultBeforeSuite || suite.beforeSuite
 
-                    await browser.start();
+                        if (beforeSuite) {
+                            this._log.debug('running beforeSuite')
+                            await beforeSuite()
+                            this._log.debug('completed beforeSuite')
+                        }
 
-                    for (const [pathIdx, testFilePath] of testFilePaths.entries()) {
-                        this._assertCount = 0;
 
-                        const isLastTestfile = pathIdx === testFilePaths.length - 1;
 
-                        await this._runTestFile(testFilePath, {
-                            browser,
-                            isLastTestfile,
-                        });
+                        const testFilePaths = await multiGlobAsync(suite.testFiles)
+
+                        if (testFilePaths.length === 0) {
+                            throw new Error('No testfiles found');
+                        }
+
+
+                        let maybeTestError = null
+
+                        try {
+
+                            for (const [pathIdx, testFilePath] of testFilePaths.entries()) {
+                                this._assertCount = 0;
+
+                                const isLastTestfile = pathIdx === testFilePaths.length - 1;
+
+                                await this._runTestFile(testFilePath, {
+                                    browser,
+                                    isLastTestfile,
+                                    suite,
+                                });
+                            }
+
+                        }
+                        catch (err) {
+                            maybeTestError=err
+                        }
+
+
+                        const afterSuite = conf.defaultAfterSuite || suite.afterSuite
+
+                        if (afterSuite) {
+                            this._log.debug('running afterSuite')
+                            await afterSuite()
+                            this._log.debug('completed afterSuite')
+                        }
+
+
+                        if (maybeTestError) {
+                            throw maybeTestError
+                        }
+
                     }
+
+
+
                 }
                 catch (err) {
                     process.exitCode = 1;
 
-                    if (err.type === ERRORS.TOTAL_BAILOUT) {
-                        this._inTotalBailout = true;
+                    if (err.type === ERRORS.BAILOUT) {
+                        this._inBailout = true;
                         this._tapWriter.bailout(err.message);
                         throw err;
                     }
@@ -279,13 +334,17 @@ Testrunner.prototype.run = async function () {
 
                     await browser.stop();
                 }
+
+
+
             }
         }
         catch (err) {
+            process.exitCode = 1;
             this._log.fatal(err.stack || err.toString());
         }
         finally {
-            if (!this._inTotalBailout) {
+            if (!this._inBailout) {
                 this._tapWriter.plan();
                 this._tapWriter.diagnostic(`tests ${this._tapWriter.testCount}`);
                 this._tapWriter.diagnostic(`pass ${this._tapWriter.passCount}`);
@@ -298,31 +357,9 @@ Testrunner.prototype.run = async function () {
         }
     })
     .catch(error => {
+        process.exitCode = 1;
         this._log.info(`ERROR: ${error.toString()}`);
     });
-};
-
-Testrunner.prototype._getCurrentAppUrl = function (testAppUrl) {
-    const confAppUrl = this._conf.appUrl;
-
-    if (typeof testAppUrl === 'string') {
-        return testAppUrl;
-    }
-
-    if (typeof confAppUrl === 'string') {
-        return confAppUrl;
-    }
-
-    if (typeof confAppUrl === 'object' && typeof testAppUrl === 'object') {
-        const mergedUrl = Object.assign({}, confAppUrl, testAppUrl);
-        return urllib.format(mergedUrl);
-    }
-
-    if (typeof confAppUrl === 'object' && testAppUrl === undefined) {
-        return urllib.format(confAppUrl);
-    }
-
-    throw new Error('Config error: cannot resolve appUrl, mismatched conf and test appUrl types');
 };
 
 Testrunner.prototype._startServers = Promise.method(function () {
@@ -346,10 +383,12 @@ Testrunner.prototype._stopServers = function () {
 };
 
 Testrunner.prototype._runTestFile = async function (testFilePath, data) {
+    const conf=this._conf
     this._log.trace('_runTestFile');
 
     const isLastTestfile = data.isLastTestfile;
     const browser = data.browser;
+    const suite=data.suite
 
     this._currentTestfilePath = testFilePath;
     const absPath = pathlib.resolve(testFilePath);
@@ -376,47 +415,37 @@ Testrunner.prototype._runTestFile = async function (testFilePath, data) {
 
     testFileFn(testRegistrar);
 
-    this._currentBeforeCommand = testRegistrar.beforeCommand || this._conf.beforeCommand || noop;
-    this._currentAfterCommand = testRegistrar.afterCommand || this._conf.afterCommand || noop;
+    this._currentBeforeCommand = suite.beforeCommand || conf.defaultBeforeCommand || noop;
+    this._currentAfterCommand = suite.afterCommand || conf.defaultAfterCommand || noop;
 
-    const currentBeforeTest = testRegistrar.beforeTest || this._conf.beforeTest;
-    const currentAfterTest = testRegistrar.afterTest || this._conf.afterTest;
-
-    const currentAppUrl = this._getCurrentAppUrl(testRegistrar.appUrl);
-
-    // TODO most config params should be overridable in testfiles
+    const currentBeforeTest = suite.beforeTest || conf.defaultBeforeTest;
+    const currentAfterTest = suite.afterTest || conf.defaultAfterTest;
 
 
     for (const [testIndex, testData] of testDatas.entries()) {
-        this._log.debug(`Running test: ${testData.name}`);
+        this._log.debug(`running test: ${testData.name}`);
 
         this._tapWriter.diagnostic(testData.name);
 
-        if (this._conf.globalBeforeTest) {
-            this._log.debug('Running globalBeforeTest');
-            await this._conf.globalBeforeTest(this.directAPI);
-            this._log.debug('Completed globalBeforeTest');
-        }
-
         if (currentBeforeTest) {
-            this._log.debug('Running beforeTest');
-            await currentBeforeTest(this.directAPI, this._conf.context);
-            this._log.debug('Completed beforeTest');
+            this._log.debug('running beforeTest');
+            await currentBeforeTest(this.directAPI);
+            this._log.debug('completed beforeTest');
         }
 
-        browser.open(currentAppUrl);
+        browser.open(suite.appUrl);
 
         await this._waitUntilBrowserReady();
-
-        const maybeTestPromise = testData.testFn(this.tAPI);
-
-        if (typeof maybeTestPromise !== 'object' || typeof maybeTestPromise.then !== 'function') {
-            throw new Error(`test function didn't return a promise (name: ${testData.name})`);
-        }
 
         let maybeTestError = null
 
         try {
+            const maybeTestPromise = testData.testFn(this.tAPI);
+
+            if (typeof maybeTestPromise !== 'object' || typeof maybeTestPromise.then !== 'function') {
+                throw new Error(`test function didn't return a promise (name: ${testData.name})`);
+            }
+
             await maybeTestPromise;
         }
         catch (err) {
@@ -430,24 +459,20 @@ Testrunner.prototype._runTestFile = async function (testFilePath, data) {
         // }
 
         if (currentAfterTest) {
-            this._log.debug('Running afterTest');
-            await currentAfterTest(this.directAPI, this._conf.context);
-            this._log.debug('Completed afterTest');
+            this._log.debug('running afterTest');
+            await currentAfterTest(this.directAPI);
+            this._log.debug('completed afterTest');
         }
 
-        if (this._conf.globalAfterTest) {
-            this._log.debug('Running globalAfterTest');
-            await this._conf.globalAfterTest(this.directAPI);
-            this._log.debug('Completed globalAfterTest');
-        }
-
-        if (maybeTestError.type === ERRORS.PARTIAL_BAILOUT) {
-            // ignore error
-            this._log.warn(`partial bailout: halting test "${testData.name}" due to error`);
-            this._log.warn(maybeTestError.stack || maybeTestError.toString());
-        }
-        else {
-            throw maybeTestError;
+        if (maybeTestError) {
+            if (maybeTestError.type === ERRORS.TEST_BAILOUT) {
+                // ignore error
+                this._log.warn(`test bailout: halting test "${testData.name}" due to error`);
+                this._log.warn(maybeTestError.stack || maybeTestError.toString());
+            }
+            else {
+                throw maybeTestError;
+            }
         }
     }
 };
@@ -725,12 +750,12 @@ Testrunner.prototype._comment = Promise.method(function (comment) {
 });
 
 Testrunner.prototype._handleCommandError = function (err) {
-    if (this._conf.partialBailout) {
-        throw createError(ERRORS.PARTIAL_BAILOUT, err);
+    if (this._conf.testBailout) {
+        throw createError(ERRORS.TEST_BAILOUT, err);
     }
 
-    if (this._conf.totalBailout) {
-        throw createError(ERRORS.TOTAL_BAILOUT, err);
+    if (this._conf.bailout) {
+        throw createError(ERRORS.BAILOUT, err);
     }
 };
 
