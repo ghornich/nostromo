@@ -11,8 +11,6 @@ const WS = require('ws');
 const Loggr = require(MODULES_PATH + 'loggr');
 const MESSAGES = require('../messages');
 
-// TODO transparent settings for puppet? (same function interface here & there)
-
 exports = module.exports = BrowserPuppeteer;
 
 /**
@@ -22,6 +20,7 @@ exports = module.exports = BrowserPuppeteer;
  */
 
 /**
+ * @class
  * @param {BrowserPuppeteerConfig} [config]
  */
 function BrowserPuppeteer(config) {
@@ -92,11 +91,12 @@ BrowserPuppeteer.prototype.waitForPuppet = Promise.method(function () {
                 res();
             }
             else {
-                this._log.trace(`waiting for puppet...${
-                    this._wsConn
-                        ? `readyState: ${this._wsConn.readyState}`
-                        : 'no wsConn'}`
-                );
+                const state = this._wsConn
+                    ? `readyState: ${this._wsConn.readyState}`
+                    : 'no wsConn';
+
+                this._log.trace(`waiting for puppet... ${state}`);
+
                 // TODO no magic numbers
                 setTimeout(checker, 1000);
             }
@@ -252,7 +252,6 @@ BrowserPuppeteer.prototype.showScreenshotMarker = function () {
     return this.sendMessage({ type: MESSAGES.DOWNSTREAM.SHOW_SCREENSHOT_MARKER });
 };
 
-// TODO promise, resolve when closed
-BrowserPuppeteer.prototype.stop = function () {
-    this._httpServer.close();
+BrowserPuppeteer.prototype.stop = async function () {
+    return new Promise(resolve=>this._httpServer.close(resolve));
 };

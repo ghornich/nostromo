@@ -1,3 +1,5 @@
+'use strict';
+
 exports.UPSTREAM = {
     // { type, selector, [warning] }
     SELECTOR_BECAME_VISIBLE: 'selector-became-visible',
@@ -16,7 +18,7 @@ exports.UPSTREAM = {
 };
 
 exports.DOWNSTREAM = {
-    // { type, execId, command: { type, ... } }
+    // { type, command: { type, ... } }
     EXEC_COMMAND: 'exec-command',
 
     // { type, ??? }

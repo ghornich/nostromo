@@ -14,11 +14,7 @@ var objectAssign = require('object-assign');
 var BrowserPuppetCommands = require('./browser-puppet-commands.partial');
 var promiseWhile = require('../../../../modules/promise-while')(Promise);
 var Loggr = require('../../../../modules/loggr');
-var SelectorObserver=require('../../../../modules/selector-observer');
-
-// TODO option to transmit console?
-// TODO transmit uncaught exceptions
-// TODO throw error on incorrect argument types/values (e.g. string numbers)
+var SelectorObserver = require('../../../../modules/selector-observer');
 
 var INSERT_ASSERTION_DEBOUNCE = 500;
 
@@ -27,6 +23,7 @@ var DEFAULT_SERVER_URL = 'ws://localhost:47225';
 exports = module.exports = BrowserPuppet;
 
 /**
+ * @class
  * @param {Object} [opts]
  * @param {String} [opts.serverUrl=DEFAULT_SERVER_URL] - BrowserPuppeteer websocket server URL
  */
