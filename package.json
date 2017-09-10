@@ -16,7 +16,8 @@
     "test": "tape test/**/*.test.js modules/**/*.test.js",
     "autotest": "npm run autotest:get-unique-selector",
     "autotest:get-unique-selector": "cd modules/get-unique-selector && npm run autotest",
-    "prepush": "npm test"
+    "prepush": "npm test",
+    "build-browser-puppet-docs": "node build/build-browser-puppet-docs.js"
   },
   "author": "ghornich",
   "dependencies": {
@@ -48,6 +49,7 @@
     "eslint-config-ghornich": "github:ghornich/eslint-config-ghornich",
     "eslint-config-ghornich-es5": "github:ghornich/eslint-config-ghornich-es5",
     "husky": "^0.14.3",
+    "jsdoc": "^3.5.4",
     "tape": "^4.7.0",
     "watchmen": "github:ghornich/watchmen"
   }
