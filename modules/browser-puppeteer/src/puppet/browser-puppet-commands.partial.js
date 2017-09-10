@@ -15,6 +15,17 @@ var DEFAULT_UPLOAD_FILE_MIME = 'application/octet-stream';
 exports = module.exports = BrowserPuppetCommands;
 
 /**
+ * @memberOf BrowserPuppetCommands
+ * @typedef {Object} Command
+ */
+
+/**
+ * @typedef {Command} CompositeCommand
+ * @property {String} type - 'composite'
+ * @property {Array<Command>} commands
+ */
+
+/**
  * @class
  * @abstract
  */
@@ -23,48 +34,65 @@ function BrowserPuppetCommands() {
 }
 
 /**
- * @param {String} selector
- * @param {Number} scrollTop
+ * @typedef {Command} ScrollCommand
+ * @property {String} type - 'scroll'
+ * @property {String} selector
+ * @property {Number} scrollTop
+ */
+
+/**
+ * @param {ScrollCommand} cmd
  * @throws {Error}
  */
-BrowserPuppetCommands.prototype.scroll = function (selector, scrollTop) {
-    var $el = this.$(selector);
+BrowserPuppetCommands.prototype.scroll = function (cmd) {
+    var $el = this.$(cmd.selector);
     _assert$el($el, 'scroll');
-    $el[0].scrollTop = scrollTop;
+    $el[0].scrollTop = cmd.scrollTop;
 };
 
 /**
- * @param {String} selector
+ * @typedef {Command} MouseoverCommand
+ * @property {String} type - 'mouseover'
+ * @property {String} selector
+ */
+
+/**
+ * @param {MouseoverCommand} cmd
  * @throws {Error}
  */
-BrowserPuppetCommands.prototype.mouseover = function (selector) {
-    var $el = this.$(selector);
+BrowserPuppetCommands.prototype.mouseover = function (cmd) {
+    var $el = this.$(cmd.selector);
     _assert$el($el, 'mouseover');
     $el.trigger('mouseover');
 };
 
 /**
+ * @typedef {Command} WaitForVisibleCommand
+ * @property {String} type - 'waitForVisible'
+ * @property {String} selector
+ * @property {Number} [pollInterval = 500]
+ * @property {Number} [timeout = 10000]
+ */
+
+/**
  * Waits for selector to become visible
  *
- * @param {String} selector
- * @param {Object} [options]
- * @param {Number} [options.pollInterval = 500]
- * @param {Number} [options.timeout = 10000]
+ * @param {WaitForVisibleCommand} cmd
  * @return {Promise}
  */
-BrowserPuppetCommands.prototype.waitForVisible = function (selector, options) {
+BrowserPuppetCommands.prototype.waitForVisible = function (cmd) {
     var self = this;
 
     return Promise.try(function () {
-        var pollInterval =  _defaultNum(options && options.pollInterval, 500);
-        var timeout = _defaultNum(options && options.timeout, 10000);
+        var pollInterval =  _defaultNum(cmd.pollInterval, 500);
+        var timeout = _defaultNum(cmd.timeout, 10000);
 
         var isTimedOut = false;
 
         self._log.debug('waitForVisible: starting');
 
-        if (self.isSelectorVisible(selector)) {
-            self._log.debug('waitForVisible: selector wasn\'t visible: ' + selector);
+        if (self.isSelectorVisible(cmd.selector)) {
+            self._log.debug('waitForVisible: selector wasn\'t visible: ' + cmd.selector);
             return;
         }
 
@@ -74,13 +102,13 @@ BrowserPuppetCommands.prototype.waitForVisible = function (selector, options) {
 
         return promiseWhile(
             function () {
-                var result = self.isSelectorVisible(selector);
-                self._log.debug('waitForVisible: visibility: ' + selector + ', ' + result);
+                var result = self.isSelectorVisible(cmd.selector);
+                self._log.debug('waitForVisible: visibility: ' + cmd.selector + ', ' + result);
                 return !result;
             },
             function () {
                 if (isTimedOut) {
-                        var msg = 'waitForVisible: timed out (time: ' + timeout + 'ms, selector: "' + selector + '")';
+                        var msg = 'waitForVisible: timed out (time: ' + timeout + 'ms, selector: "' + cmd.selector + '")';
                         self._log.error(msg);
                         throw new Error(msg);
                 }
@@ -93,22 +121,27 @@ BrowserPuppetCommands.prototype.waitForVisible = function (selector, options) {
 };
 
 /**
+ * @typedef {Command} WaitWhileVisibleCommand
+ * @property {String} type - 'waitWhileVisible'
+ * @property {String} selector
+ * @property {Number} [pollInterval = 500]
+ * @property {Number} [initialDelay = 500]
+ * @property {Number} [timeout = 10000]
+ */
+
+/**
  * Waits until selector is visible
  * 
- * @param {String} selector
- * @param {Object} [options]
- * @param {Number} [options.pollInterval = 500]
- * @param {Number} [options.initialDelay = 500]
- * @param {Number} [options.timeout = 10000]
+ * @param {WaitWhileVisibleCommand} cmd
  * @return {Promise}
  */
-BrowserPuppetCommands.prototype.waitWhileVisible = function (selector, options) {
+BrowserPuppetCommands.prototype.waitWhileVisible = function (cmd) {
     var self = this;
 
     return Promise.try(function () {
-        var pollInterval = _defaultNum(options && options.pollInterval, 500);
-        var initialDelay = _defaultNum(options && options.initialDelay, 500);
-        var timeout = _defaultNum(options && options.timeout, 10000);
+        var pollInterval = _defaultNum(cmd.pollInterval, 500);
+        var initialDelay = _defaultNum(cmd.initialDelay, 500);
+        var timeout = _defaultNum(cmd.timeout, 10000);
 
         var isTimedOut = false;
 
@@ -116,8 +149,8 @@ BrowserPuppetCommands.prototype.waitWhileVisible = function (selector, options) 
 
         return Promise.delay(initialDelay)
         .then(function () {
-            if (!self.isSelectorVisible(selector)) {
-                self._log.debug('waitWhileVisible: selector wasnt visible: ' + selector);
+            if (!self.isSelectorVisible(cmd.selector)) {
+                self._log.debug('waitWhileVisible: selector wasnt visible: ' + cmd.selector);
                 return;
             }
 
@@ -127,13 +160,13 @@ BrowserPuppetCommands.prototype.waitWhileVisible = function (selector, options) 
 
             return promiseWhile(
                 function () {
-                    var result = self.isSelectorVisible(selector);
-                    self._log.debug('waitWhileVisible: visibility: ' + selector + ', ' + result);
+                    var result = self.isSelectorVisible(cmd.selector);
+                    self._log.debug('waitWhileVisible: visibility: ' + cmd.selector + ', ' + result);
                     return result;
                 },
                 function () {
                     if (isTimedOut) {
-                        var msg = 'waitWhileVisible: timed out (time: ' + timeout + 'ms, selector: "' + selector + '")';
+                        var msg = 'waitWhileVisible: timed out (time: ' + timeout + 'ms, selector: "' + cmd.selector + '")';
                         self._log.error(msg);
                         throw new Error(msg);
                     }
@@ -147,11 +180,17 @@ BrowserPuppetCommands.prototype.waitWhileVisible = function (selector, options) 
 };
 
 /**
- * @param {String} selector
+ * @typedef {Command} ClickCommand
+ * @property {String} type - 'click'
+ * @property {String} selector
+ */
+
+/**
+ * @param {ClickCommand} cmd
  * @throws {Error}
  */
-BrowserPuppetCommands.prototype.click = function (selector) {
-    var $el = this.$(selector);
+BrowserPuppetCommands.prototype.click = function (cmd) {
+    var $el = this.$(cmd.selector);
     _assert$el($el, 'click');
     // else {
         // var el = $el[0];
@@ -175,13 +214,19 @@ BrowserPuppetCommands.prototype.click = function (selector) {
 // TODO which event to use? keyup, keydown, keypress?
 
 /**
- * @param {String} selector
- * @param {Number} keyCode
+ * @typedef {Command} PressKeyCommand
+ * @property {String} type - 'pressKey'
+ * @property {String} selector
+ * @property {Number} keyCode
+ */
+
+/**
+ * @param {PressKeyCommand} cmd
  * @throws {Error}
  */
-BrowserPuppetCommands.prototype.pressKey = function (selector, keyCode) {
-    var $el = this.$(selector);
-    var keyCodeNum = Number(keyCode);
+BrowserPuppetCommands.prototype.pressKey = function (cmd) {
+    var $el = this.$(cmd.selector);
+    var keyCodeNum = Number(cmd.keyCode);
 
     assert(Number.isFinite(keyCodeNum), 'BrowserPuppetCommands::pressKey: keyCode is not a number');
     _assert$el($el, 'pressKey');
@@ -191,39 +236,60 @@ BrowserPuppetCommands.prototype.pressKey = function (selector, keyCode) {
 };
 
 /**
- * @param {String} selector
- * @param {String} value
+ * @typedef {Command} SetValueCommand
+ * @property {String} type - 'setValue'
+ * @property {String} selector
+ * @property {String} value
  */
-BrowserPuppetCommands.prototype.setValue = function (selector, value) {
-    var $el = this.$(selector);
+
+/**
+ * @param {SetValueCommand} cmd
+ * @throws {Error}
+ */
+BrowserPuppetCommands.prototype.setValue = function (cmd) {
+    var $el = this.$(cmd.selector);
     var el = $el[0];
     var tagName = el && el.tagName || '';
 
     _assert$el($el, 'setValue');
 
     if (tagName !== 'INPUT' && tagName !== 'TEXTAREA') {
-        throw new Error('Unable to set value of "' + selector + '": unsupported tag "' + tagName + '"');
+        throw new Error('Unable to set value of "' + cmd.selector + '": unsupported tag "' + tagName + '"');
     }
 
-    $el.val(value);
+    $el.val(cmd.value);
     $el.trigger('input');
 };
 
 /**
- * @param {String} selector
+ * @typedef {Command} FocusCommand
+ * @property {String} type - 'focus'
+ * @property {String} selector
  */
-BrowserPuppetCommands.prototype.focus = function (selector) {
-    var $el = this.$(selector);
+
+/**
+ * @param {FocusCommand} cmd
+ * @throws {Error}
+ */
+BrowserPuppetCommands.prototype.focus = function (cmd) {
+    var $el = this.$(cmd.selector);
     _assert$el($el, 'focus');
     $el[0].focus();
 };
 
 /**
- * @param {String} selector
- * @return {String|Boolean}
+ * @typedef {Command} GetValueCommand
+ * @property {String} type - 'getValue'
+ * @property {String} selector
  */
-BrowserPuppetCommands.prototype.getValue = function (selector) {
-    var $el = this.$(selector);
+
+/**
+ * @param {GetValueCommand} cmd
+ * @return {String|Boolean}
+ * @throws {Error}
+ */
+BrowserPuppetCommands.prototype.getValue = function (cmd) {
+    var $el = this.$(cmd.selector);
     var el = $el[0];
 
     _assert$el($el, 'getValue');
@@ -244,25 +310,39 @@ BrowserPuppetCommands.prototype.getValue = function (selector) {
 };
 
 /**
- * @param {String} selector
- * @return {Boolean}
+ * @typedef {Command} IsVisibleCommand
+ * @property {String} type - 'isVisible'
+ * @property {String} selector
  */
-BrowserPuppetCommands.prototype.isVisible = function (selector) {
-    return this.isSelectorVisible(selector);
+
+/**
+ * @param {IsVisibleCommand} cmd
+ * @return {Boolean}
+ * @throws {Error}
+ */
+BrowserPuppetCommands.prototype.isVisible = function (cmd) {
+    return this.isSelectorVisible(cmd.selector);
 };
+
+/**
+ * @typedef {Command} UploadFileAndAssignCommand
+ * @property {String} type - 'uploadFileAndAssign'
+ * @property {Object} fileData
+ * @property {String} fileData.base64 - base64 encoded file
+ * @property {String} fileData.name
+ * @property {String} [fileData.mime] - default: {@link DEFAULT_UPLOAD_FILE_MIME}
+ * @property {String} destinationVariable - e.g. `'app.files.someFile'` assigns a `File` instance to `window.app.files.someFile` 
+ */
 
 /**
  * Upload file and assign the generated File instance to a variable.
  *
- * @param {Object} fileData
- * @param {String} fileData.base64
- * @param {String} fileData.name
- * @param {String} [fileData.mime] - default: {@link DEFAULT_UPLOAD_FILE_MIME}
- * @param {String} destinationVariable
+ * @param {UploadFileAndAssignCommand} cmd
+ * @throws {Error}
  */
-BrowserPuppetCommands.prototype.uploadFileAndAssign = function (fileData, destinationVariable) {
-    fileData.mime = fileData.mime || DEFAULT_UPLOAD_FILE_MIME;
-    lodashSet(window, destinationVariable, base64ToFile(fileData));
+BrowserPuppetCommands.prototype.uploadFileAndAssign = function (cmd) {
+    cmd.fileData.mime = cmd.fileData.mime || DEFAULT_UPLOAD_FILE_MIME;
+    lodashSet(window, cmd.destinationVariable, base64ToFile(cmd.fileData));
 };
 
 function _assert$el($el, commandName) {

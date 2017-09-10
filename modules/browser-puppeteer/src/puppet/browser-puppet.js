@@ -24,6 +24,7 @@ exports = module.exports = BrowserPuppet;
 
 /**
  * @class
+ * @extends {BrowserPuppetCommands}
  * @param {Object} [opts]
  * @param {String} [opts.serverUrl=DEFAULT_SERVER_URL] - BrowserPuppeteer websocket server URL
  */
@@ -466,29 +467,20 @@ BrowserPuppet.prototype.execFunction = Promise.method(function (fn/* , args*/) {
 BrowserPuppet.prototype.execCommand = Promise.method(function (command) {
     switch (command.type) {
         case 'click':
-            return this.click(command.selector);
         case 'setValue':
-            return this.setValue(command.selector, command.value);
         case 'getValue':
-            return this.getValue(command.selector);
         case 'pressKey':
-            return this.pressKey(command.selector, command.keyCode);
         case 'waitForVisible':
-            return this.waitForVisible(command.selector);
         case 'waitWhileVisible':
-            return this.waitWhileVisible(command.selector);
         case 'focus':
-            return this.focus(command.selector);
         case 'isVisible':
-            return this.isVisible(command.selector);
         case 'scroll':
-            return this.scroll(command.selector, command.scrollTop);
+        case 'mouseover':
+        case 'uploadFileAndAssign':
+            return this[command.type](command);
+
         case 'composite':
             return this.execCompositeCommand(command.commands);
-        case 'mouseover':
-            return this.mouseover(command.selector);
-        case 'uploadFileAndAssign':
-            return this.uploadFileAndAssign(command.fileData, command.destinationVariable);
         default:
             throw new Error('Unknown command type: ' + command.type);
     }
