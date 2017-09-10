@@ -5,7 +5,6 @@ const filePath = resolve(__dirname, 'test.html');
 module.exports = function (config) {
     return {
         logLevel: config.LOG_LEVELS.INFO,
-        appUrl: `file://${filePath}`,
 
         browsers: [
             new config.browsers.Chrome({
@@ -19,6 +18,12 @@ module.exports = function (config) {
                 bounds: { size: { width: 800, height: 600 }, position: { x: 10, y: 10 } },
             }),
         ],
-        testFiles: ['test.js'],
+        suites: [
+            {
+                name: 'getUniqueSelector suite',
+                appUrl: `file://${filePath}`,
+                testFiles: ['test.js'],
+            }
+        ]
     };
 };
