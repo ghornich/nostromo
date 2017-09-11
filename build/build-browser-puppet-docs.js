@@ -101,9 +101,9 @@ function writeProps(item){
         ? writeln(`- __${item.name}__ - _${itemType}_`)
         : writeln(`- __${item.name}__`)
 
-    
+    writeln('')
     writeln('|Name|Type|Description|', 1)
-    writeln('|-|-|-|', 1)
+    writeln('|---|---|---|', 1)
 
     for (const prop of item.properties) {
         let type = prop.type && prop.type.names && prop.type.names[0] || ''
