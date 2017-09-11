@@ -14,8 +14,7 @@
     "watch-browser-puppet": "watchmen \"npm run build-browser-puppet\" modules/browser-puppeteer/src/puppet",
     "lint": "eslint **/*.js **/*.jsx",
     "test": "tape test/**/*.test.js modules/**/*.test.js",
-    "autotest": "npm run autotest:get-unique-selector",
-    "autotest:get-unique-selector": "cd modules/get-unique-selector && npm run autotest",
+    "autotest": "node src/cli.js --run -c test/nostromo.run.conf.js",
     "prepush": "npm test",
     "build-browser-puppet-docs": "node build/build-browser-puppet-docs.js"
   },

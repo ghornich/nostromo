@@ -3,7 +3,6 @@
   "main": "get-unique-selector.js",
   "version": "0.1.1",
   "scripts": {
-    "build": "..\\..\\node_modules\\.bin\\browserify build/get-unique-selector.build.js -o dist/get-unique-selector.dist.js",
-    "autotest": "cd autotest && node ..\\..\\..\\src\\cli.js --run"
+    "build": "..\\..\\node_modules\\.bin\\browserify build/get-unique-selector.build.js -o dist/get-unique-selector.dist.js"
   }
 }
