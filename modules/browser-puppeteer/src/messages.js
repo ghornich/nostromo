@@ -8,7 +8,6 @@
 
 /**
  * Upstream: from client (browser) to server
- * @extends {Contr}
  * @typedef {ControlMessage} UpstreamControlMessage
  */
 
