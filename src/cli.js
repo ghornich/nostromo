@@ -27,7 +27,9 @@ const DEFAULT_DIFF_CFG_FILE = 'nostromo.diff.conf.js';
 
         try {
             await fs.statAsync(configPath);
-            const configFn = require(pathlib.resolve(configPath));
+            const absConfigPath = pathlib.resolve(configPath);
+            process.chdir(pathlib.dirname(absConfigPath))
+            const configFn = require(absConfigPath);
 
             baseConf = configFn({
                 LOG_LEVELS: Loggr.LEVELS,
@@ -55,7 +57,9 @@ const DEFAULT_DIFF_CFG_FILE = 'nostromo.diff.conf.js';
     }
     else if (args.diff) {
         const configPath = args.config || args.c || DEFAULT_DIFF_CFG_FILE;
-        const configFn = require(pathlib.resolve(configPath));
+        const absConfigPath = pathlib.resolve(configPath);
+        process.chdir(pathlib.dirname(absConfigPath))
+        const configFn = require(pathlib.resolve(absConfigPath));
 
         const baseConf = configFn();
 
@@ -73,7 +77,9 @@ const DEFAULT_DIFF_CFG_FILE = 'nostromo.diff.conf.js';
         try {
 
             const configPath = args.config || args.c || DEFAULT_RUN_CFG_FILE;
-            const configFn = require(pathlib.resolve(configPath));
+            const absConfigPath = pathlib.resolve(configPath);
+            process.chdir(pathlib.dirname(absConfigPath))
+            const configFn = require(pathlib.resolve(absConfigPath));
             const baseConf = configFn({
                 browsers: BrowserSpawners,
                 LOG_LEVELS: Loggr.LEVELS,

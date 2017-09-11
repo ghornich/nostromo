@@ -147,11 +147,6 @@ function Testrunner(conf) {
 
     // -------------------
 
-    if (!__isArray(this._conf.testFiles)) {
-        this._conf.testFiles = [this._conf.testFiles];
-    }
-
-
     if (!__isArray(this._conf.browsers)) {
         this._conf.browsers = [this._conf.browsers];
     }
@@ -231,7 +226,6 @@ Testrunner.prototype.run = async function () {
     this._runStartTime = Date.now();
 
     this._log.debug('running...');
-    this._log.trace('input test files: ', conf.testFiles.join(', '));
 
     return Promise.resolve()
 
@@ -265,7 +259,7 @@ Testrunner.prototype.run = async function () {
                             this._log.debug('completed beforeSuite')
                         }
 
-
+                        this._log.trace('suite testFiles: ' + suite.testFiles.join(', '))
 
                         const testFilePaths = await multiGlobAsync(suite.testFiles)
 
