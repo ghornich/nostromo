@@ -46,7 +46,7 @@ function BrowserPuppetCommands() {
  */
 BrowserPuppetCommands.prototype.scroll = function (cmd) {
     var $el = this.$(cmd.selector);
-    _assert$el($el, 'scroll');
+    this._assert$el($el, 'scroll');
     $el[0].scrollTop = cmd.scrollTop;
 };
 
@@ -61,9 +61,13 @@ BrowserPuppetCommands.prototype.scroll = function (cmd) {
  * @throws {Error}
  */
 BrowserPuppetCommands.prototype.mouseover = function (cmd) {
+    this._log.trace('BrowserPuppetCommands::mouseover: ' + JSON.stringify(cmd));
+
     var $el = this.$(cmd.selector);
-    _assert$el($el, 'mouseover');
-    $el.trigger('mouseover');
+    this._assert$el($el, 'mouseover');
+
+    var mouseoverEvent = new Event('mouseover');
+    $el[0].dispatchEvent(mouseoverEvent);
 };
 
 /**
@@ -191,23 +195,10 @@ BrowserPuppetCommands.prototype.waitWhileVisible = function (cmd) {
  */
 BrowserPuppetCommands.prototype.click = function (cmd) {
     var $el = this.$(cmd.selector);
-    _assert$el($el, 'click');
-    // else {
-        // var el = $el[0];
+    this._assert$el($el, 'click');
 
-        // TODO detect inaccessible nodes !!!
-
-        // if (TestToolsBase.isNodeOccluded(el)) {
-        //     var occludingNode = TestToolsBase.getOccludingNode(el)
-        //     console.log('OCCLUSION DETECTED - selector: ' + selector + ', occluded by: ' + occludingNode.outerHTML.substr(0,50) + ' (...)')
-        //     throw new Error('Unable to click selector "'+selector+'": is occluded by other node(s)')
-        // }
-
-        // console.log('No occlusion detected for '+selector)
-
-        // $el.trigger('click');
-        $el[0].click();
-    // }
+    // TODO use dispatchEvent?
+    $el[0].click();
 };
 
 // TODO handle meta keys, arrow keys
@@ -229,10 +220,14 @@ BrowserPuppetCommands.prototype.pressKey = function (cmd) {
     var keyCodeNum = Number(cmd.keyCode);
 
     assert(Number.isFinite(keyCodeNum), 'BrowserPuppetCommands::pressKey: keyCode is not a number');
-    _assert$el($el, 'pressKey');
+    this._assert$el($el, 'pressKey');
 
-    // eslint-disable-next-line new-cap
-    $el.trigger(this.$.Event('keydown', { which: keyCodeNum, keyCode: keyCodeNum }));
+    var keydownEvent = new KeyboardEvent('keydown', {
+        which: keyCodeNum,
+        keyCode: keyCodeNum,
+        charCode: keyCodeNum,
+    });
+    $el[0].dispatchEvent(keydownEvent);
 };
 
 /**
@@ -251,14 +246,16 @@ BrowserPuppetCommands.prototype.setValue = function (cmd) {
     var el = $el[0];
     var tagName = el && el.tagName || '';
 
-    _assert$el($el, 'setValue');
+    this._assert$el($el, 'setValue');
 
     if (tagName !== 'INPUT' && tagName !== 'TEXTAREA') {
         throw new Error('Unable to set value of "' + cmd.selector + '": unsupported tag "' + tagName + '"');
     }
 
     $el.val(cmd.value);
-    $el.trigger('input');
+
+    var inputEvent = new Event('input');
+    el.dispatchEvent(inputEvent);
 };
 
 /**
@@ -273,7 +270,7 @@ BrowserPuppetCommands.prototype.setValue = function (cmd) {
  */
 BrowserPuppetCommands.prototype.focus = function (cmd) {
     var $el = this.$(cmd.selector);
-    _assert$el($el, 'focus');
+    this._assert$el($el, 'focus');
     $el[0].focus();
 };
 
@@ -292,7 +289,7 @@ BrowserPuppetCommands.prototype.getValue = function (cmd) {
     var $el = this.$(cmd.selector);
     var el = $el[0];
 
-    _assert$el($el, 'getValue');
+    this._assert$el($el, 'getValue');
 
     // TODO util fn to get node value
 
@@ -345,7 +342,7 @@ BrowserPuppetCommands.prototype.uploadFileAndAssign = function (cmd) {
     lodashSet(window, cmd.destinationVariable, base64ToFile(cmd.fileData));
 };
 
-function _assert$el($el, commandName) {
+BrowserPuppetCommands.prototype._assert$el = function ($el, commandName) {
     if ($el.length === 0) {
         throw new Error(commandName + ': selector not found: "' + $el.selector + '"');
     }
@@ -353,7 +350,11 @@ function _assert$el($el, commandName) {
     if ($el.length > 1) {
         throw new Error(commandName + ': selector not unique: "' + $el.selector + '"');
     }
-}
+
+    if (!this._isJQueryElementsVisible($el)) {
+        throw new Error(commandName + ': selector not visible: "' + $el.selector + '"')
+    }
+};
 
 function _defaultNum(value, def) {
     var numValue = Number(value);

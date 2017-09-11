@@ -163,6 +163,7 @@ function Testrunner(conf) {
         click: this._clickDirect.bind(this),
         waitForVisible: this._waitForVisibleDirect.bind(this),
         waitWhileVisible: this._waitWhileVisibleDirect.bind(this),
+        isVisible: this._isVisibleDirect.bind(this),
         focus: this._focusDirect.bind(this),
         scroll: this._scrollDirect.bind(this),
         delay: this._delay.bind(this),
@@ -326,6 +327,8 @@ Testrunner.prototype.run = async function () {
                         browser.open('');
                     }
 
+                    // await this._awaitUserEnter()
+
                     await browser.stop();
                 }
 
@@ -355,6 +358,17 @@ Testrunner.prototype.run = async function () {
         this._log.info(`ERROR: ${error.toString()}`);
     });
 };
+
+Testrunner.prototype._awaitUserEnter = async function () {
+    console.log('--- Testrunner paused. Press Enter to continue... ---')
+    process.stdin.resume();
+
+    return new Promise(resolve => {
+        process.stdin.once("data", function (data) {
+            resolve()
+        })
+    })
+}
 
 Testrunner.prototype._startServers = Promise.method(function () {
     const self = this;
@@ -447,10 +461,10 @@ Testrunner.prototype._runTestFile = async function (testFilePath, data) {
             maybeTestError = err;
         }
 
-        // if (testIndex < testDatas.length - 1) {
+        if (testIndex < testDatas.length - 1) {
             await this._browserPuppeteer.clearPersistentData();
             browser.open('');
-        // }
+        }
 
         if (currentAfterTest) {
             this._log.debug('running afterTest');
@@ -664,6 +678,18 @@ Testrunner.prototype._waitWhileVisibleDirect = Promise.method(function (selector
         this._handleCommandError(err);
     });
 });
+
+Testrunner.prototype._isVisibleDirect = async function (selector) {
+    return this._browserPuppeteer.execCommand({
+        type: 'isVisible',
+        selector: selector,
+    })
+    .catch(err => {
+        this._tapWriter.notOk(`isVisible - ${err.message}`);
+
+        this._handleCommandError(err);
+    });
+}
 
 Testrunner.prototype._focusDirect = Promise.method(function (selector, rawDescription) {
     this._log.info(`focus: ${selector}`);

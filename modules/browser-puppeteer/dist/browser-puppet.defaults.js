@@ -27,50 +27,159 @@ exports = module.exports = function (fileData) {
 }());
 
 },{"../src/puppet/browser-puppet.js":5}],3:[function(require,module,exports){
+'use strict';
+
+
+
+/**
+ * @typedef {Object} ControlMessage
+ */
+
+/**
+ * Upstream: from client (browser) to server
+ * @typedef {ControlMessage} UpstreamControlMessage
+ */
+
+/**
+ * Downstream: from server to client (browser)
+ * @typedef {ControlMessage} DownstreamControlMessage
+ */
+
+/**
+ * @typedef {UpstreamControlMessage} SelectorBecameVisibleMessage
+ * @property {String} type - 'selector-became-visible'
+ * @property {any} ...
+ */
+
+/**
+ * @typedef {UpstreamControlMessage} CapturedEventMessage
+ * @property {String} type - 'captured-event'
+ * @property {Object} event
+ * @property {String} event.type
+ * @property {Number} event.timestamp
+ * @property {String} [event.selector]
+ * @property {Object} [event.target]
+ */
+
+/**
+ * @typedef {UpstreamControlMessage} AckMessage
+ * @property {String} type - 'ack'
+ * @property {*} result
+ */
+
+/**
+ * @typedef {UpstreamControlMessage} NakMessage
+ * @property {String} type - 'nak'
+ * @property {Object} error
+ * @property {String} error.message
+ */
+
+/**
+ * @typedef {UpstreamControlMessage} InsertAssertionMessage
+ * @property {String} type - 'insert-assertion'
+ */
+
+/**
+ * @typedef {DownstreamControlMessage} ExecCommandMessage
+ * @property {String} type - 'exec-command'
+ * @property {Command} command
+ */
+
+/**
+ * @typedef {DownstreamControlMessage} ExecFunctionMessage
+ * @property {String} type - 'exec-function'
+ * @property {}
+ */
+
+/**
+ * @typedef {DownstreamControlMessage} SetSelectorBecameVisibleDataMessage
+ * @property {String} type - 'set-selector-became-visible-data'
+ * @property {Array<String>} selectors
+ */
+
+/**
+ * @typedef {DownstreamControlMessage} ShowScreenshotMarkerMessage
+ * @property {String} type - 'show-screenshot-marker'
+ */
+
+/**
+ * @typedef {DownstreamControlMessage} HideScreenshotMarkerMessage
+ * @property {String} type - 'hide-screenshot-marker'
+ */
+
+/**
+ * @typedef {DownstreamControlMessage} SetTransmitEventsMessage
+ * @property {String} type - 'set-transmit-events'
+ * @property {Boolean} value
+ */
+
+/**
+ * @typedef {DownstreamControlMessage} TerminatePuppetMessage
+ * @property {String} type - 'terminate-puppet'
+ */
+
+/**
+ * @typedef {DownstreamControlMessage} ClearPersistentDataMessage
+ * @property {String} type - 'clear-persistent-data'
+ */
+
+/**
+ * @typedef {DownstreamControlMessage} SetMouseoverSelectorsMessage
+ * @property {String} type - 'set-mouseover-selectors'
+ * @property {Array<String>} selectors
+ */
+
+/**
+ * @typedef {DownstreamControlMessage} SetIgnoredClassesMessage
+ * @property {String} type - 'set-ignored-classes'
+ * @property {Array<String>} classes
+ */
+
+/**
+ * @enum {String}
+ */
+exports.COMMAND_TYPES = {
+    CLICK: 'click',
+    SET_VALUE: 'setValue',
+    GET_VALUE: 'getValue',
+    PRESS_KEY: 'pressKey',
+    WAIT_FOR_VISIBLE: 'waitForVisible',
+    WAIT_WHILE_VISIBLE: 'waitWhileVisible',
+    FOCUS: 'focus',
+    IS_VISIBLE: 'isVisible',
+    SCROLL: 'scroll',
+    COMPOSITE: 'composite',
+    MOUSEOVER: 'mouseover',
+    UPLOAD_FILE_AND_ASSIGN: 'uploadFileAndAssign',
+};
+
+/**
+ * @enum {String}
+ */
 exports.UPSTREAM = {
     // { type, selector, [warning] }
     SELECTOR_BECAME_VISIBLE: 'selector-became-visible',
-
-    // { type, event: { type, timestamp, [selector,] [target,] ... } }
     CAPTURED_EVENT: 'captured-event',
-
-    // general acknowledgement { type, result }
     ACK: 'ack',
-
-    // general failure { type, error }
     NAK: 'nak',
-
-    // insert assertion
     INSERT_ASSERTION: 'insert-assertion',
 };
 
+/**
+ * @enum {String}
+ */
 exports.DOWNSTREAM = {
-    // { type, execId, command: { type, ... } }
     EXEC_COMMAND: 'exec-command',
 
     // { type, ??? }
     EXEC_FUNCTION: 'exec-function',
-
-    // { type, selectors }
     SET_SELECTOR_BECAME_VISIBLE_DATA: 'set-selector-became-visible-data',
-
-    // { type }
     SHOW_SCREENSHOT_MARKER: 'show-screenshot-marker',
     HIDE_SCREENSHOT_MARKER: 'hide-screenshot-marker',
-
-    // { type, value }
     SET_TRANSMIT_EVENTS: 'set-transmit-events',
-
-    // { type }
     TERMINATE_PUPPET: 'terminate-puppet',
-
-    // { type, url }
     CLEAR_PERSISTENT_DATA: 'clear-persistent-data',
-
-    // { type, selectors }
     SET_MOUSEOVER_SELECTORS: 'set-mouseover-selectors',
-
-    // { type, classes }
     SET_IGNORED_CLASSES: 'set-ignored-classes',
 };
 
@@ -92,6 +201,17 @@ var DEFAULT_UPLOAD_FILE_MIME = 'application/octet-stream';
 exports = module.exports = BrowserPuppetCommands;
 
 /**
+ * @memberOf BrowserPuppetCommands
+ * @typedef {Object} Command
+ */
+
+/**
+ * @typedef {Command} CompositeCommand
+ * @property {String} type - 'composite'
+ * @property {Array<Command>} commands
+ */
+
+/**
  * @class
  * @abstract
  */
@@ -100,48 +220,69 @@ function BrowserPuppetCommands() {
 }
 
 /**
- * @param {String} selector
- * @param {Number} scrollTop
+ * @typedef {Command} ScrollCommand
+ * @property {String} type - 'scroll'
+ * @property {String} selector
+ * @property {Number} scrollTop
+ */
+
+/**
+ * @param {ScrollCommand} cmd
  * @throws {Error}
  */
-BrowserPuppetCommands.prototype.scroll = function (selector, scrollTop) {
-    var $el = this.$(selector);
-    _assert$el($el, 'scroll');
-    $el[0].scrollTop = scrollTop;
+BrowserPuppetCommands.prototype.scroll = function (cmd) {
+    var $el = this.$(cmd.selector);
+    this._assert$el($el, 'scroll');
+    $el[0].scrollTop = cmd.scrollTop;
 };
 
 /**
- * @param {String} selector
+ * @typedef {Command} MouseoverCommand
+ * @property {String} type - 'mouseover'
+ * @property {String} selector
+ */
+
+/**
+ * @param {MouseoverCommand} cmd
  * @throws {Error}
  */
-BrowserPuppetCommands.prototype.mouseover = function (selector) {
-    var $el = this.$(selector);
-    _assert$el($el, 'mouseover');
-    $el.trigger('mouseover');
+BrowserPuppetCommands.prototype.mouseover = function (cmd) {
+    this._log.trace('BrowserPuppetCommands::mouseover: ' + JSON.stringify(cmd));
+
+    var $el = this.$(cmd.selector);
+    this._assert$el($el, 'mouseover');
+
+    var mouseoverEvent = new Event('mouseover');
+    $el[0].dispatchEvent(mouseoverEvent);
 };
+
+/**
+ * @typedef {Command} WaitForVisibleCommand
+ * @property {String} type - 'waitForVisible'
+ * @property {String} selector
+ * @property {Number} [pollInterval = 500]
+ * @property {Number} [timeout = 10000]
+ */
 
 /**
  * Waits for selector to become visible
  *
- * @param {String} selector
- * @param {Object} [options]
- * @param {Number} [options.pollInterval = 500]
- * @param {Number} [options.timeout = 10000]
+ * @param {WaitForVisibleCommand} cmd
  * @return {Promise}
  */
-BrowserPuppetCommands.prototype.waitForVisible = function (selector, options) {
+BrowserPuppetCommands.prototype.waitForVisible = function (cmd) {
     var self = this;
 
     return Promise.try(function () {
-        var pollInterval =  _defaultNum(options && options.pollInterval, 500);
-        var timeout = _defaultNum(options && options.timeout, 10000);
+        var pollInterval =  _defaultNum(cmd.pollInterval, 500);
+        var timeout = _defaultNum(cmd.timeout, 10000);
 
         var isTimedOut = false;
 
         self._log.debug('waitForVisible: starting');
 
-        if (self.isSelectorVisible(selector)) {
-            self._log.debug('waitForVisible: selector wasn\'t visible: ' + selector);
+        if (self.isSelectorVisible(cmd.selector)) {
+            self._log.debug('waitForVisible: selector wasn\'t visible: ' + cmd.selector);
             return;
         }
 
@@ -151,13 +292,13 @@ BrowserPuppetCommands.prototype.waitForVisible = function (selector, options) {
 
         return promiseWhile(
             function () {
-                var result = self.isSelectorVisible(selector);
-                self._log.debug('waitForVisible: visibility: ' + selector + ', ' + result);
+                var result = self.isSelectorVisible(cmd.selector);
+                self._log.debug('waitForVisible: visibility: ' + cmd.selector + ', ' + result);
                 return !result;
             },
             function () {
                 if (isTimedOut) {
-                        var msg = 'waitForVisible: timed out (time: ' + timeout + 'ms, selector: "' + selector + '")';
+                        var msg = 'waitForVisible: timed out (time: ' + timeout + 'ms, selector: "' + cmd.selector + '")';
                         self._log.error(msg);
                         throw new Error(msg);
                 }
@@ -170,22 +311,27 @@ BrowserPuppetCommands.prototype.waitForVisible = function (selector, options) {
 };
 
 /**
+ * @typedef {Command} WaitWhileVisibleCommand
+ * @property {String} type - 'waitWhileVisible'
+ * @property {String} selector
+ * @property {Number} [pollInterval = 500]
+ * @property {Number} [initialDelay = 500]
+ * @property {Number} [timeout = 10000]
+ */
+
+/**
  * Waits until selector is visible
  * 
- * @param {String} selector
- * @param {Object} [options]
- * @param {Number} [options.pollInterval = 500]
- * @param {Number} [options.initialDelay = 500]
- * @param {Number} [options.timeout = 10000]
+ * @param {WaitWhileVisibleCommand} cmd
  * @return {Promise}
  */
-BrowserPuppetCommands.prototype.waitWhileVisible = function (selector, options) {
+BrowserPuppetCommands.prototype.waitWhileVisible = function (cmd) {
     var self = this;
 
     return Promise.try(function () {
-        var pollInterval = _defaultNum(options && options.pollInterval, 500);
-        var initialDelay = _defaultNum(options && options.initialDelay, 500);
-        var timeout = _defaultNum(options && options.timeout, 10000);
+        var pollInterval = _defaultNum(cmd.pollInterval, 500);
+        var initialDelay = _defaultNum(cmd.initialDelay, 500);
+        var timeout = _defaultNum(cmd.timeout, 10000);
 
         var isTimedOut = false;
 
@@ -193,8 +339,8 @@ BrowserPuppetCommands.prototype.waitWhileVisible = function (selector, options) 
 
         return Promise.delay(initialDelay)
         .then(function () {
-            if (!self.isSelectorVisible(selector)) {
-                self._log.debug('waitWhileVisible: selector wasnt visible: ' + selector);
+            if (!self.isSelectorVisible(cmd.selector)) {
+                self._log.debug('waitWhileVisible: selector wasnt visible: ' + cmd.selector);
                 return;
             }
 
@@ -204,13 +350,13 @@ BrowserPuppetCommands.prototype.waitWhileVisible = function (selector, options) 
 
             return promiseWhile(
                 function () {
-                    var result = self.isSelectorVisible(selector);
-                    self._log.debug('waitWhileVisible: visibility: ' + selector + ', ' + result);
+                    var result = self.isSelectorVisible(cmd.selector);
+                    self._log.debug('waitWhileVisible: visibility: ' + cmd.selector + ', ' + result);
                     return result;
                 },
                 function () {
                     if (isTimedOut) {
-                        var msg = 'waitWhileVisible: timed out (time: ' + timeout + 'ms, selector: "' + selector + '")';
+                        var msg = 'waitWhileVisible: timed out (time: ' + timeout + 'ms, selector: "' + cmd.selector + '")';
                         self._log.error(msg);
                         throw new Error(msg);
                     }
@@ -224,86 +370,112 @@ BrowserPuppetCommands.prototype.waitWhileVisible = function (selector, options) 
 };
 
 /**
- * @param {String} selector
+ * @typedef {Command} ClickCommand
+ * @property {String} type - 'click'
+ * @property {String} selector
+ */
+
+/**
+ * @param {ClickCommand} cmd
  * @throws {Error}
  */
-BrowserPuppetCommands.prototype.click = function (selector) {
-    var $el = this.$(selector);
-    _assert$el($el, 'click');
-    // else {
-        // var el = $el[0];
+BrowserPuppetCommands.prototype.click = function (cmd) {
+    var $el = this.$(cmd.selector);
+    this._assert$el($el, 'click');
 
-        // TODO detect inaccessible nodes !!!
-
-        // if (TestToolsBase.isNodeOccluded(el)) {
-        //     var occludingNode = TestToolsBase.getOccludingNode(el)
-        //     console.log('OCCLUSION DETECTED - selector: ' + selector + ', occluded by: ' + occludingNode.outerHTML.substr(0,50) + ' (...)')
-        //     throw new Error('Unable to click selector "'+selector+'": is occluded by other node(s)')
-        // }
-
-        // console.log('No occlusion detected for '+selector)
-
-        // $el.trigger('click');
-        $el[0].click();
-    // }
+    // TODO use dispatchEvent?
+    $el[0].click();
 };
 
 // TODO handle meta keys, arrow keys
 // TODO which event to use? keyup, keydown, keypress?
 
 /**
- * @param {String} selector
- * @param {Number} keyCode
+ * @typedef {Command} PressKeyCommand
+ * @property {String} type - 'pressKey'
+ * @property {String} selector
+ * @property {Number} keyCode
+ */
+
+/**
+ * @param {PressKeyCommand} cmd
  * @throws {Error}
  */
-BrowserPuppetCommands.prototype.pressKey = function (selector, keyCode) {
-    var $el = this.$(selector);
-    var keyCodeNum = Number(keyCode);
+BrowserPuppetCommands.prototype.pressKey = function (cmd) {
+    var $el = this.$(cmd.selector);
+    var keyCodeNum = Number(cmd.keyCode);
 
     assert(Number.isFinite(keyCodeNum), 'BrowserPuppetCommands::pressKey: keyCode is not a number');
-    _assert$el($el, 'pressKey');
+    this._assert$el($el, 'pressKey');
 
-    // eslint-disable-next-line new-cap
-    $el.trigger(this.$.Event('keydown', { which: keyCodeNum, keyCode: keyCodeNum }));
+    var keydownEvent = new KeyboardEvent('keydown', {
+        which: keyCodeNum,
+        keyCode: keyCodeNum,
+        charCode: keyCodeNum,
+    });
+    $el[0].dispatchEvent(keydownEvent);
 };
 
 /**
- * @param {String} selector
- * @param {String} value
+ * @typedef {Command} SetValueCommand
+ * @property {String} type - 'setValue'
+ * @property {String} selector
+ * @property {String} value
  */
-BrowserPuppetCommands.prototype.setValue = function (selector, value) {
-    var $el = this.$(selector);
+
+/**
+ * @param {SetValueCommand} cmd
+ * @throws {Error}
+ */
+BrowserPuppetCommands.prototype.setValue = function (cmd) {
+    var $el = this.$(cmd.selector);
     var el = $el[0];
     var tagName = el && el.tagName || '';
 
-    _assert$el($el, 'setValue');
+    this._assert$el($el, 'setValue');
 
     if (tagName !== 'INPUT' && tagName !== 'TEXTAREA') {
-        throw new Error('Unable to set value of "' + selector + '": unsupported tag "' + tagName + '"');
+        throw new Error('Unable to set value of "' + cmd.selector + '": unsupported tag "' + tagName + '"');
     }
 
-    $el.val(value);
-    $el.trigger('input');
+    $el.val(cmd.value);
+
+    var inputEvent = new Event('input');
+    el.dispatchEvent(inputEvent);
 };
 
 /**
- * @param {String} selector
+ * @typedef {Command} FocusCommand
+ * @property {String} type - 'focus'
+ * @property {String} selector
  */
-BrowserPuppetCommands.prototype.focus = function (selector) {
-    var $el = this.$(selector);
-    _assert$el($el, 'focus');
+
+/**
+ * @param {FocusCommand} cmd
+ * @throws {Error}
+ */
+BrowserPuppetCommands.prototype.focus = function (cmd) {
+    var $el = this.$(cmd.selector);
+    this._assert$el($el, 'focus');
     $el[0].focus();
 };
 
 /**
- * @param {String} selector
- * @return {String|Boolean}
+ * @typedef {Command} GetValueCommand
+ * @property {String} type - 'getValue'
+ * @property {String} selector
  */
-BrowserPuppetCommands.prototype.getValue = function (selector) {
-    var $el = this.$(selector);
+
+/**
+ * @param {GetValueCommand} cmd
+ * @return {String|Boolean}
+ * @throws {Error}
+ */
+BrowserPuppetCommands.prototype.getValue = function (cmd) {
+    var $el = this.$(cmd.selector);
     var el = $el[0];
 
-    _assert$el($el, 'getValue');
+    this._assert$el($el, 'getValue');
 
     // TODO util fn to get node value
 
@@ -321,28 +493,42 @@ BrowserPuppetCommands.prototype.getValue = function (selector) {
 };
 
 /**
- * @param {String} selector
- * @return {Boolean}
+ * @typedef {Command} IsVisibleCommand
+ * @property {String} type - 'isVisible'
+ * @property {String} selector
  */
-BrowserPuppetCommands.prototype.isVisible = function (selector) {
-    return this.isSelectorVisible(selector);
+
+/**
+ * @param {IsVisibleCommand} cmd
+ * @return {Boolean}
+ * @throws {Error}
+ */
+BrowserPuppetCommands.prototype.isVisible = function (cmd) {
+    return this.isSelectorVisible(cmd.selector);
 };
+
+/**
+ * @typedef {Command} UploadFileAndAssignCommand
+ * @property {String} type - 'uploadFileAndAssign'
+ * @property {Object} fileData
+ * @property {String} fileData.base64 - base64 encoded file
+ * @property {String} fileData.name
+ * @property {String} [fileData.mime] - default: {@link DEFAULT_UPLOAD_FILE_MIME}
+ * @property {String} destinationVariable - e.g. `'app.files.someFile'` assigns a `File` instance to `window.app.files.someFile` 
+ */
 
 /**
  * Upload file and assign the generated File instance to a variable.
  *
- * @param {Object} fileData
- * @param {String} fileData.base64
- * @param {String} fileData.name
- * @param {String} [fileData.mime] - default: {@link DEFAULT_UPLOAD_FILE_MIME}
- * @param {String} destinationVariable
+ * @param {UploadFileAndAssignCommand} cmd
+ * @throws {Error}
  */
-BrowserPuppetCommands.prototype.uploadFileAndAssign = function (fileData, destinationVariable) {
-    fileData.mime = fileData.mime || DEFAULT_UPLOAD_FILE_MIME;
-    lodashSet(window, destinationVariable, base64ToFile(fileData));
+BrowserPuppetCommands.prototype.uploadFileAndAssign = function (cmd) {
+    cmd.fileData.mime = cmd.fileData.mime || DEFAULT_UPLOAD_FILE_MIME;
+    lodashSet(window, cmd.destinationVariable, base64ToFile(cmd.fileData));
 };
 
-function _assert$el($el, commandName) {
+BrowserPuppetCommands.prototype._assert$el = function ($el, commandName) {
     if ($el.length === 0) {
         throw new Error(commandName + ': selector not found: "' + $el.selector + '"');
     }
@@ -350,7 +536,11 @@ function _assert$el($el, commandName) {
     if ($el.length > 1) {
         throw new Error(commandName + ': selector not unique: "' + $el.selector + '"');
     }
-}
+
+    if (!this._isJQueryElementsVisible($el)) {
+        throw new Error(commandName + ': selector not visible: "' + $el.selector + '"')
+    }
+};
 
 function _defaultNum(value, def) {
     var numValue = Number(value);
@@ -389,6 +579,7 @@ exports = module.exports = BrowserPuppet;
 
 /**
  * @class
+ * @extends {BrowserPuppetCommands}
  * @param {Object} [opts]
  * @param {String} [opts.serverUrl=DEFAULT_SERVER_URL] - BrowserPuppeteer websocket server URL
  */
@@ -459,9 +650,7 @@ BrowserPuppet.prototype._sendMessage = function (rawData) {
     this._wsConn.send(data);
 };
 
-BrowserPuppet.prototype.isSelectorVisible = function (selector) {
-    var $els = this.$(selector);
-
+BrowserPuppet.prototype._isJQueryElementsVisible = function ($els) {
     if ($els.length === 0) {
         return false;
     }
@@ -482,6 +671,10 @@ BrowserPuppet.prototype.isSelectorVisible = function (selector) {
     }
 
     return false;
+};
+
+BrowserPuppet.prototype.isSelectorVisible = function (selector) {
+    return this._isJQueryElementsVisible(this.$(selector));
 };
 
 BrowserPuppet.prototype._onMessage = function (rawData) {
@@ -548,6 +741,7 @@ BrowserPuppet.prototype._onMessage = function (rawData) {
         });
 
         errorDTO.message = err.message;
+        errorDTO.stack = err.stack;
 
         self._sendMessage({ type: MESSAGES.UPSTREAM.NAK, error: errorDTO });
     })
@@ -829,31 +1023,24 @@ BrowserPuppet.prototype.execFunction = Promise.method(function (fn/* , args*/) {
 });
 
 BrowserPuppet.prototype.execCommand = Promise.method(function (command) {
+    this._log.trace('execCommand: ' + JSON.stringify(command));
+
     switch (command.type) {
         case 'click':
-            return this.click(command.selector);
         case 'setValue':
-            return this.setValue(command.selector, command.value);
         case 'getValue':
-            return this.getValue(command.selector);
         case 'pressKey':
-            return this.pressKey(command.selector, command.keyCode);
         case 'waitForVisible':
-            return this.waitForVisible(command.selector);
         case 'waitWhileVisible':
-            return this.waitWhileVisible(command.selector);
         case 'focus':
-            return this.focus(command.selector);
         case 'isVisible':
-            return this.isVisible(command.selector);
         case 'scroll':
-            return this.scroll(command.selector, command.scrollTop);
+        case 'mouseover':
+        case 'uploadFileAndAssign':
+            return this[command.type](command);
+
         case 'composite':
             return this.execCompositeCommand(command.commands);
-        case 'mouseover':
-            return this.mouseover(command.selector);
-        case 'uploadFileAndAssign':
-            return this.uploadFileAndAssign(command.fileData, command.destinationVariable);
         default:
             throw new Error('Unknown command type: ' + command.type);
     }

@@ -42,7 +42,6 @@ module.exports = function (config) {
             //     testFiles: ['get-unique-selector/test.js']
             // },
             {
-                afterTest:function(t){return t.delay(10000)},
                 name: 'browser-puppeteer',
                 appUrl: 'file:///' + pathlib.resolve(__dirname, 'browser-puppeteer/index.html'),
                 testFiles: ['browser-puppeteer/test.js']

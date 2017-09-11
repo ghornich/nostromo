@@ -95,9 +95,7 @@ BrowserPuppet.prototype._sendMessage = function (rawData) {
     this._wsConn.send(data);
 };
 
-BrowserPuppet.prototype.isSelectorVisible = function (selector) {
-    var $els = this.$(selector);
-
+BrowserPuppet.prototype._isJQueryElementsVisible = function ($els) {
     if ($els.length === 0) {
         return false;
     }
@@ -118,6 +116,10 @@ BrowserPuppet.prototype.isSelectorVisible = function (selector) {
     }
 
     return false;
+};
+
+BrowserPuppet.prototype.isSelectorVisible = function (selector) {
+    return this._isJQueryElementsVisible(this.$(selector));
 };
 
 BrowserPuppet.prototype._onMessage = function (rawData) {
@@ -184,6 +186,7 @@ BrowserPuppet.prototype._onMessage = function (rawData) {
         });
 
         errorDTO.message = err.message;
+        errorDTO.stack = err.stack;
 
         self._sendMessage({ type: MESSAGES.UPSTREAM.NAK, error: errorDTO });
     })
@@ -465,6 +468,8 @@ BrowserPuppet.prototype.execFunction = Promise.method(function (fn/* , args*/) {
 });
 
 BrowserPuppet.prototype.execCommand = Promise.method(function (command) {
+    this._log.trace('execCommand: ' + JSON.stringify(command));
+
     switch (command.type) {
         case 'click':
         case 'setValue':
