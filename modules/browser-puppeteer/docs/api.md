@@ -1,7 +1,16 @@
 # BrowserPuppeteer API
+
+## Contents
+- [Websocket](#websocket)
+- [Upstream messages](#upstream-messages)
+- [Downstream messages](#downstream-messages)
+- [Commands](#commands)
+# BrowserPuppeteer API
 ## Websocket
+- __ControlMessage__ - _Object_
 ### Upstream messages
 > Client (browser) to server
+- __UpstreamControlMessage__ - _ControlMessage_
 - __AckMessage__ - _UpstreamControlMessage_
 
     |Name|Type|Description|
@@ -38,6 +47,7 @@
     | ... | `any` |  |
 ### Downstream messages
 > Server to client (browser)
+- __DownstreamControlMessage__ - _ControlMessage_
 - __ClearPersistentDataMessage__ - _DownstreamControlMessage_
 
     |Name|Type|Description|
@@ -95,6 +105,7 @@
     |---|---|---|
     | type | `String` | 'terminate-puppet' |
 ### Commands
+- __Command__ - _Object_
 - __ClickCommand__ - _Command_
 
     |Name|Type|Description|

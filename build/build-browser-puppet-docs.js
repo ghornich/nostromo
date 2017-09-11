@@ -20,9 +20,33 @@ cp.exec(`jsdoc -X -r ${BROWSER_PUPPETEER_SRC_PATH}`, cpOpts, (err, sout, serr)=>
         let upstreamMsgs=[]
         let downstreamMsgs=[]
         let commands=[]
+        let controlMsgTypedef=null
+        let upstreamTypedef=null
+        let downstreamTypedef=null
+        let commandTypedef=null
 
         for (const item of parsed) {
             if (item.kind!=='typedef')continue
+
+            if (item.name === 'ControlMessage') {
+                controlMsgTypedef = item
+                continue
+            }
+
+            if (item.name === 'UpstreamControlMessage') {
+                upstreamTypedef = item
+                continue
+            }
+
+            if (item.name === 'DownstreamControlMessage') {
+                downstreamTypedef = item
+                continue
+            }
+
+            if (item.name === 'Command') {
+                commandTypedef = item
+                continue
+            }
 
             if (item.type && item.type.names && item.type.names[0] === 'UpstreamControlMessage') {
                 upstreamMsgs.push(item)
@@ -45,12 +69,24 @@ cp.exec(`jsdoc -X -r ${BROWSER_PUPPETEER_SRC_PATH}`, cpOpts, (err, sout, serr)=>
 
         }
 
-
         writeln('# BrowserPuppeteer API')
+
+        markdown += `
+## Contents
+- [Websocket](#websocket)
+- [Upstream messages](#upstream-messages)
+- [Downstream messages](#downstream-messages)
+- [Commands](#commands)
+` + markdown
+
         writeln('## Websocket')
+
+        writeProps(controlMsgTypedef)
 
         writeln('### Upstream messages')
         writeln('> Client (browser) to server')
+
+        writeProps(upstreamTypedef)
 
         for (const item of upstreamMsgs) {
             writeProps(item)
@@ -59,11 +95,15 @@ cp.exec(`jsdoc -X -r ${BROWSER_PUPPETEER_SRC_PATH}`, cpOpts, (err, sout, serr)=>
         writeln('### Downstream messages')
         writeln('> Server to client (browser)')
 
+        writeProps(downstreamTypedef)
+
         for (const item of downstreamMsgs) {
             writeProps(item)
         }
 
         writeln('### Commands')
+
+        writeProps(commandTypedef)
 
         for (const item of commands) {
             writeProps(item)
@@ -100,6 +140,8 @@ function writeProps(item){
     itemType
         ? writeln(`- __${item.name}__ - _${itemType}_`)
         : writeln(`- __${item.name}__`)
+
+    if (!item.properties) return
 
     writeln('')
     writeln('|Name|Type|Description|', 1)
