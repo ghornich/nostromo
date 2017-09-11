@@ -77,7 +77,7 @@ cp.exec(`jsdoc -X -r ${BROWSER_PUPPETEER_SRC_PATH}`, cpOpts, (err, sout, serr)=>
 - [Upstream messages](#upstream-messages)
 - [Downstream messages](#downstream-messages)
 - [Commands](#commands)
-` + markdown
+`
 
         writeln('## Websocket')
 

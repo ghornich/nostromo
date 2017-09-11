@@ -5,7 +5,6 @@
 - [Upstream messages](#upstream-messages)
 - [Downstream messages](#downstream-messages)
 - [Commands](#commands)
-# BrowserPuppeteer API
 ## Websocket
 - __ControlMessage__ - _Object_
 ### Upstream messages
