@@ -10,45 +10,64 @@ const pathlib = require('path');
 const Loggr = require(MODULES_PATH + 'loggr');
 const defaults = require('lodash.defaults');
 
+/**
+ * @memberOf RecorderServer
+ * @type {Number}
+ */
 const DEFAULT_RECORDER_APP_PORT = 7700;
 
-module.exports = Server;
+exports = module.exports = RecorderServer;
 
-// TODO
 /**
- * @typedef {Object} BeforeCaptureArgs
- * { event, command, recorderInstance }
- */
-
-// TODO
-/**
- * @typedef {Array} SelectorBecameVisibleArgs
+ * @callback FilterCallback
+ * @param {Object} data
+ * @param {Object} data.event - DOM event data (type, target, selector, $timestamp, $fullSelectorPath)
+ * @param {Command} data.command - Command generated from the event
+ * @param {RecorderApp} data.recorderInstance - The current RecorderApp instance
+ * @return {Boolean} Return false to prevent recording this event
  */
 
 /**
- * Recorder server
- * @param {Object} [conf]
- * @param {Number} [conf.recorderAppPort=7700]
- * @param {Number} [conf.logLevel] - See Loggr
- * @param {Function} [conf.beforeCapture] - Argument: {@link BeforeCaptureArgs}
- * @param {SelectorBecameVisibleArgs} [conf.onSelectorBecameVisible] - 
- * @param {String[]} [conf.mouseoverSelectors] - 
- * @param {String[]} [conf.ignoredClasses] - 
- * @param {Function} [conf.pressKeyFilter] - 
- * @param {Function[]} [conf.outputFormatters] - 
- * @param {String} [conf.selectedOutputFormatter] - 
+ * @callback SelectorBecameVisibleCallback
+ * @param {RecorderApp} recorderInstance - The current RecorderApp instance
  */
-function Server(conf) {
+
+/**
+ * @typedef {Object} OutputFormatter
+ * @property {String} name - Display name
+ * @property {String} [filename = RecorderApp.DEFAULT_OUTPUT_FILENAME]
+ * @property {Function} fn - Formatter function, argument: Array<Commmand>, return: String
+ */
+
+/**
+ * @typedef {Object} RecorderOptions
+ * @property {Number} [recorderAppPort = {@link RecorderServer.DEFAULT_RECORDER_APP_PORT}]
+ * @property {Number} [logLevel] - See Loggr.LEVELS
+ *
+ * @property {FilterCallback} [captureFilter]
+ * @property {FilterCallback} [pressKeyFilter] - Special capture filter, only called for pressKey. <b>Default: capture Enter, Esc only</b>.
+ *
+ * @property {Array<Object>} [onSelectorBecameVisible]
+ * @property {String} [onSelectorBecameVisible[].selector] - CSS selector
+ * @property {SelectorBecameVisibleCallback} [onSelectorBecameVisible[].listener]
+ *
+ * @property {Array<OutputFormatter>} outputFormatters - Custom output and download formatter(s)
+ * @property {String} [selectedOutputFormatter] - Selected output formatter name
+ *
+ * @property {Array<String>} [mouseoverSelectors] - Detect mouseover events only for these selectors
+ * @property {Array<String>} [ignoredClasses] - Ignored classnames
+ */
+
+/**
+ * @class
+ * @param {RecorderOptions} conf
+ */
+function RecorderServer(conf) {
     this._conf = defaults({}, conf, {
         recorderAppPort: DEFAULT_RECORDER_APP_PORT,
-        // logLevel
-        beforeCapture: noop,
         onSelectorBecameVisible: [],
         mouseoverSelectors: [],
         ignoredClasses: [],
-        // pressKeyFilter
-        // outputFormatters
-        // selectedOutputFormatter
     });
 
     // TODO assert conf
@@ -68,8 +87,11 @@ function Server(conf) {
     this._proxyMessage = this._proxyMessage.bind(this);
 }
 
+RecorderServer.DEFAULT_RECORDER_APP_PORT = DEFAULT_RECORDER_APP_PORT;
+
 // TODO better promise chain?
-Server.prototype.start = Promise.method(function () {
+
+RecorderServer.prototype.start = Promise.method(function () {
     this._wsServer.on('connection', () => this._log.info('recorder app connected'));
 
     this._recServer.listen(this._conf.recorderAppPort);
@@ -111,7 +133,7 @@ Server.prototype.start = Promise.method(function () {
     });
 });
 
-Server.prototype._proxyMessage = function (data, rawData) {
+RecorderServer.prototype._proxyMessage = function (data, rawData) {
     if (this._wsServer.clients.size === 1) {
         this._wsServer.clients.forEach(wsConn => wsConn.send(rawData));
     }
@@ -120,7 +142,7 @@ Server.prototype._proxyMessage = function (data, rawData) {
     }
 };
 
-Server.prototype._onRecRequest = async function (req, resp) {
+RecorderServer.prototype._onRecRequest = async function (req, resp) {
     if (req.url === '/') {
         resp.end(
             (await fs.readFileAsync(pathlib.resolve(__dirname, 'ui/recorder-ui.html'), { encoding: 'utf-8' }))
@@ -137,11 +159,11 @@ Server.prototype._onRecRequest = async function (req, resp) {
     }
 };
 
-/* Server.prototype.=function(){
+/* RecorderServer.prototype.=function(){
 
 }*/
 
-/* Server.prototype.=function(){
+/* RecorderServer.prototype.=function(){
 
 }*/
 

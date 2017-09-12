@@ -1,48 +1,157 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
+'use strict';
+
+
+
+/**
+ * @typedef {Object} ControlMessage
+ */
+
+/**
+ * Upstream: from client (browser) to server
+ * @typedef {ControlMessage} UpstreamControlMessage
+ */
+
+/**
+ * Downstream: from server to client (browser)
+ * @typedef {ControlMessage} DownstreamControlMessage
+ */
+
+/**
+ * @typedef {UpstreamControlMessage} SelectorBecameVisibleMessage
+ * @property {String} type - 'selector-became-visible'
+ * @property {any} ...
+ */
+
+/**
+ * @typedef {UpstreamControlMessage} CapturedEventMessage
+ * @property {String} type - 'captured-event'
+ * @property {Object} event
+ * @property {String} event.type
+ * @property {Number} event.timestamp
+ * @property {String} [event.selector]
+ * @property {Object} [event.target]
+ */
+
+/**
+ * @typedef {UpstreamControlMessage} AckMessage
+ * @property {String} type - 'ack'
+ * @property {*} result
+ */
+
+/**
+ * @typedef {UpstreamControlMessage} NakMessage
+ * @property {String} type - 'nak'
+ * @property {Object} error
+ * @property {String} error.message
+ */
+
+/**
+ * @typedef {UpstreamControlMessage} InsertAssertionMessage
+ * @property {String} type - 'insert-assertion'
+ */
+
+/**
+ * @typedef {DownstreamControlMessage} ExecCommandMessage
+ * @property {String} type - 'exec-command'
+ * @property {Command} command
+ */
+
+/**
+ * @typedef {DownstreamControlMessage} ExecFunctionMessage
+ * @property {String} type - 'exec-function'
+ * @property {}
+ */
+
+/**
+ * @typedef {DownstreamControlMessage} SetSelectorBecameVisibleDataMessage
+ * @property {String} type - 'set-selector-became-visible-data'
+ * @property {Array<String>} selectors
+ */
+
+/**
+ * @typedef {DownstreamControlMessage} ShowScreenshotMarkerMessage
+ * @property {String} type - 'show-screenshot-marker'
+ */
+
+/**
+ * @typedef {DownstreamControlMessage} HideScreenshotMarkerMessage
+ * @property {String} type - 'hide-screenshot-marker'
+ */
+
+/**
+ * @typedef {DownstreamControlMessage} SetTransmitEventsMessage
+ * @property {String} type - 'set-transmit-events'
+ * @property {Boolean} value
+ */
+
+/**
+ * @typedef {DownstreamControlMessage} TerminatePuppetMessage
+ * @property {String} type - 'terminate-puppet'
+ */
+
+/**
+ * @typedef {DownstreamControlMessage} ClearPersistentDataMessage
+ * @property {String} type - 'clear-persistent-data'
+ */
+
+/**
+ * @typedef {DownstreamControlMessage} SetMouseoverSelectorsMessage
+ * @property {String} type - 'set-mouseover-selectors'
+ * @property {Array<String>} selectors
+ */
+
+/**
+ * @typedef {DownstreamControlMessage} SetIgnoredClassesMessage
+ * @property {String} type - 'set-ignored-classes'
+ * @property {Array<String>} classes
+ */
+
+/**
+ * @enum {String}
+ */
+exports.COMMAND_TYPES = {
+    CLICK: 'click',
+    SET_VALUE: 'setValue',
+    GET_VALUE: 'getValue',
+    PRESS_KEY: 'pressKey',
+    WAIT_FOR_VISIBLE: 'waitForVisible',
+    WAIT_WHILE_VISIBLE: 'waitWhileVisible',
+    FOCUS: 'focus',
+    IS_VISIBLE: 'isVisible',
+    SCROLL: 'scroll',
+    COMPOSITE: 'composite',
+    MOUSEOVER: 'mouseover',
+    UPLOAD_FILE_AND_ASSIGN: 'uploadFileAndAssign',
+};
+
+/**
+ * @enum {String}
+ */
 exports.UPSTREAM = {
     // { type, selector, [warning] }
     SELECTOR_BECAME_VISIBLE: 'selector-became-visible',
-
-    // { type, event: { type, timestamp, [selector,] [target,] ... } }
     CAPTURED_EVENT: 'captured-event',
-
-    // general acknowledgement { type, result }
     ACK: 'ack',
-
-    // general failure { type, error }
     NAK: 'nak',
-
-    // insert assertion
     INSERT_ASSERTION: 'insert-assertion',
 };
 
+/**
+ * @enum {String}
+ */
 exports.DOWNSTREAM = {
-    // { type, execId, command: { type, ... } }
     EXEC_COMMAND: 'exec-command',
 
     // { type, ??? }
     EXEC_FUNCTION: 'exec-function',
-
-    // { type, selectors }
     SET_SELECTOR_BECAME_VISIBLE_DATA: 'set-selector-became-visible-data',
-
-    // { type }
     SHOW_SCREENSHOT_MARKER: 'show-screenshot-marker',
     HIDE_SCREENSHOT_MARKER: 'hide-screenshot-marker',
-
-    // { type, value }
     SET_TRANSMIT_EVENTS: 'set-transmit-events',
-
-    // { type }
     TERMINATE_PUPPET: 'terminate-puppet',
-
-    // { type, url }
     CLEAR_PERSISTENT_DATA: 'clear-persistent-data',
-
-    // { type, selectors }
     SET_MOUSEOVER_SELECTORS: 'set-mouseover-selectors',
-
-    // { type, classes }
     SET_IGNORED_CLASSES: 'set-ignored-classes',
 };
 
@@ -12762,7 +12871,6 @@ var Ws4ever = require('../../../../modules/ws4ever');
 var CommandList = require('../command-list');
 var CMD_TYPES = require('../command').TYPES;
 
-// TODO better require
 var MESSAGES = require('../../../../modules/browser-puppeteer/src/messages.js');
 
 var EOL = '\n';
@@ -12775,27 +12883,24 @@ var RootComp;
 
 window.RecorderApp = RecorderApp;
 
-// TODO beforeCommand: provide raw data AND next command as param
-// TODO support touch events
-
-// TODO executable specifications
-// TODO play macro step-by-step
-
 // TODO browserPuppet port as config param
 
-function RecorderApp(rawConf) {
+/**
+ * @param {RecorderOptions|String} conf - RecorderOptions as Object or String
+ */
+function RecorderApp(conf) {
     var self = this;
-    var conf = rawConf;
+    var confObj = conf;
 
-    if (typeof conf === 'string') {
-        conf = JSONF.parse(conf);
+    if (typeof confObj === 'string') {
+        confObj = JSONF.parse(confObj);
     }
 
-    self._conf = defaults({}, conf, {
+    self._conf = defaults({}, confObj, {
         pressKeyFilter: function pressKeyFilter(command) {
             return [13, 27].indexOf(command.keyCode) >= 0;
         },
-        beforeCapture: noop,
+        captureFilter: noop,
         outputFormatters: [],
         selectedOutputFormatter: JSON_OUTPUT_FORMATTER_NAME
     });
@@ -12940,14 +13045,14 @@ RecorderApp.prototype._onCapturedEvent = function (event) {
             return;
     }
 
-    if (this._conf.beforeCapture({ event: event, command: command, recorderInstance: this }) === false) {
-        this._log.info('capture prevented by beforeCapture');
+    if (this._conf.captureFilter({ event: event, command: command, recorderInstance: this }) === false) {
+        this._log.info('capture prevented by captureFilter');
         this._log.trace('prevented event: ' + JSON.stringify(event));
         this._log.trace('prevented command: ' + JSON.stringify(command));
         return;
     }
 
-    if (command.type === 'pressKey' && this._conf.pressKeyFilter(command, event) === false) {
+    if (command.type === 'pressKey' && this._conf.pressKeyFilter({ event: event, command: command, recorderInstance: this }) === false) {
         return;
     }
 

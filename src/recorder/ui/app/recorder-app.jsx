@@ -8,7 +8,6 @@ var Ws4ever = require('../../../../modules/ws4ever');
 var CommandList = require('../command-list');
 var CMD_TYPES = require('../command').TYPES;
 
-// TODO better require
 var MESSAGES = require('../../../../modules/browser-puppeteer/src/messages.js');
 
 var EOL = '\n';
@@ -21,27 +20,24 @@ var RootComp;
 
 window.RecorderApp = RecorderApp;
 
-// TODO beforeCommand: provide raw data AND next command as param
-// TODO support touch events
-
-// TODO executable specifications
-// TODO play macro step-by-step
-
 // TODO browserPuppet port as config param
 
-function RecorderApp(rawConf) {
+/**
+ * @param {RecorderOptions|String} conf - RecorderOptions as Object or String
+ */
+function RecorderApp(conf) {
     var self = this;
-    var conf = rawConf;
+    var confObj= conf;
 
-    if (typeof conf === 'string') {
-        conf = JSONF.parse(conf);
+    if (typeof confObj === 'string') {
+        confObj = JSONF.parse(confObj);
     }
 
-    self._conf = defaults({}, conf, {
+    self._conf = defaults({}, confObj, {
         pressKeyFilter: function (command) {
             return [13, 27].indexOf(command.keyCode) >= 0;
         },
-        beforeCapture: noop,
+        captureFilter: noop,
         outputFormatters: [],
         selectedOutputFormatter: JSON_OUTPUT_FORMATTER_NAME,
     });
@@ -189,14 +185,14 @@ RecorderApp.prototype._onCapturedEvent = function (event) {
             return;
     }
 
-    if (this._conf.beforeCapture({ event: event, command: command, recorderInstance: this }) === false) {
-        this._log.info('capture prevented by beforeCapture');
+    if (this._conf.captureFilter({ event: event, command: command, recorderInstance: this }) === false) {
+        this._log.info('capture prevented by captureFilter');
         this._log.trace('prevented event: ' + JSON.stringify(event));
         this._log.trace('prevented command: ' + JSON.stringify(command));
         return;
     }
 
-    if (command.type === 'pressKey' && this._conf.pressKeyFilter(command, event) === false) {
+    if (command.type === 'pressKey' && this._conf.pressKeyFilter({ event: event, command: command, recorderInstance: this }) === false) {
         return;
     }
 
