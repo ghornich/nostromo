@@ -16,7 +16,9 @@
     "test": "tape test/**/*.test.js modules/**/*.test.js",
     "autotest": "node src/cli.js --run -c test/nostromo.run.conf.js",
     "prepush": "npm test",
-    "build-browser-puppet-docs": "node build/build-browser-puppet-docs.js"
+    "build-browser-puppet-docs": "node build/build-browser-puppet-docs.js",
+    "build-recorder-docs": "jsdoc src/recorder/recorder-server.js -d docs/recorder",
+    "build-docs": "npm run build-browser-puppet-docs && npm run build-recorder-docs"
   },
   "author": "ghornich",
   "dependencies": {

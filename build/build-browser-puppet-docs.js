@@ -3,7 +3,7 @@ const cp=require('child_process')
 const pathlib=require('path')
 
 const BROWSER_PUPPETEER_SRC_PATH = pathlib.resolve(__dirname, '../modules/browser-puppeteer/src')
-const DOC_PATH = pathlib.resolve(__dirname, '../modules/browser-puppeteer/docs/api.md')
+const DOC_PATH = pathlib.resolve('docs/puppeteer-api.md')
 
 const cpOpts={
     maxBuffer:500*1024
