@@ -64,11 +64,11 @@
 
         <script>
             $('.click-test-jq').on('click', function (){
-                $('.click-test-jq').text('OK')
+                $('.click-test-jq').text('jqClickOK')
             })
 
             document.querySelector('.click-test-dom').addEventListener('click', function () {
-                document.querySelector('.click-test-dom').innerText = 'OK'
+                document.querySelector('.click-test-dom').innerText = 'domClickOK'
             })
 
             $('.mouseover-test').on('mouseover', function () {
@@ -77,12 +77,12 @@
 
             $('.pressKey-test').on('keydown', function (event) {
                 if (event.keyCode === 65) {
-                    $('.pressKey-test').text('OK65')
+                    $('.pressKey-test').text('pressKey65OK')
                 }
             })
 
             $('.composite-test-click').on('click', function () {
-                $('.composite-test-click').text('OK')
+                $('.composite-test-click').text('compositeClickOK')
             })
 
 

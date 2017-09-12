@@ -28,19 +28,19 @@ module.exports = function (config) {
                 path: 'C:/Program Files (x86)/Google/Chrome/Application/chrome.exe',
                 bounds: { size: { width: 1024, height: 750 }, position: { x: 5, y: 5 } },
             }),
-            // new config.browsers.Firefox({
-            //     name: 'Firefox',
-            //     path: 'C:/Program Files (x86)/Mozilla Firefox/firefox.exe',
-            //     bounds: { size: { width: 1024, height: 750 }, position: { x: 5, y: 5 } },
-            // }),
+            new config.browsers.Firefox({
+                name: 'Firefox',
+                path: 'C:/Program Files (x86)/Mozilla Firefox/firefox.exe',
+                bounds: { size: { width: 1024, height: 750 }, position: { x: 5, y: 5 } },
+            }),
         ],
 
         suites: [
-            // {
-            //     name: 'getUniqueSelector',
-            //     appUrl: 'file:///' + pathlib.resolve(__dirname, 'get-unique-selector/test.html'),
-            //     testFiles: ['get-unique-selector/test.js']
-            // },
+            {
+                name: 'getUniqueSelector',
+                appUrl: 'file:///' + pathlib.resolve(__dirname, 'get-unique-selector/test.html'),
+                testFiles: ['get-unique-selector/test.js']
+            },
             {
                 name: 'browser-puppeteer',
                 appUrl: 'file:///' + pathlib.resolve(__dirname, 'browser-puppeteer/index.html'),

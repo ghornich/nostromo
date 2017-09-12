@@ -397,11 +397,12 @@ BrowserPuppetCommands.prototype.pressKey = function (cmd) {
     assert(Number.isFinite(keyCodeNum), 'BrowserPuppetCommands::pressKey: keyCode is not a number');
     this._assert$el($el, 'pressKey');
 
-    var keydownEvent = new KeyboardEvent('keydown', {
-        which: keyCodeNum,
-        keyCode: keyCodeNum,
-        charCode: keyCodeNum,
-    });
+    var keydownEvent = new Event('keydown');
+
+    keydownEvent.which = keyCodeNum;
+    keydownEvent.keyCode = keyCodeNum;
+    keydownEvent.charCode = keyCodeNum;
+
     $el[0].dispatchEvent(keydownEvent);
 };
 

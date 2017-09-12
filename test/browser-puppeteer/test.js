@@ -3,18 +3,18 @@
 exports = module.exports = function (test) {
     test('browser-puppeteer commands', async t => {
         await t.click('.click-test-jq')
-        t.equal(await t.getValue('.click-test-jq'), 'OK')
+        t.equal(await t.getValue('.click-test-jq'), 'jqClickOK')
 
         await t.click('.click-test-dom')
-        t.equal(await t.getValue('.click-test-dom'), 'OK')
+        t.equal(await t.getValue('.click-test-dom'), 'domClickOK')
 
         await t.composite([
             { type: 'click', selector: '.composite-test-click' },
-            { type: 'setValue', selector: '.composite-test-setValue', value: 'valOK' }
+            { type: 'setValue', selector: '.composite-test-setValue', value: 'compositeValOK' }
         ])
 
-        t.equal(await t.getValue('.composite-test-click'), 'OK')
-        t.equal(await t.getValue('.composite-test-setValue'), 'valOK')
+        t.equal(await t.getValue('.composite-test-click'), 'compositeClickOK')
+        t.equal(await t.getValue('.composite-test-setValue'), 'compositeValOK')
 
         await t.focus('.focus-test')
 
@@ -33,7 +33,7 @@ exports = module.exports = function (test) {
         t.equal(await t.getValue('.mouseover-test'), 'mouseoverOK')
 
         await t.pressKey('.pressKey-test', 65)
-        t.equal(await t.getValue('.pressKey-test'), 'OK65')
+        t.equal(await t.getValue('.pressKey-test'), 'pressKey65OK')
 
         await t.scroll('.scroll-test', 190)
 
