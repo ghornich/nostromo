@@ -33,6 +33,7 @@ const DEFAULT_DIFF_CFG_FILE = 'nostromo.diff.conf.js';
 
             baseConf = configFn({
                 LOG_LEVELS: Loggr.LEVELS,
+                Loggr: Loggr,
             });
         }
         catch (e) {
