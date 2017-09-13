@@ -19,7 +19,7 @@
 /**
  * @typedef {UpstreamControlMessage} SelectorBecameVisibleMessage
  * @property {String} type - 'selector-became-visible'
- * @property {any} ...
+ * @property {String} selector
  */
 
 /**

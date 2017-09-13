@@ -48,7 +48,7 @@ exports = module.exports = function (fileData) {
 /**
  * @typedef {UpstreamControlMessage} SelectorBecameVisibleMessage
  * @property {String} type - 'selector-became-visible'
- * @property {any} ...
+ * @property {String} selector
  */
 
 /**
@@ -718,7 +718,6 @@ BrowserPuppet.prototype._onMessage = function (rawData) {
                 return;
 
             case MESSAGES.DOWNSTREAM.SET_IGNORED_CLASSES:
-                debugger;
                 // TODO ugly
                 self._uniqueSelector._opts.ignoredClasses = data.classes;
                 return;

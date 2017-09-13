@@ -43,7 +43,7 @@
     |Name|Type|Description|
     |---|---|---|
     | type | `String` | 'selector-became-visible' |
-    | ... | `any` |  |
+    | selector | `String` |  |
 ### Downstream messages
 > Server to client (browser)
 - __DownstreamControlMessage__ - _ControlMessage_
