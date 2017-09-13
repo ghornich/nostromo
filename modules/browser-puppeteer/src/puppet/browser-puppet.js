@@ -58,10 +58,12 @@ function BrowserPuppet(opts) {
     });
 
     this._ssMarkerTopLeft = document.createElement('div');
+    this._ssMarkerTopLeft.className = 'browser-puppet--screenshot-marker--top-left';
     this._ssMarkerTopLeft.setAttribute('style', 'position:absolute;top:0;left:0;width:4px;height:4px;z-index:16777000;');
     this._ssMarkerTopLeft.style.background = 'url(' + SS_MARKER_IMG + ')';
 
     this._ssMarkerBottomRight = document.createElement('div');
+    this._ssMarkerBottomRight.className = 'browser-puppet--screenshot-marker--bottom-right';
     this._ssMarkerBottomRight.setAttribute('style', 'position:absolute;bottom:0;right:0;width:4px;height:4px;z-index:16777000;');
     this._ssMarkerBottomRight.style.background = 'url(' + SS_MARKER_IMG + ')';
 }
@@ -159,13 +161,14 @@ BrowserPuppet.prototype._onMessage = function (rawData) {
                 return;
 
             case MESSAGES.DOWNSTREAM.SET_IGNORED_CLASSES:
+                debugger;
                 // TODO ugly
                 self._uniqueSelector._opts.ignoredClasses = data.classes;
                 return;
 
-            // case MESSAGES.DOWNSTREAM.TERMINATE_PUPPET:
-            //     self._isTerminating = true;
-            //     return;
+            case MESSAGES.DOWNSTREAM.TERMINATE_PUPPET:
+                self._isTerminating = true;
+                return;
 
             default:
                 throw new Error('BrowserPuppet: unknown message type: ' + data.type);
@@ -424,6 +427,8 @@ BrowserPuppet.prototype.setOnSelectorBecameVisibleSelectors = function (selector
         self._selectorObserver = null;
     }
 
+    // TODO check _canCapture
+
     var observeList = selectors.map(function (selector) {
         return {
             selector: selector,
@@ -453,18 +458,8 @@ BrowserPuppet.prototype._onExecMessage = Promise.method(function (data) {
 
 });
 
-BrowserPuppet.prototype.execFunction = Promise.method(function (fn/* , args*/) {
-    var context = {
-        driver: this,
-        $: this.$,
-        // TODO kell?
-        jQuery: this.$,
-        promiseWhile: promiseWhile,
-        Promise: Promise,
-    };
-
-    // TODO args
-    return fn.apply(context);
+BrowserPuppet.prototype.execFunction = Promise.method(function (fn, args) {
+    return fn.apply(null, args);
 });
 
 BrowserPuppet.prototype.execCommand = Promise.method(function (command) {

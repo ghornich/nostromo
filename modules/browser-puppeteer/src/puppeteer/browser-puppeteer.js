@@ -113,13 +113,9 @@ BrowserPuppeteer.prototype.isPuppetConnected = function () {
 BrowserPuppeteer.prototype.clearPersistentData = async function () {
     this._log.debug('clearPersistentData');
 
-    const result = await this.sendMessage({
+    return this.sendMessage({
         type: MESSAGES.DOWNSTREAM.CLEAR_PERSISTENT_DATA,
     });
-
-    this._wsConn = null;
-
-    return result;
 };
 
 BrowserPuppeteer.prototype._onWsConnection = function (wsConn) {
@@ -211,13 +207,13 @@ BrowserPuppeteer.prototype.execCommand = Promise.method(function (command) {
     });
 });
 
-BrowserPuppeteer.prototype.execFunction = Promise.method(function (fn, ...args) {
+BrowserPuppeteer.prototype.execFunction = async function (fn, ...args) {
     return this.sendMessage({
         type: MESSAGES.DOWNSTREAM.EXEC_FUNCTION,
         fn: fn,
         args: args,
     });
-});
+};
 
 BrowserPuppeteer.prototype.setTransmitEvents = function (value) {
     return this.sendMessage({
@@ -233,12 +229,12 @@ BrowserPuppeteer.prototype.setSelectorBecameVisibleSelectors = Promise.method(fu
     });
 });
 
-BrowserPuppeteer.prototype.setMouseoverSelectors = Promise.method(function (selectors) {
+BrowserPuppeteer.prototype.setMouseoverSelectors = async function (selectors) {
     return this.sendMessage({
         type: MESSAGES.DOWNSTREAM.SET_MOUSEOVER_SELECTORS,
         selectors: selectors,
     });
-});
+};
 
 BrowserPuppeteer.prototype.terminatePuppet = async function () {
     const result = await this.sendMessage({ type: MESSAGES.DOWNSTREAM.TERMINATE_PUPPET });
@@ -250,6 +246,10 @@ BrowserPuppeteer.prototype.terminatePuppet = async function () {
 
 BrowserPuppeteer.prototype.showScreenshotMarker = function () {
     return this.sendMessage({ type: MESSAGES.DOWNSTREAM.SHOW_SCREENSHOT_MARKER });
+};
+
+BrowserPuppeteer.prototype.hideScreenshotMarker = function () {
+    return this.sendMessage({ type: MESSAGES.DOWNSTREAM.HIDE_SCREENSHOT_MARKER });
 };
 
 BrowserPuppeteer.prototype.stop = async function () {
