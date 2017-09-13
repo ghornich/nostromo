@@ -7,6 +7,7 @@ const rimraf = require('rimraf');
 const Loggr = require('../loggr');
 const http = require('http');
 const WS = require('ws');
+const truncateString = require('lodash.truncate');
 
 const TEMP_DELETE_RETRIES = BrowserSpawnerBase.TEMP_DELETE_RETRIES = 3;
 const TEMP_DELETE_TIMEOUT = BrowserSpawnerBase.TEMP_DELETE_TIMEOUT = 1000;
@@ -97,7 +98,16 @@ BrowserSpawnerBase.prototype.open = function (url) {
         throw new Error('BrowserSpawnerBase::open: not connected');
     }
 
-    this._log.info(`opening address "${url}"`);
+    const truncatedUrl = truncateString(url, {
+        length: 120,
+        omission: ' [...]',
+    });
+
+    this._log.info(`opening address "${truncatedUrl}"`);
+
+    if (truncatedUrl.length < url) {
+        this._log.trace(`opening address "${url}"`);
+    }
 
     this._sendWsMessage({ type: 'open', url: url });
 };

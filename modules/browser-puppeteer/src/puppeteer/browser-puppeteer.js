@@ -151,12 +151,12 @@ BrowserPuppeteer.prototype._onWsMessage = function (rawData) {
         const validTypes = Object.keys(MESSAGES.UPSTREAM).map(k => MESSAGES.UPSTREAM[k]);
 
         if (validTypes.indexOf(data.type) >= 0) {
-            this._log.trace(`emitting message type ${data.type}`);
+            this._log.trace(`emitting message type "${data.type}"`);
 
             this.emit(data.type, data, rawData);
         }
         else {
-            this._log.info(`unknown event type: ${data.type}`);
+            this._log.info(`unknown event type: "${data.type}"`);
         }
     }
 };
