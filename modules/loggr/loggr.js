@@ -30,14 +30,24 @@ var browserConsoleStream = {
 };
 
 function Loggr(conf) {
-    this._conf = Object.assign({
+    var defaultConf = {
         logLevel: LEVELS.INFO,
         showTime: true,
         namespace: null,
         outStream: process.stdout || browserConsoleStream,
         eol: os.EOL,
         indent: '',
-    }, conf);
+    };
+
+    var defaultConfKeys = Object.keys(defaultConf);
+
+    Object.keys(conf).forEach(function (key) {
+        if (defaultConfKeys.indexOf(key) < 0) {
+            throw new Error('Loggr: unknown config parameter "' + key + '"');
+        }
+    });
+
+    this._conf = Object.assign({}, defaultConf, conf);
 
     if (typeof this._conf.logLevel === 'string') {
         var logLevelLower = this._conf.logLevel.toLowerCase();
