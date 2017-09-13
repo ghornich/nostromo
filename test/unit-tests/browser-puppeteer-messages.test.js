@@ -71,8 +71,7 @@ test('browser puppeteer messages', async t => {
 
         // SetSelectorBecameVisibleDataMessage
 
-        await puppeteer.setSelectorBecameVisibleSelectors(['#selectorBecameVisibleTest']);
-        // test continues at UPSTREAM SelectorBecameVisibleMessage
+        // see UPSTREAM SelectorBecameVisibleMessage
 
         // ShowScreenshotMarkerMessage
 
@@ -253,15 +252,16 @@ test('browser puppeteer messages', async t => {
 
         // SelectorBecameVisibleMessage
 
-        // continuing from DOWNSTREAM SetSelectorBecameVisibleDataMessage
-
+        await puppeteer.setSelectorBecameVisibleSelectors(['#selectorBecameVisibleTest']);
         await puppeteer.setTransmitEvents(true);
 
         const selectorBecameVisiblePromise = new Promise((resolve, reject) => {
-            setTimeout(()=>{reject(new Error('SelectorBecameVisibleMessage test: timed out'))}, 3000)
+            setTimeout(()=>{
+                reject(new Error('SelectorBecameVisibleMessage test: timed out'))
+            }, 3000)
 
             puppeteer.once(MESSAGES.UPSTREAM.SELECTOR_BECAME_VISIBLE, data => {
-                if (data.event.selector === '#selectorBecameVisibleTest') {
+                if (data.selector === '#selectorBecameVisibleTest') {
                     resolve();
                 }
                 else {
