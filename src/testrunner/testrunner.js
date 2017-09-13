@@ -250,7 +250,7 @@ Testrunner.prototype.run = async function () {
                 try {
                 
                     for (const suite of conf.suites) {
-                        this._tapWriter.comment(`starting suite: ${suite.name||DEFAULT_SUITE_NAME}`)
+                        this._tapWriter.comment(`Starting suite: ${suite.name||DEFAULT_SUITE_NAME}`)
 
                         const beforeSuite = conf.defaultBeforeSuite || suite.beforeSuite
 
@@ -461,10 +461,13 @@ Testrunner.prototype._runTestFile = async function (testFilePath, data) {
             maybeTestError = err;
         }
 
-        if (testIndex < testDatas.length - 1) {
+        // TODO enabling this if() will break the tests, browserpuppet isn't closed after this test
+        // delete this or use terminatePuppet()
+
+        // if (testIndex < testDatas.length - 1) {
             await this._browserPuppeteer.clearPersistentData();
             browser.open('');
-        }
+        // }
 
         if (currentAfterTest) {
             this._log.debug('running afterTest');
