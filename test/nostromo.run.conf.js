@@ -3,22 +3,6 @@ const pathlib = require('path');
 module.exports = function (config) {
     return {
         logLevel: config.LOG_LEVELS.TRACE,
-        // beforeCommand: function (t, command) {
-        // },
-
-        // afterCommand: function (t, command) {
-        //     // return Promise.delay(2000)
-        // },
-
-
-        // beforeTest: function () {
-        //     return Promise.delay(5000);
-        //     // console.log('before test')
-        // },
-
-        // afterTest: function () {
-        //     // console.log('after test')
-        // },
 
         testBailout: true,
 

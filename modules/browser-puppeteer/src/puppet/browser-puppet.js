@@ -499,49 +499,6 @@ BrowserPuppet.prototype.execCompositeCommand = Promise.method(function (commands
     });
 });
 
-BrowserPuppet.prototype._execFn = Promise.method(function (fnData) {
-    var argNames = fnData.argNames || [];
-    var argValues = fnData.argValues || [];
-    var fnBody = fnData.body;
-
-    var fn;
-
-    /* eslint-disable no-new-func */
-
-    switch (argNames.length) {
-        case 0: fn = new Function(fnBody);
-            break;
-        case 1: fn = new Function(argNames[0], fnBody);
-            break;
-        case 2: fn = new Function(argNames[0], argNames[1], fnBody);
-            break;
-        case 3: fn = new Function(argNames[0], argNames[1], argNames[2], fnBody);
-            break;
-        case 4: fn = new Function(argNames[0], argNames[1], argNames[2], argNames[3], fnBody);
-            break;
-        case 5: fn = new Function(argNames[0], argNames[1], argNames[2], argNames[3], argNames[4], fnBody);
-            break;
-        case 6: fn = new Function(argNames[0], argNames[1], argNames[2], argNames[3], argNames[4], argNames[5], fnBody);
-            break;
-        default:
-            throw new Error('Too many args');
-    }
-
-    /* eslint-enable no-new-func */
-
-    // TODO custom context?
-    var context = {
-        driver: this,
-        $: this.$,
-        // TODO kell?
-        jQuery: this.$,
-        promiseWhile: promiseWhile,
-        Promise: Promise,
-    };
-
-    return fn.apply(context, argValues);
-});
-
 // TODO separate file
 // from https://stackoverflow.com/a/179514/4782902
 function deleteAllCookies() {
