@@ -77,7 +77,8 @@ window.BrowserPuppet = require('../src/puppet/browser-puppet.js');
 /**
  * @typedef {DownstreamControlMessage} ExecFunctionMessage
  * @property {String} type - 'exec-function'
- * @property {}
+ * @property {Function} fn - to stringify this, use fn.toString(). Currently accepts ES5 function literals only (function () {...})
+ * @property {Array<Any>} args - values passed to `fn`
  */
 
 /**
@@ -603,10 +604,12 @@ function BrowserPuppet(opts) {
     });
 
     this._ssMarkerTopLeft = document.createElement('div');
+    this._ssMarkerTopLeft.className = 'browser-puppet--screenshot-marker--top-left';
     this._ssMarkerTopLeft.setAttribute('style', 'position:absolute;top:0;left:0;width:4px;height:4px;z-index:16777000;');
     this._ssMarkerTopLeft.style.background = 'url(' + SS_MARKER_IMG + ')';
 
     this._ssMarkerBottomRight = document.createElement('div');
+    this._ssMarkerBottomRight.className = 'browser-puppet--screenshot-marker--bottom-right';
     this._ssMarkerBottomRight.setAttribute('style', 'position:absolute;bottom:0;right:0;width:4px;height:4px;z-index:16777000;');
     this._ssMarkerBottomRight.style.background = 'url(' + SS_MARKER_IMG + ')';
 }
@@ -704,13 +707,14 @@ BrowserPuppet.prototype._onMessage = function (rawData) {
                 return;
 
             case MESSAGES.DOWNSTREAM.SET_IGNORED_CLASSES:
+                debugger;
                 // TODO ugly
                 self._uniqueSelector._opts.ignoredClasses = data.classes;
                 return;
 
-            // case MESSAGES.DOWNSTREAM.TERMINATE_PUPPET:
-            //     self._isTerminating = true;
-            //     return;
+            case MESSAGES.DOWNSTREAM.TERMINATE_PUPPET:
+                self._isTerminating = true;
+                return;
 
             default:
                 throw new Error('BrowserPuppet: unknown message type: ' + data.type);
@@ -969,6 +973,8 @@ BrowserPuppet.prototype.setOnSelectorBecameVisibleSelectors = function (selector
         self._selectorObserver = null;
     }
 
+    // TODO check _canCapture
+
     var observeList = selectors.map(function (selector) {
         return {
             selector: selector,
@@ -998,18 +1004,8 @@ BrowserPuppet.prototype._onExecMessage = Promise.method(function (data) {
 
 });
 
-BrowserPuppet.prototype.execFunction = Promise.method(function (fn/* , args*/) {
-    var context = {
-        driver: this,
-        $: this.$,
-        // TODO kell?
-        jQuery: this.$,
-        promiseWhile: promiseWhile,
-        Promise: Promise,
-    };
-
-    // TODO args
-    return fn.apply(context);
+BrowserPuppet.prototype.execFunction = Promise.method(function (fn, args) {
+    return fn.apply(null, args);
 });
 
 BrowserPuppet.prototype.execCommand = Promise.method(function (command) {
@@ -1042,49 +1038,6 @@ BrowserPuppet.prototype.execCompositeCommand = Promise.method(function (commands
     return Promise.each(commands, function (command) {
         return self.execCommand(command);
     });
-});
-
-BrowserPuppet.prototype._execFn = Promise.method(function (fnData) {
-    var argNames = fnData.argNames || [];
-    var argValues = fnData.argValues || [];
-    var fnBody = fnData.body;
-
-    var fn;
-
-    /* eslint-disable no-new-func */
-
-    switch (argNames.length) {
-        case 0: fn = new Function(fnBody);
-            break;
-        case 1: fn = new Function(argNames[0], fnBody);
-            break;
-        case 2: fn = new Function(argNames[0], argNames[1], fnBody);
-            break;
-        case 3: fn = new Function(argNames[0], argNames[1], argNames[2], fnBody);
-            break;
-        case 4: fn = new Function(argNames[0], argNames[1], argNames[2], argNames[3], fnBody);
-            break;
-        case 5: fn = new Function(argNames[0], argNames[1], argNames[2], argNames[3], argNames[4], fnBody);
-            break;
-        case 6: fn = new Function(argNames[0], argNames[1], argNames[2], argNames[3], argNames[4], argNames[5], fnBody);
-            break;
-        default:
-            throw new Error('Too many args');
-    }
-
-    /* eslint-enable no-new-func */
-
-    // TODO custom context?
-    var context = {
-        driver: this,
-        $: this.$,
-        // TODO kell?
-        jQuery: this.$,
-        promiseWhile: promiseWhile,
-        Promise: Promise,
-    };
-
-    return fn.apply(context, argValues);
 });
 
 // TODO separate file
@@ -1599,14 +1552,24 @@ var browserConsoleStream = {
 };
 
 function Loggr(conf) {
-    this._conf = Object.assign({
+    var defaultConf = {
         logLevel: LEVELS.INFO,
         showTime: true,
         namespace: null,
         outStream: process.stdout || browserConsoleStream,
         eol: os.EOL,
         indent: '',
-    }, conf);
+    };
+
+    var defaultConfKeys = Object.keys(defaultConf);
+
+    Object.keys(conf).forEach(function (key) {
+        if (defaultConfKeys.indexOf(key) < 0) {
+            throw new Error('Loggr: unknown config parameter "' + key + '"');
+        }
+    });
+
+    this._conf = Object.assign({}, defaultConf, conf);
 
     if (typeof this._conf.logLevel === 'string') {
         var logLevelLower = this._conf.logLevel.toLowerCase();
