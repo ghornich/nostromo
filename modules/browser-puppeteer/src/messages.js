@@ -59,7 +59,8 @@
 /**
  * @typedef {DownstreamControlMessage} ExecFunctionMessage
  * @property {String} type - 'exec-function'
- * @property {}
+ * @property {Function} fn - to stringify this, use fn.toString(). Currently accepts ES5 function literals only (function () {...})
+ * @property {Array<Any>} args - values passed to `fn`
  */
 
 /**

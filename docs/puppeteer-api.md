@@ -63,7 +63,8 @@
     |Name|Type|Description|
     |---|---|---|
     | type | `String` | 'exec-function' |
-    | undefined | `` |  |
+    | fn | `function` | to stringify this, use fn.toString(). Currently accepts ES5 function literals only (function () {...}) |
+    | args | `Array<Any>` | values passed to `fn` |
 - __HideScreenshotMarkerMessage__ - _DownstreamControlMessage_
 
     |Name|Type|Description|
