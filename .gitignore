@@ -8,3 +8,4 @@ bc-test
 test.js
 bc-test*.js
 babel-temp.js
+lint.txt
