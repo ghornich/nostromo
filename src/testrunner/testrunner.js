@@ -826,11 +826,11 @@ Testrunner.prototype._comment = async function (comment) {
 
 Testrunner.prototype._handleCommandError = function (err) {
     if (this._conf.testBailout) {
-        throw createError(ERRORS.TEST_BAILOUT, err);
+        throw createError(ERRORS.TEST_BAILOUT, err.message);
     }
 
     if (this._conf.bailout) {
-        throw createError(ERRORS.BAILOUT, err);
+        throw createError(ERRORS.BAILOUT, err.message);
     }
 };
 

@@ -89,23 +89,32 @@ exports = module.exports = function (test, _testrunnerInstance) {
 
         // TODO
 
-        // _testrunnerInstance._conf.bailout = true;
+        _testrunnerInstance._conf.bailout = true;
 
-        // try {
-        //     const wfvPromise =  t.waitForVisible('.no-such-selector', {
-        //         timeout: 3000,
-        //         pollInterval: 300
-        //     });
+        try {
+            const wfvPromise =  t.waitForVisible('.no-such-selector', {
+                timeout: 3000,
+                pollInterval: 300
+            });
 
-        //     const timeoutPromise = Promise.delay(4000).then(() => { throw new Error('failed to time out after 3s') });
+            const timeoutPromise = new Promise(r => setTimeout(r, 4000)).then(() => { throw new Error('failed to time out after 3s') });
 
-        //     await Promise.race(wfvPromise, timeoutPromise);
+            await Promise.race([wfvPromise, timeoutPromise]);
+            throw new Error('Unexpected resolve')
+        }
+        catch (error) {
+            console.log('-------------')
+            console.log('MI A FASZ ', error)
+            console.log('-------------')
 
-        //     t.equal(true, true, 'waitForVisible timeout');
-        // }
-        // catch (error) {
-        //     t.equal(true, false, 'waitForVisible timeout: ' + error.message);
-        // }
+            if (error.message.indexOf('waitForVisible: timed out') >= 0) {
+                t.equal(true, true, 'waitForVisible timeout');
+            }
+            else {
+                t.equal(true, false, 'waitForVisible timeout: ' + error.message);
+                throw error;
+            }
+        }
 
         // @endregion
 
