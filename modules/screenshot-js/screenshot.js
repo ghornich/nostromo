@@ -1,13 +1,13 @@
-var cp=require('child_process')
-var fs=require('fs')
-var resolve=require('path').resolve
-var Promise=require('bluebird')
-var pngjs=require('pngjs')
-var bufferImageSearch=require('../buffer-image-search')
-var bufferImageCrop = require('../buffer-image-crop');
+const cp = require('child_process');
+const fs = require('fs');
+const resolve = require('path').resolve;
+const Promise = require('bluebird');
+const pngjs = require('pngjs');
+const bufferImageSearch = require('../buffer-image-search');
+const bufferImageCrop = require('../buffer-image-crop');
 
-var execAsync=Promise.promisify(cp.exec)
-var unlinkAsync=Promise.promisify(fs.unlink)
+const execAsync = Promise.promisify(cp.exec);
+const unlinkAsync = Promise.promisify(fs.unlink);
 
 // TODO crop is not a responsibility of this module
 
@@ -27,88 +27,86 @@ var unlinkAsync=Promise.promisify(fs.unlink)
  * @param {} opts. - 
  * @return {[type]}           [description]
  */
-module.exports=Promise.method(function(opts){
-    opts=opts||{}
+module.exports = Promise.method(function (rawOpts) {
+    const opts = rawOpts || {};
 
-    var tempPath=resolve(opts.tempPath || '_screenshot_temp.png')
+    const tempPath = resolve(opts.tempPath || '_screenshot_temp.png');
 
-    return Promise.try(_=> {
+    return Promise.try(() => {
 
-        if (process.platform==='win32'){
-            // var boxcutterPath=resolve(__dirname, 'platform_modules/boxcutter/boxcutter.exe')
+        if (process.platform === 'win32') {
+            const screenshotCmdPath = resolve(__dirname, 'platform_modules/screenshot-cmd/screenshot-cmd.exe');
 
-            // return execAsync(`${boxcutterPath} -f ${tempPath}`)
-
-            var screenshotCmdPath = resolve(__dirname, 'platform_modules/screenshot-cmd/screenshot-cmd.exe')
-
-            return execAsync(`${screenshotCmdPath} -o ${tempPath}`)
+            return execAsync(`${screenshotCmdPath} -o ${tempPath}`);
         }
-        else {
-            // TODO
-        }
+
+        // TODO
+
     })
-    .then(_=>new Promise((res,rej)=>{
+    .then(() => new Promise((res) => {
         fs.createReadStream(tempPath)
         .pipe(new pngjs.PNG())
         .on('parsed', function () {
-            res({width:this.width,height:this.height,data:this.data})
-        })
+            res({ width: this.width, height: this.height, data: this.data });
+        });
     }))
-    .then(img=>{
-        if (!opts.cropMarker)return img
+    .then(img => {
+        if (!opts.cropMarker) {
+            return img;
+        }
 
-        return Promise.try(_=>{
+        return Promise.try(() => {
             if (typeof opts.cropMarker === 'string') {
-                return new Promise((res,rej)=>{
+                return new Promise((res) => {
                     fs.createReadStream(resolve(opts.cropMarker))
                     .pipe(new pngjs.PNG())
                     .on('parsed', function () {
-                        res({width:this.width,height:this.height,data:this.data})
-                    })
-                })
+                        res({ width: this.width, height: this.height, data: this.data });
+                    });
+                });
             }
-            else {
-                return opts.cropMarker
-            }
+
+            return opts.cropMarker;
+
         })
-        .then(marker=>{
-            var markerPositions=bufferImageSearch(img, marker)
+        .then(marker => {
+            const markerPositions = bufferImageSearch(img, marker);
 
-            if (markerPositions.length !== 2){
-                throw new Error('Marker count is not 2! Found '+markerPositions.length)
+            if (markerPositions.length !== 2) {
+                throw new Error(`Marker count is not 2! Found ${markerPositions.length}`);
             }
 
-            var cropDimensions={
-                x:markerPositions[0].x,
-                y:markerPositions[0].y,
-                width:markerPositions[1].x - markerPositions[0].x + marker.width,
+            const cropDimensions = {
+                x: markerPositions[0].x,
+                y: markerPositions[0].y,
+                width: markerPositions[1].x - markerPositions[0].x + marker.width,
                 height: markerPositions[1].y - markerPositions[0].y + marker.height,
-            }
+            };
 
-            return bufferImageCrop(img, cropDimensions)
-            
-        })
+            return bufferImageCrop(img, cropDimensions);
+
+        });
     })
-    .then(img=>{
+    .then(img => {
         return unlinkAsync(tempPath)
-        .then(_=>{
+        .then(() => {
             if (opts.outfile) {
-                return new Promise((res,rej)=>{
-                    var png=new pngjs.PNG(img)
-                    png.data=img.data
-                    
+                return new Promise((res, rej) => {
+                    const png = new pngjs.PNG(img);
+                    png.data = img.data;
+
                     png
                     .pack()
                     .pipe(fs.createWriteStream(resolve(opts.outfile)))
                     .on('error', rej)
-                    .on('end', res)
-                })
+                    .on('end', res);
+                });
             }
         })
-        .then(_=>({
+        .then(() => ({
             width: img.width,
             height: img.height,
-            data: img.data
-        }))
-    })
-})
+            data: img.data,
+        }));
+    });
+});

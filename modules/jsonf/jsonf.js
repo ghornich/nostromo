@@ -1,44 +1,43 @@
-'use strict'
+'use strict';
 
 // TODO support ES6 arrow fns
 
-var JSONF=exports
+var JSONF = exports;
 
-JSONF.stringify=function(o){
-    return JSON.stringify(o, function(key,val){
-        if (typeof val==='function'){
-            return val.toString()
+JSONF.stringify = function (o) {
+    return JSON.stringify(o, function (key, val) {
+        if (typeof val === 'function') {
+            return val.toString();
         }
-        else {
-            return val
-        }
-    })
-}
 
-JSONF.parse=function(s){
-    var i=0
-    return JSON.parse(s, function(key, val){
-        if (isStringAFunction(val)){
+        return val;
+    });
+};
+
+JSONF.parse = function (s) {
+    return JSON.parse(s, function (key, val) {
+        if (isStringAFunction(val)) {
             try {
+                // eslint-disable-next-line no-new-func
                 return new Function(
                     // http://www.kristofdegrave.be/2012/07/json-serialize-and-deserialize.html
                     val.match(/\(([^)]*)\)/)[1],
                     val.match(/\{([\s\S]*)\}/)[1]
-                )
+                );
             }
-            catch (e){
+            catch (e) {
                 // TODO throw a big fat error?
-                console.log('JSONF err: '+val)
-                console.error(e)
-                return val
+                console.log('JSONF err: ' + val);
+                console.error(e);
+                return val;
             }
         }
 
-        return val
-    })
-}
+        return val;
+    });
+};
 
-function isStringAFunction(s){
+function isStringAFunction(s) {
     return /^function\s*\(/.test(s) ||
-        /^function\s+[a-zA-Z0-9_$]+\s*\(/.test(s)
+        /^function\s+[a-zA-Z0-9_$]+\s*\(/.test(s);
 }

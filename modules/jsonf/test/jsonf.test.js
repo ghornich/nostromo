@@ -1,8 +1,11 @@
-var test=require('tape')
-var JSONF=require('../jsonf')
+const test = require('tape');
+const JSONF = require('../jsonf');
 
-test(function(t){
-	var o={
+test(t => {
+
+    /* eslint-disable */
+
+	var testObject = {
 		a:[1,2,3, function (a,b) {
 			/*          */
 			return a*b
@@ -18,25 +21,28 @@ test(function(t){
 			return x + '\r\n';
 		},
 		f: function(){}
-	}
+	};
 
-	var stringified=JSONF.stringify(o)
+	/* eslint-enable */
 
-	var expectedStringified='{"a":[1,2,3,"function (a,b) {\\n\\t\\t\\t/*          */\\n\\t\\t\\treturn a*b\\n\\t\\t}"],\
+    const stringified = JSONF.stringify(testObject);
+
+    // eslint-disable-next-line no-multi-str
+    const expectedStringified = '{"a":[1,2,3,"function (a,b) {\\n\\t\\t\\t/*          */\\n\\t\\t\\treturn a*b\\n\\t\\t}"],\
 "b":"function (a){return a*a/*\\n\\n\\n\\t\\t*/}",\
 "c":{"d":5},\
 "e":"function (x) {\\n\\t\\t\\treturn x + \'\\\\r\\\\n\';\\n\\t\\t}",\
-"f":"function (){}"}'
+"f":"function (){}"}';
 
-	t.equal(stringified, expectedStringified)
+    t.equal(stringified, expectedStringified);
 
-	var parsed=JSONF.parse(stringified)
+    const parsed = JSONF.parse(stringified);
 
-	t.equal(parsed.a[1], 2)
-	t.equal(parsed.a[3](4,6), 24)
-	t.equal(parsed.b(12), 144)
-	t.equal(parsed.c.d, 5)
-	t.equal(parsed.e('dog'), 'dog\r\n')
+    t.equal(parsed.a[1], 2);
+    t.equal(parsed.a[3](4, 6), 24);
+    t.equal(parsed.b(12), 144);
+    t.equal(parsed.c.d, 5);
+    t.equal(parsed.e('dog'), 'dog\r\n');
 
-	t.end()
-})
+    t.end();
+});

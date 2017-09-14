@@ -1,0 +1,230 @@
+ <!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <title>title</title>
+
+        <style type="text/css">
+            #dialog{
+                position:absolute;top:0;left:0;right:0;bottom:0;
+                background:rgba(0,0,0,0.3);
+                display:flex;
+                align-items:center;
+                justify-content: center;
+            }
+
+            .dialog-body{
+                width:25em;
+                height: 15em;
+                background:#fff;
+                border:#aaa;
+                display:flex;
+                align-items:center;
+                justify-content: center;
+                flex-direction: column;
+            }
+
+            .delete{
+                color:blue;
+                text-decoration: underline;
+                cursor:pointer;
+            }
+
+            #toast{
+                position: absolute;
+                display:inline-block;
+                top:0;
+                left:50%;
+                transform:translateX(-50%);
+                background:wheat;
+                border:1px #aaa solid;
+                padding: 0.5em;
+            }
+
+            #app-loading-overlay {
+                position:absolute;top:0;left:0;right:0;bottom:0;
+                background: #eee;
+                display:flex;
+                align-items:center;
+                justify-content: center;
+            }
+        </style>
+
+    </head>
+    <body>
+        <button id="show-dialog">Add item</button> <span id="loading1" class="loading">Loading...</span>
+
+        <h2>Items</h2>
+        <p id="noitems">No items.</p>
+        <ul id="list"></ul>
+
+        <div id="dialog" tabindex=0>
+            <div class="dialog-body">
+                <h2>Add item</h2>
+                <p><input id="input" /></p>
+                <p><button id="add-btn">Add</button> <span id="loading2" class="loading">Loading...</span></p>
+            </div>
+        </div>
+
+        <div id="toast"></div>
+
+        <div class="loading" id="app-loading-overlay">Loading...</div>
+
+
+        <script src="https://code.jquery.com/jquery-3.2.1.slim.js"></script>
+
+        <script>
+            var qs = getQSFromUrl(window.location)
+
+            var state = {
+                dialogOpen:false,
+                _prevDialogOpen:false,
+                loading1:false,
+                loading2:false,
+                list:[],
+                showToast:false,
+                toastMsg:'',
+            }
+
+            if ('listData' in localStorage) {
+                state.list=JSON.parse(localStorage.getItem('listData'))
+            }
+
+            var $dialog=$('#dialog')
+            var $list=$('#list')
+            var $showDialogBtn=$('#show-dialog')
+            var $loading1=$('#loading1')
+            var $loading2=$('#loading2')
+            var $input=$('#input')
+            var $addBtn=$('#add-btn')
+            var $noItems=$('#noitems')
+            var $toast=$('#toast')
+            var $body=$(document.body)
+            var $appLoadingOverlay=$('#app-loading-overlay')
+
+            var actions={
+                showDialog:function(){
+                    state.loading1=true
+
+                    setTimeout(function(){
+                        state.dialogOpen=true
+                        render()
+                    }, randDelay())
+                },
+
+                dialogKeyup:function(event){
+                    if (event.keyCode===27){
+                        state.dialogOpen=false
+                        state.loading1=false
+                        render()
+                    }
+                },
+
+                dialogSubmit:function(){
+                    var val=$input.val()
+                    state.loading2=true
+
+                    setTimeout(function(){
+                        state.loading1=false
+                        state.loading2=false
+                        state.dialogOpen=false
+                        state.list.push(val)
+                        localStorage.setItem('listData', JSON.stringify(state.list))
+                        showToastThenHide('Item added')
+                        // render()
+                    }, randDelay())
+                },
+
+                delete:function(event){
+                    state.loading1=true
+
+                    var idx=event.target.getAttribute('data-idx')
+
+                    setTimeout(function(){
+                        state.list.splice(idx, 1)
+                        state.loading1=false
+                        showToastThenHide('Item removed')
+                        // render()
+                    }, randDelay())
+                }
+            }
+
+
+
+
+            function showToastThenHide(msg){
+                state.toastMsg=msg
+                state.showToast=true
+                render()
+
+                setTimeout(function(){
+                    state.toastMsg=''
+                    state.showToast=false
+                    render()
+                }, 2000)
+            }
+
+            function render(){
+                $list.find('li').remove()
+
+                state.list.forEach(function(item, i) {
+                    $list.append('<li>'+item+' <span class="delete" data-idx="'+i+'">(x)</span></li>')
+                })
+
+                $dialog.toggle(state.dialogOpen)
+
+                $loading1.toggle(state.loading1)
+                $loading2.toggle(state.loading2)
+
+                $noItems.toggle(state.list.length===0)
+
+                $toast.toggle(state.showToast)
+                $toast.text(state.toastMsg)
+
+                if (!state._prevDialogOpen && state.dialogOpen) {
+                    $dialog[0].focus()
+                }
+
+                $appLoadingOverlay.hide()
+
+                state._prevDialogOpen=state.dialogOpen
+            }
+
+            function randDelay(){
+                var max=3000
+                var min = 300
+                return Math.floor(Math.random() * (max - min + 1)) + min
+            }
+
+            function getQSFromUrl(url){
+                var matches=String(url).match(/\?(.+$)/)
+                if (matches===null)return {}
+
+                var pairs=matches[1].split('&')
+                var result={}
+
+                pairs.forEach(function(pair){
+                    var pairParts=pair.split('=')
+                    result[pairParts[0]]=pairParts[1]
+
+                })
+                return result
+            }
+
+            $showDialogBtn.on('click',actions.showDialog)
+            $dialog.on('keyup', actions.dialogKeyup)
+            $addBtn.on('click',actions.dialogSubmit)
+            $body.on('click', '.delete', actions.delete)
+            $body.on('click focus keypress input', render)
+
+            setTimeout(render, randDelay())
+
+            if (qs.color){
+                $body.css('background','#'+qs.color)
+            }
+
+        </script>
+
+        <script src="http://localhost:47225/browser-puppet.defaults.js"></script>
+    </body>
+</html>

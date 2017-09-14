@@ -21,6 +21,9 @@ user_pref('extensions.autoDisableScopes', 0);
 user_pref('browser.tabs.remote.autostart', false);
 user_pref('browser.tabs.remote.autostart.2', false);
 user_pref('extensions.enabledScopes', 15);
+user_pref("signon.rememberSignons", false);
+user_pref("browser.customizemode.tip0.shown", true);
+user_pref("browser.search.suggest.enabled", false);
 `;
 
 function BrowserSpawnerFirefox(options) {
@@ -29,8 +32,8 @@ function BrowserSpawnerFirefox(options) {
 
 util.inherits(BrowserSpawnerFirefox, BrowserSpanwerBase);
 
-BrowserSpawnerFirefox.prototype.start = Promise.method(function (url) {
-    if (this._processRunning) {
+BrowserSpawnerFirefox.prototype._startBrowser = async function (spawnerControlUrl) {
+    if (this._process) {
         throw new Error('Process is already running');
     }
 
@@ -64,30 +67,20 @@ BrowserSpawnerFirefox.prototype.start = Promise.method(function (url) {
     const xulstorePath = resolvePath(this._opts.tempDir, 'xulstore.json');
 
     return mkdirpAsync(this._opts.tempDir)
-        .then(() => fs.writeFileAsync(prefsPath, PREF_DEFAULT))
-        .then(() => fs.writeFileAsync(xulstorePath, JSON.stringify(xulstoreObj)))
-        .then(() => {
-            this._process = spawn(this._opts.path, ['-profile', this._opts.tempDir, '-no-remote', url]);
-            this._processRunning = true;
+    .then(() => fs.writeFileAsync(prefsPath, PREF_DEFAULT))
+    .then(() => fs.writeFileAsync(xulstorePath, JSON.stringify(xulstoreObj)))
+    .then(() => {
+        this._process = spawn(this._opts.path, ['-profile', this._opts.tempDir, '-no-remote', spawnerControlUrl]);
 
-            this._process.on('error', err => {
-                this.emit('error', err);
-            });
-
-            this._process.on('close', () => {
-                this.emit('close');
-                this._deleteTempDir();
-            });
+        this._process.on('error', err => {
+            this.emit('error', err);
         });
-});
 
-BrowserSpawnerFirefox.prototype.stop = function () {
-    if (this._processRunning) {
-        this._process.kill();
-    }
-    else {
-        throw new Error('Process is not running');
-    }
+        this._process.on('close', () => {
+            this.emit('close');
+            this._deleteTempDir();
+        });
+    });
 };
 
 BrowserSpawnerFirefox.prototype._getDefaultTempDir = function () {

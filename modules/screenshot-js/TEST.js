@@ -1,1 +1,1 @@
-require('./screenshot')({outfile:'screenshot.png'})
+require('./screenshot')({ outfile: 'screenshot.png' });
