@@ -1,6 +1,5 @@
 'use strict';
 
-const pathlib = require('path');
 const test = require('tape');
 const Promise = require('bluebird');
 const Chrome = require('../../modules/browser-spawner-chrome');
@@ -24,7 +23,7 @@ test('browser puppeteer messages', async t => {
             namespace: 'BrowserPuppeteer',
             logLevel: Loggr.LEVELS.TRACE,
             indent: '  ',
-        })
+        }),
     });
 
     const httpServer = HttpServer.createServer({
@@ -35,6 +34,31 @@ test('browser puppeteer messages', async t => {
     });
 
     httpServer.listen(HTTP_PORT);
+
+
+    async function getScreenshotMarkerState() {
+        return puppeteer.execFunction(function () {
+            return document.querySelector('.browser-puppet--screenshot-marker--top-left') !== null &&
+                document.querySelector('.browser-puppet--screenshot-marker--bottom-right') !== null;
+        });
+    }
+
+    async function getCookies() {
+        return puppeteer.execFunction(function () {
+            return document.cookie;
+        });
+    }
+
+    async function isLocalStorageEmpty() {
+        return puppeteer.execFunction(function () {
+            return localStorage.length === 0;
+        });
+    }
+
+    async function assertPersistentDataEmpty() {
+        t.equal(await getCookies(), '', 'ClearPersistentData: cookies are empty');
+        t.equal(await isLocalStorageEmpty(), true, 'ClearPersistentData: localStorage is empty');
+    }
 
     try {
         await puppeteer.start();
@@ -47,11 +71,11 @@ test('browser puppeteer messages', async t => {
         // DOWNSTREAM
 
         // ExecCommandMessage
-        
+
         await puppeteer.execCommand({
             type: 'setValue',
             selector: '#input',
-            value: 'newInputValue'
+            value: 'newInputValue',
         });
 
         const execCommandTestValue = await puppeteer.execCommand({ type: 'getValue', selector: '#input' });
@@ -62,25 +86,18 @@ test('browser puppeteer messages', async t => {
         // ExecFunctionMessage
 
         const execFunctionResult = await puppeteer.execFunction(function (arg1, arg2) {
-            var domTestNum = Number(document.getElementById('execFunctionTest').innerText);
+            const domTestNum = Number(document.getElementById('execFunctionTest').innerText);
 
             return arg1 + arg2 * domTestNum;
         }, 20, 30);
 
-        t.equal(execFunctionResult, 2270, 'execFunction test')
+        t.equal(execFunctionResult, 2270, 'execFunction test');
 
         // SetSelectorBecameVisibleDataMessage
 
         // see UPSTREAM SelectorBecameVisibleMessage
 
         // ShowScreenshotMarkerMessage
-
-        async function getScreenshotMarkerState() {
-            return puppeteer.execFunction(function () {
-                return document.querySelector('.browser-puppet--screenshot-marker--top-left') !== null &&
-                    document.querySelector('.browser-puppet--screenshot-marker--bottom-right') !== null;
-            });
-        }
 
         await puppeteer.showScreenshotMarker();
         t.equal(await getScreenshotMarkerState(), true, 'screenshot markers are visible');
@@ -96,7 +113,7 @@ test('browser puppeteer messages', async t => {
 
         const capturedEventPromise = new Promise((resolve, reject) => {
             setTimeout(() => {
-                reject(new Error('"SetTransmitEventsMessage ON" test timed out'))
+                reject(new Error('"SetTransmitEventsMessage ON" test timed out'));
             }, 3000);
 
             puppeteer.once(MESSAGES.UPSTREAM.CAPTURED_EVENT, capturedEventMessage => {
@@ -131,10 +148,11 @@ test('browser puppeteer messages', async t => {
         await puppeteer.setTransmitEvents(false);
 
         const transmitEventsValue = await puppeteer.execFunction(function () {
+            // eslint-disable-next-line no-undef
             return browserPuppet._transmitEvents;
         });
 
-        t.equal(transmitEventsValue, false, 'SetTransmitEventsMessage OFF test')
+        t.equal(transmitEventsValue, false, 'SetTransmitEventsMessage OFF test');
 
         // TerminatePuppetMessage
 
@@ -151,23 +169,6 @@ test('browser puppeteer messages', async t => {
 
         // ClearPersistentDataMessage
 
-        async function getCookies() {
-            return puppeteer.execFunction(function () {
-                return document.cookie;
-            });
-        }
-
-        async function isLocalStorageEmpty() {
-            return puppeteer.execFunction(function () {
-                return localStorage.length === 0;
-            });
-        }
-
-        async function assertPersistentDataEmpty() {
-            t.equal(await getCookies(), '', 'ClearPersistentData: cookies are empty');
-            t.equal(await isLocalStorageEmpty(), true, 'ClearPersistentData: localStorage is empty');
-        }
-
         await assertPersistentDataEmpty();
 
         await puppeteer.execFunction(function () {
@@ -181,7 +182,7 @@ test('browser puppeteer messages', async t => {
         });
 
         t.equal(await getCookies(), 'testcookie1=123; testcookie2=asdf', 'ClearPersistentData: cookies are set');
-        t.equal(hasLocalStorageItem, true, 'ClearPersistentData: localStorage is set')
+        t.equal(hasLocalStorageItem, true, 'ClearPersistentData: localStorage is set');
 
         await puppeteer.clearPersistentData();
 
@@ -195,7 +196,7 @@ test('browser puppeteer messages', async t => {
 
         const capturedMouseEventPromise = new Promise((resolve, reject) => {
             setTimeout(() => {
-                reject(new Error('"SetMouseoverSelectorsMessage" test timed out'))
+                reject(new Error('"SetMouseoverSelectorsMessage" test timed out'));
             }, 3000);
 
             puppeteer.once(MESSAGES.UPSTREAM.CAPTURED_EVENT, capturedEventMessage => {
@@ -211,7 +212,7 @@ test('browser puppeteer messages', async t => {
         await puppeteer.execFunction(function () {
             // can't capture programmatically while in execFunction, use setTimeout to simulate user event
             setTimeout(function () {
-                var ev = new Event('mouseover');
+                const ev = new Event('mouseover');
                 document.getElementById('mouseoverTest').dispatchEvent(ev);
             }, 50);
 
@@ -232,8 +233,9 @@ test('browser puppeteer messages', async t => {
         // SetIgnoredClassesMessage
 
         const beforeIgnoreClassesUniqueSelector = await puppeteer.execFunction(function () {
+            // eslint-disable-next-line no-undef
             return browserPuppet._uniqueSelector.get(document.querySelector('.ignored-class'));
-        })
+        });
 
         t.equal(beforeIgnoreClassesUniqueSelector, '.ignored-class', 'before setting ignored class');
 
@@ -243,8 +245,9 @@ test('browser puppeteer messages', async t => {
         });
 
         const afterIgnoreClassesUniqueSelector = await puppeteer.execFunction(function () {
+            // eslint-disable-next-line no-undef
             return browserPuppet._uniqueSelector.get(document.querySelector('.ignored-class'));
-        })
+        });
 
         t.equal(afterIgnoreClassesUniqueSelector, '#ignoredClassTest span:nth-child(2)', 'after setting ignored class');
 
@@ -256,9 +259,9 @@ test('browser puppeteer messages', async t => {
         await puppeteer.setTransmitEvents(true);
 
         const selectorBecameVisiblePromise = new Promise((resolve, reject) => {
-            setTimeout(()=>{
-                reject(new Error('SelectorBecameVisibleMessage test: timed out'))
-            }, 3000)
+            setTimeout(() => {
+                reject(new Error('SelectorBecameVisibleMessage test: timed out'));
+            }, 3000);
 
             puppeteer.once(MESSAGES.UPSTREAM.SELECTOR_BECAME_VISIBLE, data => {
                 if (data.selector === '#selectorBecameVisibleTest') {
@@ -267,7 +270,7 @@ test('browser puppeteer messages', async t => {
                 else {
                     reject(new Error('selectorBecameVisiblePromise: unexpected selector'));
                 }
-            })
+            });
         });
 
         await puppeteer.execFunction(function () {

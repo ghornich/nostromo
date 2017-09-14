@@ -1,0 +1,8 @@
+{
+	"extends": "eslint-config-ghornich",
+	"parserOptions": { "ecmaVersion": 8 },
+	"rules": {
+		"no-unused-vars": 0,
+		"comma-dangle": 0
+	}
+}

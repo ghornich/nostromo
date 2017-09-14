@@ -27,7 +27,7 @@ window.RecorderApp = RecorderApp;
  */
 function RecorderApp(conf) {
     var self = this;
-    var confObj= conf;
+    var confObj = conf;
 
     if (typeof confObj === 'string') {
         confObj = JSONF.parse(confObj);
@@ -374,7 +374,7 @@ function renderTestfile(cmds, rawIndent) {
         indent + 'test(\'\', async (t) => {',
     ];
 
-    cmds.forEach(function (cmd, i) {
+    cmds.forEach(function (cmd) {
         res.push(indent + indent + 'await ' + renderCmd(cmd, indent) + ';');
     });
 

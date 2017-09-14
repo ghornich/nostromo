@@ -6,7 +6,6 @@ const isEqual = require('lodash.isequal');
 const Schema = require('schema-inspector');
 const fs = Promise.promisifyAll(require('fs'));
 const pathlib = require('path');
-const urllib = require('url');
 const util = require('util');
 const TapWriter = require(MODULES_PATH + 'tap-writer');
 const EventEmitter = require('events').EventEmitter;
@@ -60,7 +59,7 @@ const DEFAULT_TEST_NAME = '(Unnamed test)';
 
 const ELLIPSIS_LIMIT = 60;
 
-const DEFAULT_SUITE_NAME='(Unnamed suite)'
+const DEFAULT_SUITE_NAME = '(Unnamed suite)';
 
 // TODO customizable dir for different screen resolution tests
 const REF_SCREENSHOT_BASE_DIR = 'referenceScreenshots';
@@ -97,10 +96,10 @@ function Testrunner(conf) {
         beforeTest: null,
         afterTest: null,
 
-        globalBeforeTest:null,
-        globalAfterTest:null,
+        globalBeforeTest: null,
+        globalAfterTest: null,
 
-        suites:[],
+        suites: [],
 
         outStream: process.stdout,
     };
@@ -118,10 +117,10 @@ function Testrunner(conf) {
 
     // check for configs not in defaultConf
     const confKeys = Object.keys(conf);
-    const unknownKeys = confKeys.filter(key=>!(key in defaultConf))
+    const unknownKeys = confKeys.filter(key => !(key in defaultConf));
 
-    if (unknownKeys.length>0){
-        this._log.warn(`unknown config keys: ${unknownKeys.join(', ')}`)
+    if (unknownKeys.length > 0) {
+        this._log.warn(`unknown config keys: ${unknownKeys.join(', ')}`);
     }
 
 
@@ -213,15 +212,11 @@ function Testrunner(conf) {
 
 util.inherits(Testrunner, EventEmitter);
 
-Testrunner.prototype.setConfig = function (conf) {
-
-};
-
 Testrunner.prototype.run = async function () {
     const conf = this._conf;
 
-    if (conf.suites.length===0){
-        throw new Error('No test suites specified')
+    if (conf.suites.length === 0) {
+        throw new Error('No test suites specified');
     }
 
     this._runStartTime = Date.now();
@@ -248,28 +243,28 @@ Testrunner.prototype.run = async function () {
 
 
                 try {
-                
-                    for (const suite of conf.suites) {
-                        this._tapWriter.comment(`Starting suite: ${suite.name||DEFAULT_SUITE_NAME}`)
 
-                        const beforeSuite = conf.defaultBeforeSuite || suite.beforeSuite
+                    for (const suite of conf.suites) {
+                        this._tapWriter.comment(`Starting suite: ${suite.name || DEFAULT_SUITE_NAME}`);
+
+                        const beforeSuite = conf.defaultBeforeSuite || suite.beforeSuite;
 
                         if (beforeSuite) {
-                            this._log.debug('running beforeSuite')
-                            await beforeSuite()
-                            this._log.debug('completed beforeSuite')
+                            this._log.debug('running beforeSuite');
+                            await beforeSuite();
+                            this._log.debug('completed beforeSuite');
                         }
 
-                        this._log.trace('suite testFiles: ' + suite.testFiles.join(', '))
+                        this._log.trace('suite testFiles: ' + suite.testFiles.join(', '));
 
-                        const testFilePaths = await multiGlobAsync(suite.testFiles)
+                        const testFilePaths = await multiGlobAsync(suite.testFiles);
 
                         if (testFilePaths.length === 0) {
                             throw new Error('No testfiles found');
                         }
 
 
-                        let maybeTestError = null
+                        let maybeTestError = null;
 
                         try {
 
@@ -287,21 +282,21 @@ Testrunner.prototype.run = async function () {
 
                         }
                         catch (err) {
-                            maybeTestError=err
+                            maybeTestError = err;
                         }
 
 
-                        const afterSuite = conf.defaultAfterSuite || suite.afterSuite
+                        const afterSuite = conf.defaultAfterSuite || suite.afterSuite;
 
                         if (afterSuite) {
-                            this._log.debug('running afterSuite')
-                            await afterSuite()
-                            this._log.debug('completed afterSuite')
+                            this._log.debug('running afterSuite');
+                            await afterSuite();
+                            this._log.debug('completed afterSuite');
                         }
 
 
                         if (maybeTestError) {
-                            throw maybeTestError
+                            throw maybeTestError;
                         }
 
                     }
@@ -360,17 +355,17 @@ Testrunner.prototype.run = async function () {
 };
 
 Testrunner.prototype._awaitUserEnter = async function () {
-    console.log('--- Testrunner paused. Press Enter to continue... ---')
+    console.log('--- Testrunner paused. Press Enter to continue... ---');
     process.stdin.resume();
 
     return new Promise(resolve => {
-        process.stdin.once("data", function (data) {
-            resolve()
-        })
-    })
-}
+        process.stdin.once('data', function () {
+            resolve();
+        });
+    });
+};
 
-Testrunner.prototype._startServers = Promise.method(function () {
+Testrunner.prototype._startServers = async function () {
     const self = this;
 
     self._log.trace('_startServers called');
@@ -383,7 +378,7 @@ Testrunner.prototype._startServers = Promise.method(function () {
     //     self._httpServer.listen(self._conf.testPort, res)
 
     // })
-});
+};
 
 Testrunner.prototype._stopServers = function () {
     // this._httpServer.close()
@@ -391,12 +386,12 @@ Testrunner.prototype._stopServers = function () {
 };
 
 Testrunner.prototype._runTestFile = async function (testFilePath, data) {
-    const conf=this._conf
+    const conf = this._conf;
     this._log.trace('_runTestFile');
 
-    const isLastTestfile = data.isLastTestfile;
+    // const isLastTestfile = data.isLastTestfile;
     const browser = data.browser;
-    const suite=data.suite
+    const suite = data.suite;
 
     this._currentTestfilePath = testFilePath;
     const absPath = pathlib.resolve(testFilePath);
@@ -421,7 +416,7 @@ Testrunner.prototype._runTestFile = async function (testFilePath, data) {
         testDatas.push({ name: name, testFn: testFn });
     }
 
-    testFileFn(testRegistrar);
+    testFileFn(testRegistrar, this);
 
     this._currentBeforeCommand = suite.beforeCommand || conf.defaultBeforeCommand || noop;
     this._currentAfterCommand = suite.afterCommand || conf.defaultAfterCommand || noop;
@@ -429,8 +424,7 @@ Testrunner.prototype._runTestFile = async function (testFilePath, data) {
     const currentBeforeTest = suite.beforeTest || conf.defaultBeforeTest;
     const currentAfterTest = suite.afterTest || conf.defaultAfterTest;
 
-
-    for (const [testIndex, testData] of testDatas.entries()) {
+    for (const testData of testDatas) {
         this._log.debug(`running test: ${testData.name}`);
 
         this._tapWriter.diagnostic(testData.name);
@@ -445,7 +439,7 @@ Testrunner.prototype._runTestFile = async function (testFilePath, data) {
 
         await this._waitUntilBrowserReady();
 
-        let maybeTestError = null
+        let maybeTestError = null;
 
         try {
             const maybeTestPromise = testData.testFn(this.tAPI);
@@ -465,8 +459,9 @@ Testrunner.prototype._runTestFile = async function (testFilePath, data) {
         // delete this or use terminatePuppet()
 
         // if (testIndex < testDatas.length - 1) {
-            await this._browserPuppeteer.clearPersistentData();
-            browser.open('');
+        await this._browserPuppeteer.clearPersistentData();
+        await this._browserPuppeteer.terminatePuppet();
+        // browser.open('');
         // }
 
         if (currentAfterTest) {
@@ -514,6 +509,7 @@ Testrunner.prototype._waitUntilBrowserReady = async function () {
     return this._ensureBrowserIsVisible();
 };
 
+// TODO timeout, interval as args
 Testrunner.prototype._ensureBrowserIsVisible = async function () {
     this._log.info('Ensuring browser is visible...');
 
@@ -535,47 +531,53 @@ Testrunner.prototype._ensureBrowserIsVisible = async function () {
 };
 
 Testrunner.prototype._wrapFunctionWithSideEffects = function (fn, cmdType) {
-    return (...args) => {
-        return Promise.try(() => this._currentBeforeCommand(this.directAPI, { type: cmdType }))
-        .then(() => fn(...args))
-        .then(async fnResult => {
-            await this._currentAfterCommand(this.directAPI, { type: cmdType });
-            return fnResult;
-        });
+    return async (...args) => {
+        await this._currentBeforeCommand(this.directAPI, { type: cmdType });
+        const fnResult = await fn(...args);
+        await this._currentAfterCommand(this.directAPI, { type: cmdType });
+        return fnResult;
+        // return Promise.try(() => this._currentBeforeCommand(this.directAPI, { type: cmdType }))
+        // .then(() => fn(...args))
+        // .then(async fnResult => {
+        //     await this._currentAfterCommand(this.directAPI, { type: cmdType });
+        //     return fnResult;
+        // });
     };
 };
 
-Testrunner.prototype._execCommandWithAPI = Promise.method(function (cmd, api) {
+Testrunner.prototype._execCommandWithAPI = async function (cmd, api) {
     switch (cmd.type) {
         case 'setValue': return api.setValue(cmd.selector, cmd.value);
         case 'click': return api.click(cmd.selector);
-        case 'waitForVisible': return api.waitForVisible(cmd.selector);
-        case 'waitWhileVisible': return api.waitWhileVisible(cmd.selector);
+        case 'waitForVisible': return api.waitForVisible(cmd.selector, { pollInterval: cmd.pollInterval, timeout: cmd.timeout });
+        case 'waitWhileVisible': return api.waitWhileVisible(cmd.selector, {
+            pollInterval: cmd.pollInterval, timeout: cmd.timeout, initialDelay: cmd.initialDelay
+        });
         case 'focus': return api.focus(cmd.selector);
         case 'assert': return api.assert();
         // case 'scroll': return api.()
         // TODO missing commands
         default: throw new Error(`Unknown cmd.type ${cmd.type}`);
     }
-});
+};
 
-Testrunner.prototype._execCommandDirect = Promise.method(function (cmd) {
+Testrunner.prototype._execCommandDirect = async function (cmd) {
     return this._execCommandWithAPI(cmd, this.directAPI);
-});
+};
 
-Testrunner.prototype._execCommandSideEffect = Promise.method(function (cmd) {
+Testrunner.prototype._execCommandSideEffect = async function (cmd) {
     return this._execCommandWithAPI(cmd, this.sideEffectAPI);
-});
+};
 
-Testrunner.prototype._execCommandsDirect = Promise.method(function (cmds) {
+Testrunner.prototype._execCommandsDirect = async function (cmds) {
     return Promise.each(cmds, cmd => this._execCommandDirect(cmd));
-});
+};
 
-Testrunner.prototype._execCommandsSideEffect = Promise.method(function (cmds) {
+Testrunner.prototype._execCommandsSideEffect = async function (cmds) {
     return Promise.each(cmds, cmd => this._execCommandSideEffect(cmd));
-});
+};
 
-Testrunner.prototype._equal = Promise.method(function (actual, expected, description) {
+Testrunner.prototype._equal = async function (actual, expected, description) {
     if (isEqual(actual, expected)) {
         this._tapWriter.ok({
             type: 'equal',
@@ -590,7 +592,7 @@ Testrunner.prototype._equal = Promise.method(function (actual, expected, descrip
         });
 
     }
-});
+};
 
 Testrunner.prototype._clickDirect = async function (selector, rawDescription) {
     const description = rawDescription || `click - '${selector}'`;
@@ -610,22 +612,22 @@ Testrunner.prototype._clickDirect = async function (selector, rawDescription) {
     }
 };
 
-Testrunner.prototype._getValue = Promise.method(function (selector) {
+Testrunner.prototype._getValue = async function (selector) {
     return this._browserPuppeteer.execCommand({
         type: 'getValue',
         selector: selector,
     });
-});
+};
 
-Testrunner.prototype._getValueDirect = Promise.method(function (selector) {
+Testrunner.prototype._getValueDirect = async function (selector) {
     // TODO logging?
     return this._browserPuppeteer.execCommand({
         type: 'getValue',
         selector: selector,
     });
-});
+};
 
-Testrunner.prototype._setValueDirect = Promise.method(function (selector, value, rawDescription) {
+Testrunner.prototype._setValueDirect = async function (selector, value, rawDescription) {
     // TODO logging?
     const description = rawDescription || `setValue - ${selector}, ${value}`;
 
@@ -642,9 +644,9 @@ Testrunner.prototype._setValueDirect = Promise.method(function (selector, value,
 
         this._handleCommandError(err);
     });
-});
+};
 
-Testrunner.prototype._pressKeyDirect = Promise.method(function (selector, keyCode, description) {
+Testrunner.prototype._pressKeyDirect = async function (selector, keyCode, description) {
     this._log.info(`pressKey: ${keyCode} (${ellipsis(selector, ELLIPSIS_LIMIT)})`);
 
     return this._browserPuppeteer.execCommand({
@@ -652,35 +654,40 @@ Testrunner.prototype._pressKeyDirect = Promise.method(function (selector, keyCod
         selector: selector,
         keyCode: keyCode,
     });
-});
+};
 
-Testrunner.prototype._waitForVisibleDirect = Promise.method(function (selector, timeout) {
+Testrunner.prototype._waitForVisibleDirect = async function (selector, opts = {}) {
     this._log.info(`waitForVisible: ${ellipsis(selector, ELLIPSIS_LIMIT)}`);
 
     return this._browserPuppeteer.execCommand({
         type: 'waitForVisible',
         selector: selector,
+        pollInterval: opts.pollInterval,
+        timeout: opts.timeout,
     })
     .catch(err => {
         this._tapWriter.notOk(`waitForVisible - ${err.message}`);
 
         this._handleCommandError(err);
     });
-});
+};
 
-Testrunner.prototype._waitWhileVisibleDirect = Promise.method(function (selector) {
+Testrunner.prototype._waitWhileVisibleDirect = async function (selector, opts = {}) {
     this._log.info(`waitWhileVisible: ${ellipsis(selector, ELLIPSIS_LIMIT)}`);
 
     return this._browserPuppeteer.execCommand({
         type: 'waitWhileVisible',
         selector: selector,
+        pollInterval: opts.pollInterval,
+        initialDelay: opts.initialDelay,
+        timeout: opts.timeout,
     })
     .catch(err => {
         this._tapWriter.notOk(`waitWhileVisible - ${err.message}`);
 
         this._handleCommandError(err);
     });
-});
+};
 
 Testrunner.prototype._isVisibleDirect = async function (selector) {
     return this._browserPuppeteer.execCommand({
@@ -692,9 +699,9 @@ Testrunner.prototype._isVisibleDirect = async function (selector) {
 
         this._handleCommandError(err);
     });
-}
+};
 
-Testrunner.prototype._focusDirect = Promise.method(function (selector, rawDescription) {
+Testrunner.prototype._focusDirect = async function (selector, rawDescription) {
     this._log.info(`focus: ${selector}`);
     const description = rawDescription || `focus - selector: ${selector}`;
 
@@ -712,9 +719,9 @@ Testrunner.prototype._focusDirect = Promise.method(function (selector, rawDescri
 
         // this._handleCommandError(err);
     });
-});
+};
 
-Testrunner.prototype._scrollDirect = Promise.method(function (selector, scrollTop) {
+Testrunner.prototype._scrollDirect = async function (selector, scrollTop) {
     this._log.info(`scroll: ${selector}`);
 
     return this._browserPuppeteer.execCommand({
@@ -727,9 +734,9 @@ Testrunner.prototype._scrollDirect = Promise.method(function (selector, scrollTo
 
         this._handleCommandError(err);
     });
-});
+};
 
-Testrunner.prototype._compositeDirect = Promise.method(function (commands) {
+Testrunner.prototype._compositeDirect = async function (commands) {
     this._log.info(`composite: ${commands.map(cmd => cmd.type).join(', ')}`);
 
     return this._browserPuppeteer.execCommand({
@@ -741,9 +748,9 @@ Testrunner.prototype._compositeDirect = Promise.method(function (commands) {
 
         this._handleCommandError(err);
     });
-});
+};
 
-Testrunner.prototype._mouseoverDirect = Promise.method(function (selector) {
+Testrunner.prototype._mouseoverDirect = async function (selector) {
     this._log.info(`mouseover: ${selector}`);
 
     return this._browserPuppeteer.execCommand({
@@ -755,22 +762,22 @@ Testrunner.prototype._mouseoverDirect = Promise.method(function (selector) {
 
         this._handleCommandError(err);
     });
-});
+};
 
-Testrunner.prototype._execFunctionDirect = Promise.method(function (fn, ...args) {
+Testrunner.prototype._execFunctionDirect = async function (fn, ...args) {
     this._log.info('execFunction');
 
     return this._browserPuppeteer.execFunction(fn, args);
-});
+};
 
-Testrunner.prototype._delay = Promise.method(function (ms, description) {
+Testrunner.prototype._delay = async function (ms, description) {
     this._log.info(`delay ${ms}`);
     return Promise.delay(ms);
-});
+};
 
-Testrunner.prototype._comment = Promise.method(function (comment) {
+Testrunner.prototype._comment = async function (comment) {
     this._tapWriter.comment(comment);
-});
+};
 
 Testrunner.prototype._handleCommandError = function (err) {
     if (this._conf.testBailout) {

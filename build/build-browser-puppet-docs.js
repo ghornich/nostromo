@@ -1,75 +1,79 @@
-const fs=require('fs')
-const cp=require('child_process')
-const pathlib=require('path')
+const fs = require('fs');
+const cp = require('child_process');
+const pathlib = require('path');
 
-const BROWSER_PUPPETEER_SRC_PATH = pathlib.resolve(__dirname, '../modules/browser-puppeteer/src')
-const DOC_PATH = pathlib.resolve('docs/puppeteer-api.md')
+const BROWSER_PUPPETEER_SRC_PATH = pathlib.resolve(__dirname, '../modules/browser-puppeteer/src');
+const DOC_PATH = pathlib.resolve('docs/puppeteer-api.md');
 
-const cpOpts={
-    maxBuffer:500*1024
-}
+const cpOpts = {
+    maxBuffer: 500 * 1024,
+};
 
-let markdown=''
+let markdown = '';
 
-cp.exec(`jsdoc -X -r ${BROWSER_PUPPETEER_SRC_PATH}`, cpOpts, (err, sout, serr)=>{
+cp.exec(`jsdoc -X -r ${BROWSER_PUPPETEER_SRC_PATH}`, cpOpts, (execError, sout) => {
     try {
-        if (err) throw err
+        if (execError) {
+            throw execError;
+        }
 
-        const parsed = JSON.parse(sout)
+        const parsed = JSON.parse(sout);
 
-        let upstreamMsgs=[]
-        let downstreamMsgs=[]
-        let commands=[]
-        let controlMsgTypedef=null
-        let upstreamTypedef=null
-        let downstreamTypedef=null
-        let commandTypedef=null
+        let upstreamMsgs = [];
+        let downstreamMsgs = [];
+        let commands = [];
+        let controlMsgTypedef = null;
+        let upstreamTypedef = null;
+        let downstreamTypedef = null;
+        let commandTypedef = null;
 
         for (const item of parsed) {
-            if (item.kind!=='typedef')continue
+            if (item.kind !== 'typedef') {
+                continue;
+            }
 
             if (item.name === 'ControlMessage') {
-                controlMsgTypedef = item
-                continue
+                controlMsgTypedef = item;
+                continue;
             }
 
             if (item.name === 'UpstreamControlMessage') {
-                upstreamTypedef = item
-                continue
+                upstreamTypedef = item;
+                continue;
             }
 
             if (item.name === 'DownstreamControlMessage') {
-                downstreamTypedef = item
-                continue
+                downstreamTypedef = item;
+                continue;
             }
 
             if (item.name === 'Command') {
-                commandTypedef = item
-                continue
+                commandTypedef = item;
+                continue;
             }
 
             if (item.type && item.type.names && item.type.names[0] === 'UpstreamControlMessage') {
-                upstreamMsgs.push(item)
-                continue
+                upstreamMsgs.push(item);
+                continue;
             }
 
             if (item.type && item.type.names && item.type.names[0] === 'DownstreamControlMessage') {
-                downstreamMsgs.push(item)
-                continue
+                downstreamMsgs.push(item);
+                continue;
             }
 
             if (item.type && item.type.names && item.type.names[0] === 'Command') {
-                commands.push(item)
-                continue
+                commands.push(item);
+                continue;
             }
 
-            upstreamMsgs=upstreamMsgs.sort(sortByName)
-            downstreamMsgs=downstreamMsgs.sort(sortByName)
-            commands=commands.sort(sortByName)
+            upstreamMsgs = upstreamMsgs.sort(sortByName);
+            downstreamMsgs = downstreamMsgs.sort(sortByName);
+            commands = commands.sort(sortByName);
 
         }
 
-        writeln('# BrowserPuppeteer API')
+        writeln('# BrowserPuppeteer API');
 
         markdown += `
 ## Contents
@@ -77,84 +81,98 @@ cp.exec(`jsdoc -X -r ${BROWSER_PUPPETEER_SRC_PATH}`, cpOpts, (err, sout, serr)=>
 - [Upstream messages](#upstream-messages)
 - [Downstream messages](#downstream-messages)
 - [Commands](#commands)
-`
+`;
 
-        writeln('## Websocket')
+        writeln('## Websocket');
 
-        writeProps(controlMsgTypedef)
+        writeProps(controlMsgTypedef);
 
-        writeln('### Upstream messages')
-        writeln('> Client (browser) to server')
+        writeln('### Upstream messages');
+        writeln('> Client (browser) to server');
 
-        writeProps(upstreamTypedef)
+        writeProps(upstreamTypedef);
 
         for (const item of upstreamMsgs) {
-            writeProps(item)
+            writeProps(item);
         }
 
-        writeln('### Downstream messages')
-        writeln('> Server to client (browser)')
+        writeln('### Downstream messages');
+        writeln('> Server to client (browser)');
 
-        writeProps(downstreamTypedef)
+        writeProps(downstreamTypedef);
 
         for (const item of downstreamMsgs) {
-            writeProps(item)
+            writeProps(item);
         }
 
-        writeln('### Commands')
+        writeln('### Commands');
 
-        writeProps(commandTypedef)
+        writeProps(commandTypedef);
 
         for (const item of commands) {
-            writeProps(item)
+            writeProps(item);
         }
 
-        fs.writeFileSync(DOC_PATH, markdown)
+        fs.writeFileSync(DOC_PATH, markdown);
     }
     catch (err) {
-        console.error(err)
-        process.exit(1)
+        console.error(err);
+        process.exit(1);
     }
-})
+});
 
-function writeln(s,indent=0){markdown+=strtimes('    ',indent)+s+'\n'}
+function writeln(s, indent = 0) {
+    markdown += strtimes('    ', indent) + s + '\n';
+}
 
 function strtimes(s, t) {
-    let result=''
-    let i=t
+    let result = '';
+    let i = t;
 
-    while(i--){
-        result+=s
+    while (i--) {
+        result += s;
     }
 
-    return result
+    return result;
 }
 
-function sortByName(a,b){
-    return a.name<b.name?-1:a.name>b.name?1:0
+function sortByName(a, b) {
+    const aName = a.name.toLowerCase();
+    const bName = b.name.toLowerCase();
+
+    if (aName === bName) {
+        return 0;
+    }
+
+    return aName < bName ? -1 : 1;
 }
 
-function writeProps(item){
-    const itemType = item.type && item.type.names && item.type.names[0]
+function writeProps(item) {
+    const itemType = item.type && item.type.names && item.type.names[0];
 
-    itemType
-        ? writeln(`- __${item.name}__ - _${itemType}_`)
-        : writeln(`- __${item.name}__`)
+    if (itemType) {
+        writeln(`- __${item.name}__ - _${itemType}_`);
+    }
+    else {
+        writeln(`- __${item.name}__`);
+    }
 
-    if (!item.properties) return
+    if (!item.properties) {
+        return;
+    }
 
-    writeln('')
-    writeln('|Name|Type|Description|', 1)
-    writeln('|---|---|---|', 1)
+    writeln('');
+    writeln('|Name|Type|Description|', 1);
+    writeln('|---|---|---|', 1);
 
     for (const prop of item.properties) {
-        let type = prop.type && prop.type.names && prop.type.names[0] || ''
-        const description = prop.description || ''
+        let type = prop.type && prop.type.names && prop.type.names[0] || '';
+        const description = prop.description || '';
 
-        type = type.replace('.<', '<')
+        type = type.replace('.<', '<');
 
         // console.log(JSON.stringify(prop.type))
 
-        writeln(`| ${prop.name} | \`${type}\` | ${description} |`, 1)
+        writeln(`| ${prop.name} | \`${type}\` | ${description} |`, 1);
     }
 }

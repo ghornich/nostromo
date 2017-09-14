@@ -18,7 +18,7 @@ function SelectorObserver(conf) {
 
     this._selectorPrevVisible = this._conf.observeList.map(function () {
         return false;
-    })
+    });
 
     if ('MutationObserver' in window) {
         this._mutationObserver = new window.MutationObserver(this._onMutation.bind(this));
@@ -30,13 +30,13 @@ function SelectorObserver(conf) {
     }
 }
 
-SelectorObserver.prototype._onMutation = function (/* mutationRecords */) {
+SelectorObserver.prototype._onMutation = function () {
     var self = this;
 
     self._conf.observeList.forEach(function (item, i) {
         var prevIsVisible = self._selectorPrevVisible[i];
         var isVisible = $(item.selector).is(':visible');
-        
+
         // console.log('[SelectorObserver] '+item.selector+(isVisible?' visible':' not visible'))
 
         try {
@@ -47,15 +47,15 @@ SelectorObserver.prototype._onMutation = function (/* mutationRecords */) {
         catch (error) {
             console.error(error);
         }
-        
-        self._selectorPrevVisible[i] = isVisible;    
+
+        self._selectorPrevVisible[i] = isVisible;
     });
 };
 
 SelectorObserver.prototype.disconnect = function () {
     this._mutationObserver.disconnect();
-}
+};
 
-function __isArray(val){
+function __isArray(val) {
     return Object.prototype.toString.call(val) === '[object Array]';
 }

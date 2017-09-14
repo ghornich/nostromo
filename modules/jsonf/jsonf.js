@@ -18,6 +18,7 @@ JSONF.parse = function (s) {
     return JSON.parse(s, function (key, val) {
         if (isStringAFunction(val)) {
             try {
+                // eslint-disable-next-line no-new-func
                 return new Function(
                     // http://www.kristofdegrave.be/2012/07/json-serialize-and-deserialize.html
                     val.match(/\(([^)]*)\)/)[1],

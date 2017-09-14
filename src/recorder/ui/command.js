@@ -1,6 +1,10 @@
 exports = module.exports = Command;
 
+// TODO move this to BrowserPuppetCommands
+
 // TODO replace magic strings everywhere
+
+// eslint-disable-next-line no-unused-vars
 var TYPES = Command.TYPES = {
     CLICK: 'click',
     SET_VALUE: 'setValue',
@@ -14,14 +18,4 @@ var TYPES = Command.TYPES = {
     UPLOAD_FILE_AND_ASSIGN: 'uploadFileAndAssign',
 };
 
-function Command(data) {
-    // var self=this
-
-    // Object.keys(data).forEach(function (key){
-    //     var val=data[key]
-
-    //     Object.defineProperty(self, key, {
-    //         value:
-    //     })
-    // })
-}
+function Command() {}

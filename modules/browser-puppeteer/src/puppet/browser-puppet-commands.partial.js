@@ -88,7 +88,7 @@ BrowserPuppetCommands.prototype.waitForVisible = function (cmd) {
     var self = this;
 
     return Promise.try(function () {
-        var pollInterval =  _defaultNum(cmd.pollInterval, 500);
+        var pollInterval = _defaultNum(cmd.pollInterval, 500);
         var timeout = _defaultNum(cmd.timeout, 10000);
 
         var isTimedOut = false;
@@ -112,9 +112,9 @@ BrowserPuppetCommands.prototype.waitForVisible = function (cmd) {
             },
             function () {
                 if (isTimedOut) {
-                        var msg = 'waitForVisible: timed out (time: ' + timeout + 'ms, selector: "' + cmd.selector + '")';
-                        self._log.error(msg);
-                        throw new Error(msg);
+                    var msg = 'waitForVisible: timed out (time: ' + timeout + 'ms, selector: "' + cmd.selector + '")';
+                    self._log.error(msg);
+                    throw new Error(msg);
                 }
 
                 self._log.debug('waitForVisible: delaying');
@@ -353,7 +353,7 @@ BrowserPuppetCommands.prototype._assert$el = function ($el, commandName) {
     }
 
     if (!this._isJQueryElementsVisible($el)) {
-        throw new Error(commandName + ': selector not visible: "' + $el.selector + '"')
+        throw new Error(commandName + ': selector not visible: "' + $el.selector + '"');
     }
 };
 

@@ -1,4 +1,4 @@
-// eslint-disable no-console
+/* eslint-disable no-console */
 
 const resolve = require('path').resolve;
 const Promise = require('bluebird');

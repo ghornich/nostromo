@@ -20,7 +20,7 @@
 /**
  * @typedef {UpstreamControlMessage} SelectorBecameVisibleMessage
  * @property {String} type - 'selector-became-visible'
- * @property {any} ...
+ * @property {String} selector
  */
 
 /**
@@ -60,7 +60,8 @@
 /**
  * @typedef {DownstreamControlMessage} ExecFunctionMessage
  * @property {String} type - 'exec-function'
- * @property {}
+ * @property {Function} fn - to stringify this, use fn.toString(). Currently accepts ES5 function literals only (function () {...})
+ * @property {Array<Any>} args - values passed to `fn`
  */
 
 /**
@@ -176,6 +177,7 @@ JSONF.parse = function (s) {
     return JSON.parse(s, function (key, val) {
         if (isStringAFunction(val)) {
             try {
+                // eslint-disable-next-line no-new-func
                 return new Function(
                     // http://www.kristofdegrave.be/2012/07/json-serialize-and-deserialize.html
                     val.match(/\(([^)]*)\)/)[1],
@@ -233,14 +235,24 @@ var browserConsoleStream = {
 };
 
 function Loggr(conf) {
-    this._conf = Object.assign({
+    var defaultConf = {
         logLevel: LEVELS.INFO,
         showTime: true,
         namespace: null,
         outStream: process.stdout || browserConsoleStream,
         eol: os.EOL,
         indent: '',
-    }, conf);
+    };
+
+    var defaultConfKeys = Object.keys(defaultConf);
+
+    Object.keys(conf).forEach(function (key) {
+        if (defaultConfKeys.indexOf(key) < 0) {
+            throw new Error('Loggr: unknown config parameter "' + key + '"');
+        }
+    });
+
+    this._conf = Object.assign({}, defaultConf, conf);
 
     if (typeof this._conf.logLevel === 'string') {
         var logLevelLower = this._conf.logLevel.toLowerCase();
@@ -13257,7 +13269,7 @@ function renderTestfile(cmds, rawIndent) {
 
     var res = ['\'use strict\';', '', 'exports = module.exports = function (test) {', indent + 'test(\'\', async (t) => {'];
 
-    cmds.forEach(function (cmd, i) {
+    cmds.forEach(function (cmd) {
         res.push(indent + indent + 'await ' + renderCmd(cmd, indent) + ';');
     });
 
@@ -13428,7 +13440,11 @@ function stringsSimilar(a, b) {
 },{"./command":12}],12:[function(require,module,exports){
 exports = module.exports = Command;
 
+// TODO move this to BrowserPuppetCommands
+
 // TODO replace magic strings everywhere
+
+// eslint-disable-next-line no-unused-vars
 var TYPES = Command.TYPES = {
     CLICK: 'click',
     SET_VALUE: 'setValue',
@@ -13442,16 +13458,6 @@ var TYPES = Command.TYPES = {
     UPLOAD_FILE_AND_ASSIGN: 'uploadFileAndAssign',
 };
 
-function Command(data) {
-    // var self=this
-
-    // Object.keys(data).forEach(function (key){
-    //     var val=data[key]
-
-    //     Object.defineProperty(self, key, {
-    //         value:
-    //     })
-    // })
-}
+function Command() {}
 
 },{}]},{},[10]);

@@ -89,7 +89,12 @@ BrowserSpawnerBase.prototype._onWsConnection = function (conn) {
     this._wsConn = conn;
 };
 
-BrowserSpawnerBase.prototype._startBrowser = async function (spawnerControlUrl) {
+/**
+ * @abstract
+ * @param {String} spawnerControlUrl
+ * @return {Promise}
+ */
+BrowserSpawnerBase.prototype._startBrowser = async function () {
     throw new Error('BrowserSpawnerBase::_startBrowser: not implemented');
 };
 

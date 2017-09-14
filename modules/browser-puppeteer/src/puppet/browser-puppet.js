@@ -2,7 +2,6 @@
 
 var Promise = require('bluebird');
 var $ = require('jquery'); $.noConflict();
-var jQuery = $;
 var MESSAGES = require('../messages');
 var JSONF = require('../../../../modules/jsonf');
 var UniqueSelector = require('../../../../modules/get-unique-selector');
@@ -12,7 +11,6 @@ var Ws4ever = require('../../../../modules/ws4ever');
 var defaults = require('lodash.defaults');
 var objectAssign = require('object-assign');
 var BrowserPuppetCommands = require('./browser-puppet-commands.partial');
-var promiseWhile = require('../../../../modules/promise-while')(Promise);
 var Loggr = require('../../../../modules/loggr');
 var SelectorObserver = require('../../../../modules/selector-observer');
 
@@ -83,7 +81,7 @@ BrowserPuppet.prototype._startWs = function () {
         self._onMessage(e.data);
     };
     self._wsConn.onerror = function (err) {
-        console.error(err);
+        self._log.error(err);
     };
 };
 
@@ -236,7 +234,7 @@ BrowserPuppet.prototype._onClickCapture = function (event) {
         var fullSelectorPath = this._uniqueSelector.getFullSelectorPath(target);
     }
     catch (err) {
-        console.error(err);
+        this._log.error(err);
         return;
     }
 
@@ -247,7 +245,7 @@ BrowserPuppet.prototype._onClickCapture = function (event) {
             $timestamp: Date.now(),
             selector: selector,
             $fullSelectorPath: fullSelectorPath,
-            target: cleanTarget(target),
+            target: getTargetNodeDTO(target),
         },
     });
 };
@@ -270,7 +268,7 @@ BrowserPuppet.prototype._onFocusCapture = function (event) {
         var fullSelectorPath = this._uniqueSelector.getFullSelectorPath(target);
     }
     catch (err) {
-        console.error(err);
+        this._log.error(err);
         return;
     }
 
@@ -281,7 +279,7 @@ BrowserPuppet.prototype._onFocusCapture = function (event) {
             $timestamp: Date.now(),
             selector: selector,
             $fullSelectorPath: fullSelectorPath,
-            target: cleanTarget(target),
+            target: getTargetNodeDTO(target),
         },
     });
 };
@@ -297,7 +295,7 @@ BrowserPuppet.prototype._onInputCapture = function (event) {
         var selector = this._uniqueSelector.get(target);
     }
     catch (err) {
-        console.error(err);
+        this._log.error(err);
         return;
     }
 
@@ -308,7 +306,7 @@ BrowserPuppet.prototype._onInputCapture = function (event) {
             $timestamp: Date.now(),
             selector: selector,
             value: target.value,
-            target: cleanTarget(target),
+            target: getTargetNodeDTO(target),
         },
     });
 };
@@ -326,11 +324,11 @@ BrowserPuppet.prototype._onScrollCapture = debounce(function (event) {
         var selector = this._uniqueSelector.get(target);
     }
     catch (err) {
-        console.error(err);
+        this._log.error(err);
         return;
     }
 
-    var targetDTO = cleanTarget(target);
+    var targetDTO = getTargetNodeDTO(target);
     targetDTO.scrollTop = target.scrollTop;
 
     this._sendMessage({
@@ -362,7 +360,7 @@ BrowserPuppet.prototype._onKeydownCapture = function (event) {
         var selector = this._uniqueSelector.get(target);
     }
     catch (err) {
-        console.error(err);
+        this._log.error(err);
         return;
     }
 
@@ -376,7 +374,7 @@ BrowserPuppet.prototype._onKeydownCapture = function (event) {
             ctrlKey: event.ctrlKey,
             shiftKey: event.shiftKey,
             altKey: event.altKey,
-            target: cleanTarget(target),
+            target: getTargetNodeDTO(target),
         },
     });
 };
@@ -393,7 +391,7 @@ BrowserPuppet.prototype._onMouseoverCapture = function (event) {
             var selector = this._uniqueSelector.get(target);
         }
         catch (err) {
-            console.error(err);
+            this._log.error(err);
             return;
         }
 
@@ -403,7 +401,7 @@ BrowserPuppet.prototype._onMouseoverCapture = function (event) {
                 type: 'mouseover',
                 $timestamp: Date.now(),
                 selector: selector,
-                target: cleanTarget(target),
+                target: getTargetNodeDTO(target),
             },
         });
     }
@@ -431,7 +429,7 @@ BrowserPuppet.prototype.setOnSelectorBecameVisibleSelectors = function (selector
     var observeList = selectors.map(function (selector) {
         return {
             selector: selector,
-            listener: self._sendMessage.bind(self, { type: MESSAGES.UPSTREAM.SELECTOR_BECAME_VISIBLE, selector: selector })
+            listener: self._sendMessage.bind(self, { type: MESSAGES.UPSTREAM.SELECTOR_BECAME_VISIBLE, selector: selector }),
         };
     });
 
@@ -496,13 +494,13 @@ BrowserPuppet.prototype.execCompositeCommand = Promise.method(function (commands
 // TODO separate file
 // from https://stackoverflow.com/a/179514/4782902
 function deleteAllCookies() {
-    var cookies = document.cookie.split(";");
+    var cookies = document.cookie.split(';');
 
     for (var i = 0; i < cookies.length; i++) {
         var cookie = cookies[i];
-        var eqPos = cookie.indexOf("=");
+        var eqPos = cookie.indexOf('=');
         var name = eqPos > -1 ? cookie.substr(0, eqPos) : cookie;
-        document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT";
+        document.cookie = name + '=;expires=Thu, 01 Jan 1970 00:00:00 GMT';
     }
 }
 
@@ -522,8 +520,7 @@ BrowserPuppet.prototype.setScreenshotMarkerState = function (state) {
     }
 };
 
-// TODO rename to getTargetDTO
-function cleanTarget(target) {
+function getTargetNodeDTO(target) {
     return {
         className: target.className,
         id: target.id,
@@ -533,16 +530,8 @@ function cleanTarget(target) {
     };
 }
 
-
-function deepCopy(o) {
-    return JSON.parse(JSON.stringify(o));
-}
-
 function assert(v, m) {
     if (!v) {
         throw new Error(m);
     }
 }
-
-
-

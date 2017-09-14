@@ -23,13 +23,13 @@ module.exports = function (config) {
             {
                 name: 'getUniqueSelector',
                 appUrl: 'file:///' + pathlib.resolve(__dirname, 'get-unique-selector/test.html'),
-                testFiles: ['get-unique-selector/test.js']
+                testFiles: ['get-unique-selector/test.js'],
             },
             {
                 name: 'browser-puppeteer',
                 appUrl: 'file:///' + pathlib.resolve(__dirname, 'browser-puppeteer/index.html'),
-                testFiles: ['browser-puppeteer/test.js']
-            }
-        ]
+                testFiles: ['browser-puppeteer/test.js'],
+            },
+        ],
     };
 };

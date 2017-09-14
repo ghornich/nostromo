@@ -14,6 +14,18 @@ const MESSAGES = require('../messages');
 exports = module.exports = BrowserPuppeteer;
 
 /**
+ * @memberOf BrowserPuppeteer
+ * @type {Number}
+ */
+const DEFAULT_WAITFORPUPPET_POLL_INTERVAL = BrowserPuppeteer.DEFAULT_WAITFORPUPPET_POLL_INTERVAL = 1000;
+
+/**
+ * @memberOf BrowserPuppeteer
+ * @type {Number}
+ */
+const DEFAULT_WAITFORPUPPET_TIMEOUT = BrowserPuppeteer.DEFAULT_WAITFORPUPPET_TIMEOUT = 10000;
+
+/**
  * @typedef {object} BrowserPuppeteerConfig
  * @property {Number} [port = 47225] port to communicate with browser/BrowserPuppet
  * @property {Loggr} [logger] custom Loggr instance
@@ -37,6 +49,7 @@ function BrowserPuppeteer(config) {
     this._currentMessageHandler = {
         resolve: null,
         reject: null,
+        message: null,
     };
 
     this._log = this._conf.logger || new Loggr({
@@ -80,15 +93,37 @@ BrowserPuppeteer.prototype._onHttpRequest = async function (req, resp) {
     }
 };
 
-// TODO timeout
-BrowserPuppeteer.prototype.waitForPuppet = Promise.method(function () {
+/**
+ * @param {Object} [options]
+ * @param {Object} [options.pollInterval={@link DEFAULT_WAITFORPUPPET_POLL_INTERVAL}]
+ * @param {Object} [options.timeout={@link DEFAULT_WAITFORPUPPET_TIMEOUT}]
+ * @return {Promise}
+ */
+BrowserPuppeteer.prototype.waitForPuppet = async function (options) {
     this._log.info('waiting for puppet...');
 
-    return new Promise((res, rej) => {
+    const _opts = options || {};
+    _opts.pollInterval = _opts.pollInterval || DEFAULT_WAITFORPUPPET_POLL_INTERVAL;
+    _opts.timeout = _opts.timeout || DEFAULT_WAITFORPUPPET_TIMEOUT;
+
+    return new Promise((resolve, reject) => {
+        let canCheck = true;
+
+        if (_opts.timeout > 0) {
+            setTimeout(function () {
+                canCheck = false;
+                reject(new Error('BrowserPuppeteer::waitForPuppet: timed out'));
+            }, _opts.timeout);
+        }
+
         const checker = () => {
+            if (!canCheck) {
+                return;
+            }
+
             if (this._wsConn !== null && this._wsConn.readyState === WS.OPEN) {
                 this._log.info('connected to puppet');
-                res();
+                resolve();
             }
             else {
                 const state = this._wsConn
@@ -97,14 +132,13 @@ BrowserPuppeteer.prototype.waitForPuppet = Promise.method(function () {
 
                 this._log.trace(`waiting for puppet... ${state}`);
 
-                // TODO no magic numbers
-                setTimeout(checker, 1000);
+                setTimeout(checker, _opts.pollInterval);
             }
         };
 
         checker();
     });
-});
+};
 
 BrowserPuppeteer.prototype.isPuppetConnected = function () {
     return this._wsConn !== null;
@@ -137,11 +171,11 @@ BrowserPuppeteer.prototype._onWsMessage = function (rawData) {
 
     if (data.type === MESSAGES.UPSTREAM.ACK) {
         _cmh.resolve(data.result);
-        _cmh.resolve = _cmh.reject = null;
+        _cmh.resolve = _cmh.reject = _cmh.message = null;
     }
     else if (data.type === MESSAGES.UPSTREAM.NAK) {
         _cmh.reject(data.error);
-        _cmh.resolve = _cmh.reject = null;
+        _cmh.resolve = _cmh.reject = _cmh.message = null;
     }
     else {
         const validTypes = Object.keys(MESSAGES.UPSTREAM).map(k => MESSAGES.UPSTREAM[k]);
@@ -181,7 +215,10 @@ BrowserPuppeteer.prototype.sendMessage = async function (data) {
         throw new Error('Puppet not connected');
     }
     if (this._currentMessageHandler.resolve) {
-        throw new Error(`Cannot send multiple messages - ${util.inspect(data)}`);
+        const dataString = util.inspect(data);
+        const currentMessageString = util.inspect(this._currentMessageHandler.message);
+
+        throw new Error(`Cannot send multiple messages - ${dataString}, current message: ${currentMessageString}`);
     }
 
     this._log.debug('sending message');
@@ -197,15 +234,16 @@ BrowserPuppeteer.prototype.sendMessage = async function (data) {
 
         this._currentMessageHandler.resolve = res;
         this._currentMessageHandler.reject = rej;
+        this._currentMessageHandler.message = data;
     });
 };
 
-BrowserPuppeteer.prototype.execCommand = Promise.method(function (command) {
+BrowserPuppeteer.prototype.execCommand = async function (command) {
     return this.sendMessage({
         type: MESSAGES.DOWNSTREAM.EXEC_COMMAND,
         command: command,
     });
-});
+};
 
 BrowserPuppeteer.prototype.execFunction = async function (fn, ...args) {
     return this.sendMessage({
@@ -222,12 +260,12 @@ BrowserPuppeteer.prototype.setTransmitEvents = function (value) {
     });
 };
 
-BrowserPuppeteer.prototype.setSelectorBecameVisibleSelectors = Promise.method(function (selectors) {
+BrowserPuppeteer.prototype.setSelectorBecameVisibleSelectors = async function (selectors) {
     return this.sendMessage({
         type: MESSAGES.DOWNSTREAM.SET_SELECTOR_BECAME_VISIBLE_DATA,
         selectors: selectors,
     });
-});
+};
 
 BrowserPuppeteer.prototype.setMouseoverSelectors = async function (selectors) {
     return this.sendMessage({
@@ -253,5 +291,5 @@ BrowserPuppeteer.prototype.hideScreenshotMarker = function () {
 };
 
 BrowserPuppeteer.prototype.stop = async function () {
-    return new Promise(resolve=>this._httpServer.close(resolve));
+    return new Promise(resolve => this._httpServer.close(resolve));
 };

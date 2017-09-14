@@ -146,7 +146,7 @@ RecorderServer.prototype._onRecRequest = async function (req, resp) {
     if (req.url === '/') {
         resp.end(
             (await fs.readFileAsync(pathlib.resolve(__dirname, 'ui/recorder-ui.html'), { encoding: 'utf-8' }))
-            .replace('[[CONFIG]]', JSONF.stringify(this._conf).replace(/\\/g, '\\\\').replace(/'/g, "\\'"))
+            .replace('[[CONFIG]]', JSONF.stringify(this._conf).replace(/\\/g, '\\\\').replace(/'/g, '\\\''))
             .replace('[[STYLE]]', await fs.readFileAsync(pathlib.resolve(__dirname, 'ui/app/style.css')))
         );
     }
@@ -158,14 +158,3 @@ RecorderServer.prototype._onRecRequest = async function (req, resp) {
         resp.end('Not found');
     }
 };
-
-/* RecorderServer.prototype.=function(){
-
-}*/
-
-/* RecorderServer.prototype.=function(){
-
-}*/
-
-
-function noop() {}

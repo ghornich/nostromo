@@ -120,56 +120,6 @@ DiffServer.prototype._onHttpReq = function (req, resp) {
     }
 };
 
-DiffServer.prototype.getDiffableScreenshots = function () {
-    let failPaths = [];
-
-    this._conf.referenceScreenshotsDir.forEach(dir => {
-        const paths = glob.sync(`${dir}/**/*FAIL.png`);
-        failPaths = failPaths.concat(paths);
-    });
-
-    const refPaths = [];
-
-    failPaths.forEach(p => {
-        refPaths.push(p.replace('.FAIL', ''));
-    });
-
-    // TODO limit concurrent fs operations
-    // TODO async code
-
-    const diffs = refPaths.map(function (refP, i) {
-        const failP = failPaths[i];
-
-        const refRawImg = fs.readFileSync(refP);
-        const failRawImg = fs.readFileSync(failP);
-
-        const refImg = PNG.sync.read(refRawImg);
-        const failImg = PNG.sync.read(failRawImg);
-
-        const diffBounds = diffImages(refImg, failImg, { groupingThreshold: 100, padding: 0 });
-
-        return {
-            refPath: refP,
-            failPath: failP,
-            count: refP.match(/\/(\d+)/)[1],
-            dir: refP.replace(/\/[^/]+$/, ''),
-            diffBounds: diffBounds,
-            refImg: {
-                width: refImg.width,
-                height: refImg.height,
-                base64: Buffer.from(refRawImg).toString('base64'),
-            },
-            failImg: {
-                width: failImg.width,
-                height: failImg.height,
-                base64: Buffer.from(failRawImg).toString('base64'),
-            },
-        };
-    });
-
-    return diffs;
-};
-
 // id, refPath, errPath, diffPath
 function DiffDescriptor(data) {
     this.id = data.id;
