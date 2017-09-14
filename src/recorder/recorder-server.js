@@ -71,6 +71,7 @@ function RecorderServer(conf) {
     });
 
     // TODO assert conf
+    // TODO check for configs not in default conf
 
     this._recServer = http.createServer(this._onRecRequest.bind(this));
     this._wsServer = new WS.Server({ server: this._recServer });

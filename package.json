@@ -18,7 +18,8 @@
     "prepush": "npm test",
     "build-browser-puppet-docs": "node build/build-browser-puppet-docs.js",
     "build-recorder-docs": "jsdoc src/recorder/recorder-server.js -d docs/recorder",
-    "build-docs": "npm run build-browser-puppet-docs && npm run build-recorder-docs"
+    "build-testrunner-docs": "jsdoc src/testrunner/testrunner.js -d docs/testrunner",
+    "build-docs": "npm run build-browser-puppet-docs && npm run build-recorder-docs && npm run build-testrunner-docs"
   },
   "author": "ghornich",
   "dependencies": {

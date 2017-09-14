@@ -13,7 +13,7 @@ exports = module.exports = function (config) {
             // return false to prevent recording this event
         },
 
-        // pressKeyFilter: same as capture filter
+        // pressKeyFilter: same as capture filter. Default: capture only Enter, Esc
 
         onSelectorBecameVisible: [
             {
