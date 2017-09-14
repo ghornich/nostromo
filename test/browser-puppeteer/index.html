@@ -1,0 +1,97 @@
+ <!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <title>title</title>
+        <style>
+            .hidden {
+                display: none;
+            }
+
+            .test-area div {
+                min-height: 1em;
+            }
+
+            .scroll-test {
+                width: 3em;
+                max-height: 5em;
+                overflow: auto;
+            }
+
+            .waitForVisible-test {
+                width: 20px;
+                height: 20px;
+                background: red;
+            }
+
+            .waitWhileVisible-test {
+                width: 20px;
+                height: 20px;
+                background: blue;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="test-area">
+            <div class="click-test-jq"></div>
+            <div class="click-test-dom"></div>
+
+            <div class="composite-test-click"></div>
+            <input class="composite-test-setValue" />
+
+            <input class="focus-test" />
+
+            <input class="getValue-test" value="testValue" />
+
+            <div class="isVisible-test-visible"></div>
+            <div class="isVisible-test-hidden hidden"></div>
+
+            <div class="mouseover-test"></div>
+
+            <div class="pressKey-test"></div>
+
+            <div class="scroll-test">
+                a<br>b<br>c<br>d<br>e<br>f<br>g<br>h<br>i<br>j<br>k<br>l<br>m<br>n<br>o<br>p<br>q<br>r<br>s<br>t<br>u<br>v<br>w<br>x<br>y<br>z
+            </div>
+
+            <input class="setValue-test" />
+
+            <div class="waitForVisible-test hidden"></div>
+            <div class="waitWhileVisible-test"></div>
+        </div>
+
+        <script src="https://code.jquery.com/jquery-3.2.1.slim.js"></script>
+
+        <script>
+            $('.click-test-jq').on('click', function (){
+                $('.click-test-jq').text('jqClickOK')
+            })
+
+            document.querySelector('.click-test-dom').addEventListener('click', function () {
+                document.querySelector('.click-test-dom').innerText = 'domClickOK'
+            })
+
+            $('.mouseover-test').on('mouseover', function () {
+                $('.mouseover-test').text('mouseoverOK')
+            })
+
+            $('.pressKey-test').on('keydown', function (event) {
+                if (event.keyCode === 65) {
+                    $('.pressKey-test').text('pressKey65OK')
+                }
+            })
+
+            $('.composite-test-click').on('click', function () {
+                $('.composite-test-click').text('compositeClickOK')
+            })
+
+
+
+            window.dummyModel = {
+                dummyFile: null
+            }
+        </script>
+
+        <script src="http://localhost:47225/browser-puppet.defaults.js"></script>
+    </body>
+</html>

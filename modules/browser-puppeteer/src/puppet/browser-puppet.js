@@ -2,7 +2,6 @@
 
 var Promise = require('bluebird');
 var $ = require('jquery'); $.noConflict();
-var jQuery = $;
 var MESSAGES = require('../messages');
 var JSONF = require('../../../../modules/jsonf');
 var UniqueSelector = require('../../../../modules/get-unique-selector');
@@ -10,13 +9,11 @@ var SS_MARKER_IMG = require('../screenshot-marker').base64;
 var debounce = require('lodash.debounce');
 var Ws4ever = require('../../../../modules/ws4ever');
 var defaults = require('lodash.defaults');
+var objectAssign = require('object-assign');
+var BrowserPuppetCommands = require('./browser-puppet-commands.partial');
+var Loggr = require('../../../../modules/loggr');
+var SelectorObserver = require('../../../../modules/selector-observer');
 
-// TODO option to transmit console?
-// TODO transmit uncaught exceptions
-// TODO throw error on incorrect argument types/values (e.g. string numbers)
-
-// TODO use MutationObserver if available, fallback to polling ?
-var AUTODETECT_INTERVAL_MS = 300;
 var INSERT_ASSERTION_DEBOUNCE = 500;
 
 var DEFAULT_SERVER_URL = 'ws://localhost:47225';
@@ -24,6 +21,8 @@ var DEFAULT_SERVER_URL = 'ws://localhost:47225';
 exports = module.exports = BrowserPuppet;
 
 /**
+ * @class
+ * @extends {BrowserPuppetCommands}
  * @param {Object} [opts]
  * @param {String} [opts.serverUrl=DEFAULT_SERVER_URL] - BrowserPuppeteer websocket server URL
  */
@@ -36,35 +35,42 @@ function BrowserPuppet(opts) {
 
     this._transmitEvents = false;
     this._isExecuting = false;
+    this._isTerminating = false;
 
     this._wsConn = null;
 
+    this.$ = $;
+
     this._uniqueSelector = new UniqueSelector();
 
-    this._onSelectorBecameVisibleData = {
-        intervalId: null,
-        // Array<String>
-        selectors: [],
-        // Array<{previousState:Boolean}>
-        states: [],
-    };
+    this._selectorObserver = null;
 
-    this._scheduleReopen = false;
-    this._scheduleReopenUrl = '';
+    this._mouseoverSelector = null;
 
-    this._ssMarkerTL = document.createElement('div');
-    this._ssMarkerTL.setAttribute('style', 'position:absolute;top:0;left:0;width:4px;height:4px;z-index:16777000;');
-    this._ssMarkerTL.style.background = 'url(' + SS_MARKER_IMG + ')';
+    this._activeElementBeforeWindowBlur = null;
 
-    this._ssMarkerBR = document.createElement('div');
-    this._ssMarkerBR.setAttribute('style', 'position:absolute;bottom:0;right:0;width:4px;height:4px;z-index:16777000;');
-    this._ssMarkerBR.style.background = 'url(' + SS_MARKER_IMG + ')';
+    this._log = new Loggr({
+        namespace: 'BrowserPuppet',
+        // TODO logLevel
+        logLevel: Loggr.LEVELS.ALL,
+    });
+
+    this._ssMarkerTopLeft = document.createElement('div');
+    this._ssMarkerTopLeft.className = 'browser-puppet--screenshot-marker--top-left';
+    this._ssMarkerTopLeft.setAttribute('style', 'position:absolute;top:0;left:0;width:4px;height:4px;z-index:16777000;');
+    this._ssMarkerTopLeft.style.background = 'url(' + SS_MARKER_IMG + ')';
+
+    this._ssMarkerBottomRight = document.createElement('div');
+    this._ssMarkerBottomRight.className = 'browser-puppet--screenshot-marker--bottom-right';
+    this._ssMarkerBottomRight.setAttribute('style', 'position:absolute;bottom:0;right:0;width:4px;height:4px;z-index:16777000;');
+    this._ssMarkerBottomRight.style.background = 'url(' + SS_MARKER_IMG + ')';
 }
+
+objectAssign(BrowserPuppet.prototype, BrowserPuppetCommands.prototype);
 
 BrowserPuppet.prototype.start = function () {
     this._startWs();
     this._attachCaptureEventListeners();
-    this._startOnSelectorBecameVisiblePolling();
 };
 
 BrowserPuppet.prototype._startWs = function () {
@@ -75,23 +81,53 @@ BrowserPuppet.prototype._startWs = function () {
         self._onMessage(e.data);
     };
     self._wsConn.onerror = function (err) {
-        console.error(err);
+        self._log.error(err);
     };
 };
 
-BrowserPuppet.prototype._sendMessage = function (data) {
+BrowserPuppet.prototype._sendMessage = function (rawData) {
+    var data = rawData;
+
     if (typeof data === 'object') {
         data = JSONF.stringify(data);
     }
+
     this._wsConn.send(data);
 };
 
+BrowserPuppet.prototype._isJQueryElementsVisible = function ($els) {
+    if ($els.length === 0) {
+        return false;
+    }
+    if (!$els.is(':visible')) {
+        return false;
+    }
+
+    for (var i = 0; i < $els.length; i++) {
+        var el = $els[i];
+        var rect = el.getBoundingClientRect();
+        var elCenterX = rect.left + rect.width / 2;
+        var elCenterY = rect.top + rect.height / 2;
+        var elFromPoint = document.elementFromPoint(elCenterX, elCenterY);
+
+        if (elFromPoint === el || el.contains(elFromPoint)) {
+            return true;
+        }
+    }
+
+    return false;
+};
+
 BrowserPuppet.prototype.isSelectorVisible = function (selector) {
-    return jQuery(selector).is(':visible');
+    return this._isJQueryElementsVisible(this.$(selector));
 };
 
 BrowserPuppet.prototype._onMessage = function (rawData) {
     var self = this;
+
+    if (self._isTerminating) {
+        throw new Error('BrowserPuppet::_onMessage: cannot process message, puppet is terminating');
+    }
 
     // no return
     Promise.try(function () {
@@ -114,10 +150,21 @@ BrowserPuppet.prototype._onMessage = function (rawData) {
             case MESSAGES.DOWNSTREAM.SET_TRANSMIT_EVENTS:
                 return self.setTransmitEvents(data.value);
 
-            case MESSAGES.DOWNSTREAM.REOPEN_URL:
-                self.reopenUrl(data.url);
-                // self._scheduleReopen = true
-                // self._scheduleReopenUrl = data.url
+            case MESSAGES.DOWNSTREAM.CLEAR_PERSISTENT_DATA:
+                return self.clearPersistentData();
+
+            case MESSAGES.DOWNSTREAM.SET_MOUSEOVER_SELECTORS:
+                self._mouseoverSelector = data.selectors.join(', ');
+                self._attachMouseoverCaptureEventListener();
+                return;
+
+            case MESSAGES.DOWNSTREAM.SET_IGNORED_CLASSES:
+                // TODO ugly
+                self._uniqueSelector._opts.ignoredClasses = data.classes;
+                return;
+
+            case MESSAGES.DOWNSTREAM.TERMINATE_PUPPET:
+                self._isTerminating = true;
                 return;
 
             default:
@@ -125,12 +172,8 @@ BrowserPuppet.prototype._onMessage = function (rawData) {
         }
     })
     .then(function (result) {
+        self._log.info('Sending ACK message');
         self._sendMessage({ type: MESSAGES.UPSTREAM.ACK, result: result });
-    })
-    .then(function () {
-        // if (self._scheduleReopen) {
-        //     return self.reopenUrl(self._scheduleReopenUrl)
-        // }
     })
     .catch(function (err) {
         var errorDTO = {};
@@ -143,11 +186,17 @@ BrowserPuppet.prototype._onMessage = function (rawData) {
         });
 
         errorDTO.message = err.message;
+        errorDTO.stack = err.stack;
 
         self._sendMessage({ type: MESSAGES.UPSTREAM.NAK, error: errorDTO });
     })
     .finally(function () {
         self._isExecuting = false;
+
+        if (self._isTerminating) {
+            self._wsConn.close();
+            self._wsConn = null;
+        }
     });
 };
 
@@ -161,6 +210,13 @@ BrowserPuppet.prototype._attachCaptureEventListeners = function () {
     document.addEventListener('input', this._onInputCapture.bind(this), true);
     document.addEventListener('scroll', this._onScrollCapture.bind(this), true);
     document.addEventListener('keydown', this._onKeydownCapture.bind(this), true);
+
+    window.addEventListener('blur', this._onWindowBlur.bind(this));
+};
+
+BrowserPuppet.prototype._attachMouseoverCaptureEventListener = function () {
+    // TODO check if listener is already attached
+    document.body.addEventListener('mouseover', this._onMouseoverCapture.bind(this), true);
 };
 
 var SHIFT_KEY = 16;
@@ -175,9 +231,10 @@ BrowserPuppet.prototype._onClickCapture = function (event) {
 
     try {
         var selector = this._uniqueSelector.get(target);
+        var fullSelectorPath = this._uniqueSelector.getFullSelectorPath(target);
     }
     catch (err) {
-        console.error(err);
+        this._log.error(err);
         return;
     }
 
@@ -185,11 +242,10 @@ BrowserPuppet.prototype._onClickCapture = function (event) {
         type: MESSAGES.UPSTREAM.CAPTURED_EVENT,
         event: {
             type: 'click',
-            timestamp: Date.now(),
+            $timestamp: Date.now(),
             selector: selector,
-            target: {
-                innerText: target.innerText,
-            },
+            $fullSelectorPath: fullSelectorPath,
+            target: getTargetNodeDTO(target),
         },
     });
 };
@@ -201,11 +257,18 @@ BrowserPuppet.prototype._onFocusCapture = function (event) {
 
     var target = event.target;
 
+    if (this._activeElementBeforeWindowBlur === target) {
+        this._log.debug('focus capture prevented during window re-focus');
+        this._activeElementBeforeWindowBlur = null;
+        return;
+    }
+
     try {
         var selector = this._uniqueSelector.get(target);
+        var fullSelectorPath = this._uniqueSelector.getFullSelectorPath(target);
     }
     catch (err) {
-        console.error(err);
+        this._log.error(err);
         return;
     }
 
@@ -213,11 +276,10 @@ BrowserPuppet.prototype._onFocusCapture = function (event) {
         type: MESSAGES.UPSTREAM.CAPTURED_EVENT,
         event: {
             type: 'focus',
-            timestamp: Date.now(),
+            $timestamp: Date.now(),
             selector: selector,
-            target: {
-                innerText: target.innerText,
-            },
+            $fullSelectorPath: fullSelectorPath,
+            target: getTargetNodeDTO(target),
         },
     });
 };
@@ -233,7 +295,7 @@ BrowserPuppet.prototype._onInputCapture = function (event) {
         var selector = this._uniqueSelector.get(target);
     }
     catch (err) {
-        console.error(err);
+        this._log.error(err);
         return;
     }
 
@@ -241,12 +303,10 @@ BrowserPuppet.prototype._onInputCapture = function (event) {
         type: MESSAGES.UPSTREAM.CAPTURED_EVENT,
         event: {
             type: 'input',
-            timestamp: Date.now(),
+            $timestamp: Date.now(),
             selector: selector,
             value: target.value,
-            target: {
-                innerText: target.innerText,
-            },
+            target: getTargetNodeDTO(target),
         },
     });
 };
@@ -264,20 +324,20 @@ BrowserPuppet.prototype._onScrollCapture = debounce(function (event) {
         var selector = this._uniqueSelector.get(target);
     }
     catch (err) {
-        console.error(err);
+        this._log.error(err);
         return;
     }
+
+    var targetDTO = getTargetNodeDTO(target);
+    targetDTO.scrollTop = target.scrollTop;
 
     this._sendMessage({
         type: MESSAGES.UPSTREAM.CAPTURED_EVENT,
         event: {
             type: 'scroll',
-            timestamp: Date.now(),
+            $timestamp: Date.now(),
             selector: selector,
-            target: {
-                scrollTop: target.scrollTop,
-                innerText: target.innerText,
-            },
+            target: targetDTO,
         },
     });
 }, SCROLL_DEBOUNCE);
@@ -300,7 +360,7 @@ BrowserPuppet.prototype._onKeydownCapture = function (event) {
         var selector = this._uniqueSelector.get(target);
     }
     catch (err) {
-        console.error(err);
+        this._log.error(err);
         return;
     }
 
@@ -308,15 +368,48 @@ BrowserPuppet.prototype._onKeydownCapture = function (event) {
         type: MESSAGES.UPSTREAM.CAPTURED_EVENT,
         event: {
             type: 'keydown',
-            timestamp: Date.now(),
+            $timestamp: Date.now(),
             selector: selector,
             keyCode: event.keyCode || event.charCode,
             ctrlKey: event.ctrlKey,
             shiftKey: event.shiftKey,
             altKey: event.altKey,
-            target: cleanTarget(target),
+            target: getTargetNodeDTO(target),
         },
     });
+};
+
+BrowserPuppet.prototype._onMouseoverCapture = function (event) {
+    if (!this._canCapture()) {
+        return;
+    }
+
+    var target = event.target;
+
+    if (this.$(target).is(this._mouseoverSelector)) {
+        try {
+            var selector = this._uniqueSelector.get(target);
+        }
+        catch (err) {
+            this._log.error(err);
+            return;
+        }
+
+        this._sendMessage({
+            type: MESSAGES.UPSTREAM.CAPTURED_EVENT,
+            event: {
+                type: 'mouseover',
+                $timestamp: Date.now(),
+                selector: selector,
+                target: getTargetNodeDTO(target),
+            },
+        });
+    }
+
+};
+
+BrowserPuppet.prototype._onWindowBlur = function () {
+    this._activeElementBeforeWindowBlur = document.activeElement;
 };
 
 BrowserPuppet.prototype._sendInsertAssertionDebounced = debounce(function () {
@@ -324,10 +417,23 @@ BrowserPuppet.prototype._sendInsertAssertionDebounced = debounce(function () {
 }, INSERT_ASSERTION_DEBOUNCE);
 
 BrowserPuppet.prototype.setOnSelectorBecameVisibleSelectors = function (selectors) {
-    this._onSelectorBecameVisibleData.selectors = deepCopy(selectors);
-    this._onSelectorBecameVisibleData.states = selectors.map(function () {
-        return { previousState: null };
+    var self = this;
+
+    if (self._selectorObserver !== null) {
+        self._selectorObserver.disconnect();
+        self._selectorObserver = null;
+    }
+
+    // TODO check _canCapture
+
+    var observeList = selectors.map(function (selector) {
+        return {
+            selector: selector,
+            listener: self._sendMessage.bind(self, { type: MESSAGES.UPSTREAM.SELECTOR_BECAME_VISIBLE, selector: selector }),
+        };
     });
+
+    this._selectorObserver = new SelectorObserver({ observeList: observeList });
 };
 
 BrowserPuppet.prototype.setTransmitEvents = function (value) {
@@ -337,397 +443,95 @@ BrowserPuppet.prototype.setTransmitEvents = function (value) {
     this._transmitEvents = value;
 };
 
-BrowserPuppet.prototype._startOnSelectorBecameVisiblePolling = function () {
-    this._onSelectorBecameVisibleData.intervalId =
-        setInterval(this._onSelectorBecameVisiblePoll.bind(this), AUTODETECT_INTERVAL_MS);
-};
-
-BrowserPuppet.prototype._onSelectorBecameVisiblePoll = function () {
-    var self = this;
-
-    self._onSelectorBecameVisibleData.selectors.forEach(function (selector, i) {
-        var state = self._onSelectorBecameVisibleData.states[i];
-
-        // TODO send warning in message if selector is ambiguous
-
-        var currentState = self.isSelectorVisible(selector);
-
-        if (state.previousState !== null && !state.previousState && currentState) {
-            self._sendMessage({ type: MESSAGES.UPSTREAM.SELECTOR_BECAME_VISIBLE, selector: selector });
-        }
-
-        state.previousState = currentState;
-    });
-};
-
-BrowserPuppet.prototype._onCaptureEvent = function (eventType, event) {
-    if (!this._transmitEvents || this._isExecuting) {
-        return;
-    }
-
-    var target = event.target;
-
-    // if (eventType === 'keypress' && target.tagName === 'INPUT') {
-    //     return;
-    // }
-
-    try {
-        var selector = this._uniqueSelector.get(target);
-    }
-    catch (err) {
-        console.error(err);
-        return;
-    }
-
-    var response = {
-        type: MESSAGES.UPSTREAM.CAPTURED_EVENT,
-        event: {
-            type: eventType,
-            selector: selector,
-            target: {
-                tagName: target.tagName,
-                id: target.id,
-                className: target.className,
-            },
-        },
-    };
-
-    // click focus keypress input scroll
-
-    if (/click/.test(eventType)) {
-        response.event.target.innerText = target.innerText;
-    }
-
-    switch (eventType) {
-        case 'keypress':
-            // TODO handle contenteditable fields, textarea, etc
-            response.event.keyCode = event.keyCode || event.charCode;
-            break;
-        case 'input':
-            response.event.value = target.value;
-            break;
-        case 'scroll':
-            response.event.target.scrollTop = target.scrollTop;
-            break;
-        default:
-            // no op
-            break;
-    }
-
-    this._sendMessage(response);
-};
-
 BrowserPuppet.prototype._onExecMessage = Promise.method(function (data) {
     if (data.type === MESSAGES.DOWNSTREAM.EXEC_COMMAND) {
-        var command = data.command;
-
-        switch (command.type) {
-            case 'click':
-                return this.click(command.selector);
-            case 'setValue':
-                return this.setValue(command.selector, command.value);
-            case 'getValue':
-                return this.getValue(command.selector);
-            case 'pressKey':
-                return this.pressKey(command.selector, command.keyCode);
-            case 'waitForVisible':
-                return this.waitForVisible(command.selector);
-            case 'waitWhileVisible':
-                return this.waitWhileVisible(command.selector);
-            case 'focus':
-                return this.focus(command.selector);
-            case 'isVisible':
-                return this.isVisible(command.selector);
-            case 'scroll':
-                return this.scroll(command.selector, command.scrollTop);
-            default:
-                throw new Error('Unknown command type: ' + command.type);
-        }
+        return this.execCommand(data.command);
     }
     else if (data.type === MESSAGES.DOWNSTREAM.EXEC_FUNCTION) {
-        // TODO
-        throw new Error('TODO: EXEC_FUNCTION');
+        return this.execFunction(data.fn, data.args);
     }
-    else {
-        throw new Error('Unknown exec type: ' + data.type);
-    }
+
+    throw new Error('Unknown exec type: ' + data.type);
+
 });
 
-BrowserPuppet.prototype._execFn = Promise.method(function (fnData) {
-    var argNames = fnData.argNames || [];
-    var argValues = fnData.argValues || [];
-    var fnBody = fnData.body;
+BrowserPuppet.prototype.execFunction = Promise.method(function (fn, args) {
+    return fn.apply(null, args);
+});
 
-    var fn;
+BrowserPuppet.prototype.execCommand = Promise.method(function (command) {
+    this._log.trace('execCommand: ' + JSON.stringify(command));
 
-    /* eslint-disable no-new-func */
+    switch (command.type) {
+        case 'click':
+        case 'setValue':
+        case 'getValue':
+        case 'pressKey':
+        case 'waitForVisible':
+        case 'waitWhileVisible':
+        case 'focus':
+        case 'isVisible':
+        case 'scroll':
+        case 'mouseover':
+        case 'uploadFileAndAssign':
+            return this[command.type](command);
 
-    switch (argNames.length) {
-        case 0: fn = new Function(fnBody);
-            break;
-        case 1: fn = new Function(argNames[0], fnBody);
-            break;
-        case 2: fn = new Function(argNames[0], argNames[1], fnBody);
-            break;
-        case 3: fn = new Function(argNames[0], argNames[1], argNames[2], fnBody);
-            break;
-        case 4: fn = new Function(argNames[0], argNames[1], argNames[2], argNames[3], fnBody);
-            break;
-        case 5: fn = new Function(argNames[0], argNames[1], argNames[2], argNames[3], argNames[4], fnBody);
-            break;
-        case 6: fn = new Function(argNames[0], argNames[1], argNames[2], argNames[3], argNames[4], argNames[5], fnBody);
-            break;
+        case 'composite':
+            return this.execCompositeCommand(command.commands);
         default:
-            throw new Error('Too many args');
+            throw new Error('Unknown command type: ' + command.type);
     }
-
-    /* eslint-enable no-new-func */
-
-    // TODO custom context?
-    var context = {
-        driver: this,
-        $: $,
-        // TODO kell?
-        jQuery: $,
-        promiseWhile: promiseWhile,
-        Promise: Promise,
-    };
-
-    return fn.apply(context, argValues);
 });
 
-BrowserPuppet.prototype.reopenUrl = Promise.method(function (url) {
-    this._wsConn.close();
-    document.cookie = '';
-    window.localStorage.clear();
-    window.location = url;
-});
-
-// command
-
-BrowserPuppet.prototype.click = function (selector) {
-    var $el = $(selector);
-
-    if ($el.length === 0) {
-        throw new Error('Unable to click selector "' + selector + '": not found');
-    }
-    else if ($el.length > 1) {
-        throw new Error('Unable to click selector "' + selector + '": not unique');
-    }
-    else {
-        var el = $el[0];
-
-        // TODO detect inaccessible nodes !!!
-
-        // if (TestToolsBase.isNodeOccluded(el)) {
-        //     var occludingNode = TestToolsBase.getOccludingNode(el)
-        //     console.log('OCCLUSION DETECTED - selector: ' + selector + ', occluded by: ' + occludingNode.outerHTML.substr(0,50) + ' (...)')
-        //     throw new Error('Unable to click selector "'+selector+'": is occluded by other node(s)')
-        // }
-
-        // console.log('No occlusion detected for '+selector)
-
-        // $el.trigger('click');
-        $el[0].click();
-    }
-};
-
-// TODO handle meta keys, arrow keys
-// TODO which event to use? keyup, keydown, keypress?
-BrowserPuppet.prototype.pressKey = function (selector, keyCode) {
-    var $el = $(selector);
-
-    if ($el.length === 0) {
-        throw new Error('Unable to press key ' + keyCode + ' for "' + selector + '": not found');
-    }
-    else if ($el.length > 1) {
-        throw new Error('Unable to press key ' + keyCode + ' for "' + selector + '": not unique');
-    }
-    else {
-        console.log(typeof keyCode, keyCode);
-        // eslint-disable-next-line new-cap
-        $el.trigger($.Event('keydown', { which: Number(keyCode), keyCode: Number(keyCode) }));
-    }
-};
-
-BrowserPuppet.prototype.setValue = function (selector, value) {
-    var $el = $(selector);
-    var el = $el[0];
-    var tagName = el && el.tagName || '';
-
-    if ($el.length === 0) {
-        throw new Error('Unable to set value of "' + selector + '": not found');
-    }
-    else if ($el.length > 1) {
-        throw new Error('Unable to set value of "' + selector + '": not unique');
-    }
-    else if (tagName !== 'INPUT' && tagName !== 'TEXTAREA') {
-        throw new Error('Unable to set value of "' + selector + '": unsupported tag "' + tagName + '"');
-    }
-    else {
-        $el.val(value);
-        $el.trigger('input');
-    }
-};
-
-BrowserPuppet.prototype.focus = function (selector) {
-    var $el = $(selector);
-
-    if ($el.length === 0) {
-        throw new Error('Unable to focus selector "' + selector + '": not found');
-    }
-    else if ($el.length > 1) {
-        throw new Error('Unable to focus selector "' + selector + '": not unique');
-    }
-    else {
-        $el[0].focus();
-    }
-};
-
-// TODO timeout, pollInterval
-// TODO document caveats
-BrowserPuppet.prototype.waitForVisible = Promise.method(function (selector) {
-    var pollInterval = 500;
+BrowserPuppet.prototype.execCompositeCommand = Promise.method(function (commands) {
     var self = this;
 
-    if (self.isSelectorVisible(selector)) {
-        return;
-    }
-
-    return promiseWhile(
-        function () {
-            return !self.isSelectorVisible(selector);
-        },
-        function () {
-            return Promise.delay(pollInterval);
-        }
-    );
-});
-
-// TODO timeout, pollInterval, initialDelay
-// TODO document caveats
-BrowserPuppet.prototype.waitWhileVisible = Promise.method(function (selector) {
-    var pollInterval = 500;
-    var initialDelay = 500;
-    var self = this;
-
-    console.log('waitWhileVisible: starting, initialDelay: ' + initialDelay);
-
-    return Promise.delay(initialDelay)
-    .then(function () {
-        if (!self.isSelectorVisible(selector)) {
-            console.log('WWV: selector wasnt visible: ' + selector);
-            return;
-        }
-
-        return promiseWhile(
-            function () {
-                var result = self.isSelectorVisible(selector);
-                console.log('WWV: visibility: ' + selector + ', ' + result);
-                return result;
-            },
-            function () {
-                console.log('WWV: delaying');
-                return Promise.delay(pollInterval);
-            }
-        );
-
+    return Promise.each(commands, function (command) {
+        return self.execCommand(command);
     });
 });
 
+// TODO separate file
+// from https://stackoverflow.com/a/179514/4782902
+function deleteAllCookies() {
+    var cookies = document.cookie.split(';');
 
-// query
-
-BrowserPuppet.prototype.getValue = function (selector) {
-    var $el = $(selector);
-    var el = $el[0];
-
-    if ($el.length === 0) {
-        throw new Error('Unable to get value for "' + selector + '": not found');
+    for (var i = 0; i < cookies.length; i++) {
+        var cookie = cookies[i];
+        var eqPos = cookie.indexOf('=');
+        var name = eqPos > -1 ? cookie.substr(0, eqPos) : cookie;
+        document.cookie = name + '=;expires=Thu, 01 Jan 1970 00:00:00 GMT';
     }
-    else if ($el.length > 1) {
-        throw new Error('Unable to get value for "' + selector + '": not unique');
-    }
+}
 
-    // TODO util fn to get node value
-
-    // TODO handle all val() nodes
-    if (el.tagName === 'INPUT' && el.type === 'checkbox') {
-        return el.checked;
-    }
-    else if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
-        /* nl2backslashnl(*/
-        return $el.val().replace(/\n/g, '\\n');
-    }
-    /* nl2backslashnl(*/
-    return $el.text().replace(/\n/g, '\\n');
-
-};
-
-BrowserPuppet.prototype.isVisible = function (selector) {
-    return $(selector).length > 0;
-};
-
-BrowserPuppet.prototype.scroll = function (selector, scrollTop) {
-    $(selector)[0].scrollTop = scrollTop;
+BrowserPuppet.prototype.clearPersistentData = function () {
+    deleteAllCookies();
+    window.localStorage.clear();
 };
 
 BrowserPuppet.prototype.setScreenshotMarkerState = function (state) {
     if (state) {
-        document.body.appendChild(this._ssMarkerTL);
-        document.body.appendChild(this._ssMarkerBR);
+        document.body.appendChild(this._ssMarkerTopLeft);
+        document.body.appendChild(this._ssMarkerBottomRight);
     }
     else {
-        document.body.removeChild(this._ssMarkerTL);
-        document.body.removeChild(this._ssMarkerBR);
+        document.body.removeChild(this._ssMarkerTopLeft);
+        document.body.removeChild(this._ssMarkerBottomRight);
     }
 };
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-function cleanTarget(target) {
+function getTargetNodeDTO(target) {
     return {
         className: target.className,
         id: target.id,
         innerText: target.innerText,
         tagName: target.tagName,
+        type: target.type,
     };
-}
-
-
-function deepCopy(o) {
-    return JSON.parse(JSON.stringify(o));
 }
 
 function assert(v, m) {
     if (!v) {
         throw new Error(m);
     }
-}
-
-
-function promiseWhile(condition, action) {
-    return Promise.try(function () {
-        if (!condition()) {
-            return;
-        }
-
-        return action()
-        .then(promiseWhile.bind(null, condition, action));
-    });
 }

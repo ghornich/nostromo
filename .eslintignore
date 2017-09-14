@@ -1,0 +1,4 @@
+**/dist/*.js
+**/docs/**/*.js
+babel-temp.js
+*_temp_*
