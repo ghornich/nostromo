@@ -88,17 +88,19 @@ exports = module.exports = function (test, _testrunnerInstance) {
         // @region waitForVisible timeout test
 
         try {
-            const wfvPromise =  _testrunnerInstance._browserPuppeteer.execCommand({
+            const wfvPromise = _testrunnerInstance._browserPuppeteer.execCommand({
                 type: 'waitForVisible',
                 selector: '.no-such-selector',
                 pollInterval: 300,
                 timeout: 3000,
             });
 
-            const timeoutPromise = new Promise(r => setTimeout(r, 4000)).then(() => { throw new Error('failed to time out after 3s') });
+            const timeoutPromise = new Promise(r => setTimeout(r, 4000)).then(() => {
+                throw new Error('failed to time out after 3s');
+            });
 
             await Promise.race([wfvPromise, timeoutPromise]);
-            throw new Error('Unexpected resolve')
+            throw new Error('Unexpected resolve');
         }
         catch (error) {
             if (error.message.indexOf('waitForVisible: timed out') >= 0) {

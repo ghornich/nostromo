@@ -15,6 +15,8 @@ var DEFAULT_UPLOAD_FILE_MIME = 'application/octet-stream';
 
 exports = module.exports = BrowserPuppetCommands;
 
+/* eslint-disable no-unused-vars */
+
 /**
  * Command type constants
  * @type {Object<String>}
@@ -33,6 +35,8 @@ var COMMANDS = BrowserPuppetCommands.COMMANDS = {
     COMPOSITE: 'composite',
     UPLOAD_FILE_AND_ASSIGN: 'uploadFileAndAssign',
 };
+
+/* eslint-enable */
 
 /**
  * @memberOf BrowserPuppetCommands
