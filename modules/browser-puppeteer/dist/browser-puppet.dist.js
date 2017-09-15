@@ -185,10 +185,34 @@ var lodashSet = require('lodash.set');
 /**
  * @type {String}
  * @memberOf BrowserPuppetCommands
+ * @default
  */
 var DEFAULT_UPLOAD_FILE_MIME = 'application/octet-stream';
 
 exports = module.exports = BrowserPuppetCommands;
+
+/* eslint-disable no-unused-vars */
+
+/**
+ * Command type constants
+ * @type {Object<String>}
+ * @memberOf BrowserPuppetCommands
+ * @static
+ */
+var COMMANDS = BrowserPuppetCommands.COMMANDS = {
+    CLICK: 'click',
+    SET_VALUE: 'setValue',
+    PRESS_KEY: 'pressKey',
+    SCROLL: 'scroll',
+    WAIT_FOR_VISIBLE: 'waitForVisible',
+    WAIT_WHILE_VISIBLE: 'waitWhileVisible',
+    FOCUS: 'focus',
+    ASSERT: 'assert',
+    COMPOSITE: 'composite',
+    UPLOAD_FILE_AND_ASSIGN: 'uploadFileAndAssign',
+};
+
+/* eslint-enable */
 
 /**
  * @memberOf BrowserPuppetCommands
@@ -1483,6 +1507,7 @@ JSONF.parse = function (s) {
     return JSON.parse(s, function (key, val) {
         if (isStringAFunction(val)) {
             try {
+                // eslint-disable-next-line no-new-func
                 return new Function(
                     // http://www.kristofdegrave.be/2012/07/json-serialize-and-deserialize.html
                     val.match(/\(([^)]*)\)/)[1],
@@ -1694,7 +1719,7 @@ function SelectorObserver(conf) {
 
     this._selectorPrevVisible = this._conf.observeList.map(function () {
         return false;
-    })
+    });
 
     if ('MutationObserver' in window) {
         this._mutationObserver = new window.MutationObserver(this._onMutation.bind(this));
@@ -1706,13 +1731,13 @@ function SelectorObserver(conf) {
     }
 }
 
-SelectorObserver.prototype._onMutation = function (/* mutationRecords */) {
+SelectorObserver.prototype._onMutation = function () {
     var self = this;
 
     self._conf.observeList.forEach(function (item, i) {
         var prevIsVisible = self._selectorPrevVisible[i];
         var isVisible = $(item.selector).is(':visible');
-        
+
         // console.log('[SelectorObserver] '+item.selector+(isVisible?' visible':' not visible'))
 
         try {
@@ -1723,16 +1748,16 @@ SelectorObserver.prototype._onMutation = function (/* mutationRecords */) {
         catch (error) {
             console.error(error);
         }
-        
-        self._selectorPrevVisible[i] = isVisible;    
+
+        self._selectorPrevVisible[i] = isVisible;
     });
 };
 
 SelectorObserver.prototype.disconnect = function () {
     this._mutationObserver.disconnect();
-}
+};
 
-function __isArray(val){
+function __isArray(val) {
     return Object.prototype.toString.call(val) === '[object Array]';
 }
 
