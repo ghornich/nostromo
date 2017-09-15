@@ -6,3 +6,5 @@ testrunner: keepalive flag: stop execution and browser on first error (exit/cont
 testrunner: handle ctrl+c gracefully (exit browser, stop servers, etc)
 replace all string command names with const definitions
 minify dist js (-comments)
+move composite event transformer logic into config
+mutation observer autotest: show dialog & focus on it
