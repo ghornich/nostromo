@@ -6,7 +6,7 @@ var m = require('mithril');
 var Ws4ever = require('../../../../modules/ws4ever');
 
 var CommandList = require('../command-list');
-var CMD_TYPES = require('../command').TYPES;
+var COMMANDS = require('../../../../modules/browser-puppeteer/src/puppet/browser-puppet-commands.partial').COMMANDS;
 
 var MESSAGES = require('../../../../modules/browser-puppeteer/src/messages.js');
 
@@ -74,7 +74,7 @@ function RecorderApp(conf) {
             self.commandList.clear();
         },
         addAssertion: function () {
-            self.commandList.add({ type: CMD_TYPES.ASSERT });
+            self.commandList.add({ type: COMMANDS.ASSERT });
         },
         downloadOutput: function () {
             var formatter = self._getSelectedOutputFormatter();
@@ -113,7 +113,7 @@ RecorderApp.prototype.start = function () {
                     break;
                 case MESSAGES.UPSTREAM.INSERT_ASSERTION:
                     if (self._isRecording) {
-                        self.commandList.add({ type: CMD_TYPES.ASSERT });
+                        self.commandList.add({ type: COMMANDS.ASSERT });
                     }
                     break;
                 default: throw new Error('Unknown type' + data.type);
@@ -349,8 +349,8 @@ function jsonOutputFormatter(cmds, rawIndent) {
 
     return '[' + EOL +
         cmds.map(function (cmd) {
-            if (cmd.type === CMD_TYPES.COMPOSITE) {
-                return indent + '{"type":"' + CMD_TYPES.COMPOSITE + '","commands":[' + EOL +
+            if (cmd.type === COMMANDS.COMPOSITE) {
+                return indent + '{"type":"' + COMMANDS.COMPOSITE + '","commands":[' + EOL +
                     cmd.commands.map(function (subcmd) {
                         return indent + indent + JSON.stringify(cleanCmd(subcmd));
                     }).join(',' + EOL) + EOL +

@@ -9,10 +9,30 @@ var lodashSet = require('lodash.set');
 /**
  * @type {String}
  * @memberOf BrowserPuppetCommands
+ * @default
  */
 var DEFAULT_UPLOAD_FILE_MIME = 'application/octet-stream';
 
 exports = module.exports = BrowserPuppetCommands;
+
+/**
+ * Command type constants
+ * @type {Object<String>}
+ * @memberOf BrowserPuppetCommands
+ * @static
+ */
+var COMMANDS = BrowserPuppetCommands.COMMANDS = {
+    CLICK: 'click',
+    SET_VALUE: 'setValue',
+    PRESS_KEY: 'pressKey',
+    SCROLL: 'scroll',
+    WAIT_FOR_VISIBLE: 'waitForVisible',
+    WAIT_WHILE_VISIBLE: 'waitWhileVisible',
+    FOCUS: 'focus',
+    ASSERT: 'assert',
+    COMPOSITE: 'composite',
+    UPLOAD_FILE_AND_ASSIGN: 'uploadFileAndAssign',
+};
 
 /**
  * @memberOf BrowserPuppetCommands

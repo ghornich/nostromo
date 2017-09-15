@@ -1,8 +1,7 @@
-var Command = require('./command');
-var TYPES = Command.TYPES;
-var CLICK_FOCUS_MIN_SEPARATION = 200;
+'use strict';
 
-// TODO ASSERT_SCREENSHOT -> ASSERT
+var COMMANDS = require('../../../modules/browser-puppeteer/src/puppet/browser-puppet-commands.partial').COMMANDS;
+var CLICK_FOCUS_MIN_SEPARATION = 200;
 
 exports = module.exports = CommandList;
 
@@ -30,29 +29,29 @@ CommandList.prototype._compact = function () {
 
         var timestampDiff = Math.abs(cmd.$timestamp - lastNewCmd.$timestamp);
 
-        if ((cmd.type === TYPES.CLICK && lastNewCmd.type === TYPES.FOCUS || cmd.type === TYPES.FOCUS && lastNewCmd.type === TYPES.CLICK) &&
+        if ((cmd.type === COMMANDS.CLICK && lastNewCmd.type === COMMANDS.FOCUS || cmd.type === COMMANDS.FOCUS && lastNewCmd.type === COMMANDS.CLICK) &&
                 timestampDiff < CLICK_FOCUS_MIN_SEPARATION && stringsSimilar(cmd.$fullSelectorPath, lastNewCmd.$fullSelectorPath)) {
             // insert composite command
             newCommands[lastNewIdx] = {
-                type: TYPES.COMPOSITE,
+                type: COMMANDS.COMPOSITE,
                 commands: [lastNewCmd, cmd],
             };
         }
-        else if (cmd.type === TYPES.SET_VALUE && lastNewCmd.type === TYPES.SET_VALUE && cmd.selector === lastNewCmd.selector) {
+        else if (cmd.type === COMMANDS.SET_VALUE && lastNewCmd.type === COMMANDS.SET_VALUE && cmd.selector === lastNewCmd.selector) {
             newCommands[lastNewIdx] = cmd;
         }
 
-        else if (cmd.type === TYPES.FOCUS && lastNewCmd.type === TYPES.FOCUS && cmd.selector === lastNewCmd.selector) {
+        else if (cmd.type === COMMANDS.FOCUS && lastNewCmd.type === COMMANDS.FOCUS && cmd.selector === lastNewCmd.selector) {
             newCommands[lastNewIdx] = cmd;
         }
         // TODO ???????
-        // else if (cmd.type===TYPES.SCROLL && lastNewCmd.type===TYPES.SCROLL && cmd.selector===lastNewCmd.selector) {
+        // else if (cmd.type===COMMANDS.SCROLL && lastNewCmd.type===COMMANDS.SCROLL && cmd.selector===lastNewCmd.selector) {
         //     newCommands[lastNewIdx]=cmd
         // }
-        else if (cmd.type === TYPES.ASSERT_SCREENSHOT && lastNewCmd.type === TYPES.ASSERT_SCREENSHOT) {
+        else if (cmd.type === COMMANDS.ASSERT && lastNewCmd.type === COMMANDS.ASSERT) {
             continue;
         }
-        else if (cmd.type === TYPES.UPLOAD_FILE_AND_ASSIGN && lastNewCmd.type === TYPES.UPLOAD_FILE_AND_ASSIGN) {
+        else if (cmd.type === COMMANDS.UPLOAD_FILE_AND_ASSIGN && lastNewCmd.type === COMMANDS.UPLOAD_FILE_AND_ASSIGN) {
             continue;
         }
         else {
