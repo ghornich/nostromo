@@ -62,7 +62,11 @@ function RecorderApp(conf) {
     });
 
     self._wsConn = null;
-    self.commandList = new CommandList();
+    self.commandList = new CommandList({
+        compositeEvents: self._conf.compositeEvents,
+        compositeEventsThreshold: self._conf.compositeEventsThreshold,
+        compositeEventsComparator: self._conf.compositeEventsComparator,
+    });
 
     self._isRecording = false;
 
@@ -122,7 +126,7 @@ RecorderApp.prototype.start = function () {
             m.redraw();
         }
         catch (err) {
-            console.warn('message error: ' + err);
+            console.error(err);
         }
     };
 

@@ -13,8 +13,10 @@ const defaults = require('lodash.defaults');
 /**
  * @memberOf RecorderServer
  * @type {Number}
+ * @static
+ * @constant
  */
-const DEFAULT_RECORDER_APP_PORT = 7700;
+const DEFAULT_RECORDER_APP_PORT = RecorderServer.DEFAULT_RECORDER_APP_PORT = 7700;
 
 exports = module.exports = RecorderServer;
 
@@ -56,6 +58,10 @@ exports = module.exports = RecorderServer;
  *
  * @property {Array<String>} [mouseoverSelectors] - Detect mouseover events only for these selectors
  * @property {Array<String>} [ignoredClasses] - Ignored classnames
+ *
+ * @property {Array<String>|null} [compositeEvents = ['click', 'focus']] - subsequent events of specified types will be combined into a single composite event
+ * @property {Number} [compositeEventsThreshold = 200] - composite events grouping threshold
+ * @property {Function} [compositeEventsComparator] - default: full selector paths similar (a in b or b in a)
  */
 
 /**
@@ -68,7 +74,14 @@ function RecorderServer(conf) {
         onSelectorBecameVisible: [],
         mouseoverSelectors: [],
         ignoredClasses: [],
+        compositeEvents: ['click', 'focus'],
+        compositeEventsThreshold: 200,
+        compositeEventsComparator: defaultCompositeEventsComparator,
     });
+
+    if (this._conf.compositeEvents === null) {
+        this._conf.compositeEvents = [];
+    }
 
     // TODO assert conf
     // TODO check for configs not in default conf
@@ -87,8 +100,6 @@ function RecorderServer(conf) {
 
     this._proxyMessage = this._proxyMessage.bind(this);
 }
-
-RecorderServer.DEFAULT_RECORDER_APP_PORT = DEFAULT_RECORDER_APP_PORT;
 
 // TODO better promise chain?
 
@@ -159,3 +170,10 @@ RecorderServer.prototype._onRecRequest = async function (req, resp) {
         resp.end('Not found');
     }
 };
+
+function defaultCompositeEventsComparator(cmd, lastNewCmd) {
+    const $fsp1 = cmd.$fullSelectorPath;
+    const $fsp2 = lastNewCmd.$fullSelectorPath;
+
+    return $fsp1.indexOf($fsp2) >= 0 || $fsp2.indexOf($fsp1) >= 0;
+}

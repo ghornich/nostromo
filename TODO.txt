@@ -1,10 +1,10 @@
 precommit hooks (autotest?, test (OK), lint, doc)
 generate docs from docblock
 create referenceErrors folder on-demand
-separate per-test and per-run bailout
+test per-test and per-run bailout
 testrunner: keepalive flag: stop execution and browser on first error (exit/continue on request)
 testrunner: handle ctrl+c gracefully (exit browser, stop servers, etc)
 replace all string command names with const definitions
 minify dist js (-comments)
-move composite event transformer logic into config
 mutation observer autotest: show dialog & focus on it
+document capturedEvent with $fullSelectorPath, $timestamp, etc
