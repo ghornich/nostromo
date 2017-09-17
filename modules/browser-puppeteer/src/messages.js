@@ -1,6 +1,34 @@
 'use strict';
 
+/**
+ * @enum {String}
+ */
+exports.UPSTREAM = {
+    // { type, selector, [warning] }
+    SELECTOR_BECAME_VISIBLE: 'selector-became-visible',
+    CAPTURED_EVENT: 'captured-event',
+    ACK: 'ack',
+    NAK: 'nak',
+    INSERT_ASSERTION: 'insert-assertion',
+};
 
+/**
+ * @enum {String}
+ */
+exports.DOWNSTREAM = {
+    EXEC_COMMAND: 'exec-command',
+
+    // { type, ??? }
+    EXEC_FUNCTION: 'exec-function',
+    SET_SELECTOR_BECAME_VISIBLE_DATA: 'set-selector-became-visible-data',
+    SHOW_SCREENSHOT_MARKER: 'show-screenshot-marker',
+    HIDE_SCREENSHOT_MARKER: 'hide-screenshot-marker',
+    SET_TRANSMIT_EVENTS: 'set-transmit-events',
+    TERMINATE_PUPPET: 'terminate-puppet',
+    CLEAR_PERSISTENT_DATA: 'clear-persistent-data',
+    SET_MOUSEOVER_SELECTORS: 'set-mouseover-selectors',
+    SET_IGNORED_CLASSES: 'set-ignored-classes',
+};
 
 /**
  * @typedef {Object} ControlMessage
@@ -106,51 +134,3 @@
  * @property {String} type - 'set-ignored-classes'
  * @property {Array<String>} classes
  */
-
-/**
- * @enum {String}
- */
-exports.COMMAND_TYPES = {
-    CLICK: 'click',
-    SET_VALUE: 'setValue',
-    GET_VALUE: 'getValue',
-    PRESS_KEY: 'pressKey',
-    WAIT_FOR_VISIBLE: 'waitForVisible',
-    WAIT_WHILE_VISIBLE: 'waitWhileVisible',
-    FOCUS: 'focus',
-    IS_VISIBLE: 'isVisible',
-    SCROLL: 'scroll',
-    COMPOSITE: 'composite',
-    MOUSEOVER: 'mouseover',
-    UPLOAD_FILE_AND_ASSIGN: 'uploadFileAndAssign',
-};
-
-/**
- * @enum {String}
- */
-exports.UPSTREAM = {
-    // { type, selector, [warning] }
-    SELECTOR_BECAME_VISIBLE: 'selector-became-visible',
-    CAPTURED_EVENT: 'captured-event',
-    ACK: 'ack',
-    NAK: 'nak',
-    INSERT_ASSERTION: 'insert-assertion',
-};
-
-/**
- * @enum {String}
- */
-exports.DOWNSTREAM = {
-    EXEC_COMMAND: 'exec-command',
-
-    // { type, ??? }
-    EXEC_FUNCTION: 'exec-function',
-    SET_SELECTOR_BECAME_VISIBLE_DATA: 'set-selector-became-visible-data',
-    SHOW_SCREENSHOT_MARKER: 'show-screenshot-marker',
-    HIDE_SCREENSHOT_MARKER: 'hide-screenshot-marker',
-    SET_TRANSMIT_EVENTS: 'set-transmit-events',
-    TERMINATE_PUPPET: 'terminate-puppet',
-    CLEAR_PERSISTENT_DATA: 'clear-persistent-data',
-    SET_MOUSEOVER_SELECTORS: 'set-mouseover-selectors',
-    SET_IGNORED_CLASSES: 'set-ignored-classes',
-};

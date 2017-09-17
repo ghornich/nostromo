@@ -6,9 +6,8 @@ var m = require('mithril');
 var Ws4ever = require('../../../../modules/ws4ever');
 
 var CommandList = require('../command-list');
-var COMMANDS = require('../../../../modules/browser-puppeteer/src/puppet/browser-puppet-commands.partial').COMMANDS;
-
-var MESSAGES = require('../../../../modules/browser-puppeteer/src/messages.js');
+var COMMANDS = require('../../../../modules/browser-puppeteer/src/commands');
+var MESSAGES = require('../../../../modules/browser-puppeteer/src/messages');
 
 var EOL = '\n';
 

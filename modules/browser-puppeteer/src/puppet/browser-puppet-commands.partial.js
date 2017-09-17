@@ -5,6 +5,7 @@ var Promise = require('bluebird');
 var promiseWhile = require('../../../../modules/promise-while')(Promise);
 var base64ToFile = require('../../../../modules/base64-to-file');
 var lodashSet = require('lodash.set');
+var COMMANDS = require('../commands');
 
 /**
  * @type {String}
@@ -15,40 +16,6 @@ var DEFAULT_UPLOAD_FILE_MIME = 'application/octet-stream';
 
 exports = module.exports = BrowserPuppetCommands;
 
-/* eslint-disable no-unused-vars */
-
-/**
- * Command type constants
- * @type {Object<String>}
- * @memberOf BrowserPuppetCommands
- * @static
- */
-var COMMANDS = BrowserPuppetCommands.COMMANDS = {
-    CLICK: 'click',
-    SET_VALUE: 'setValue',
-    PRESS_KEY: 'pressKey',
-    SCROLL: 'scroll',
-    WAIT_FOR_VISIBLE: 'waitForVisible',
-    WAIT_WHILE_VISIBLE: 'waitWhileVisible',
-    FOCUS: 'focus',
-    ASSERT: 'assert',
-    COMPOSITE: 'composite',
-    UPLOAD_FILE_AND_ASSIGN: 'uploadFileAndAssign',
-};
-
-/* eslint-enable */
-
-/**
- * @memberOf BrowserPuppetCommands
- * @typedef {Object} Command
- */
-
-/**
- * @typedef {Command} CompositeCommand
- * @property {String} type - 'composite'
- * @property {Array<Command>} commands
- */
-
 /**
  * @class
  * @abstract
@@ -58,27 +25,14 @@ function BrowserPuppetCommands() {
 }
 
 /**
- * @typedef {Command} ScrollCommand
- * @property {String} type - 'scroll'
- * @property {String} selector
- * @property {Number} scrollTop
- */
-
-/**
  * @param {ScrollCommand} cmd
  * @throws {Error}
  */
 BrowserPuppetCommands.prototype.scroll = function (cmd) {
     var $el = this.$(cmd.selector);
-    this._assert$el($el, 'scroll');
+    this._assert$el($el, COMMANDS.SCROLL);
     $el[0].scrollTop = cmd.scrollTop;
 };
-
-/**
- * @typedef {Command} MouseoverCommand
- * @property {String} type - 'mouseover'
- * @property {String} selector
- */
 
 /**
  * @param {MouseoverCommand} cmd
@@ -88,19 +42,11 @@ BrowserPuppetCommands.prototype.mouseover = function (cmd) {
     this._log.trace('BrowserPuppetCommands::mouseover: ' + JSON.stringify(cmd));
 
     var $el = this.$(cmd.selector);
-    this._assert$el($el, 'mouseover');
+    this._assert$el($el, COMMANDS.MOUSEOVER);
 
     var mouseoverEvent = new Event('mouseover');
     $el[0].dispatchEvent(mouseoverEvent);
 };
-
-/**
- * @typedef {Command} WaitForVisibleCommand
- * @property {String} type - 'waitForVisible'
- * @property {String} selector
- * @property {Number} [pollInterval = 500]
- * @property {Number} [timeout = 10000]
- */
 
 /**
  * Waits for selector to become visible
@@ -147,15 +93,6 @@ BrowserPuppetCommands.prototype.waitForVisible = function (cmd) {
         );
     });
 };
-
-/**
- * @typedef {Command} WaitWhileVisibleCommand
- * @property {String} type - 'waitWhileVisible'
- * @property {String} selector
- * @property {Number} [pollInterval = 500]
- * @property {Number} [initialDelay = 500]
- * @property {Number} [timeout = 10000]
- */
 
 /**
  * Waits until selector is visible
@@ -208,18 +145,12 @@ BrowserPuppetCommands.prototype.waitWhileVisible = function (cmd) {
 };
 
 /**
- * @typedef {Command} ClickCommand
- * @property {String} type - 'click'
- * @property {String} selector
- */
-
-/**
  * @param {ClickCommand} cmd
  * @throws {Error}
  */
 BrowserPuppetCommands.prototype.click = function (cmd) {
     var $el = this.$(cmd.selector);
-    this._assert$el($el, 'click');
+    this._assert$el($el, COMMANDS.CLICK);
 
     // TODO use dispatchEvent?
     $el[0].click();
@@ -227,13 +158,6 @@ BrowserPuppetCommands.prototype.click = function (cmd) {
 
 // TODO handle meta keys, arrow keys
 // TODO which event to use? keyup, keydown, keypress?
-
-/**
- * @typedef {Command} PressKeyCommand
- * @property {String} type - 'pressKey'
- * @property {String} selector
- * @property {Number} keyCode
- */
 
 /**
  * @param {PressKeyCommand} cmd
@@ -244,7 +168,7 @@ BrowserPuppetCommands.prototype.pressKey = function (cmd) {
     var keyCodeNum = Number(cmd.keyCode);
 
     assert(Number.isFinite(keyCodeNum), 'BrowserPuppetCommands::pressKey: keyCode is not a number');
-    this._assert$el($el, 'pressKey');
+    this._assert$el($el, COMMANDS.PRESS_KEY);
 
     var keydownEvent = new Event('keydown');
 
@@ -256,13 +180,6 @@ BrowserPuppetCommands.prototype.pressKey = function (cmd) {
 };
 
 /**
- * @typedef {Command} SetValueCommand
- * @property {String} type - 'setValue'
- * @property {String} selector
- * @property {String} value
- */
-
-/**
  * @param {SetValueCommand} cmd
  * @throws {Error}
  */
@@ -271,7 +188,7 @@ BrowserPuppetCommands.prototype.setValue = function (cmd) {
     var el = $el[0];
     var tagName = el && el.tagName || '';
 
-    this._assert$el($el, 'setValue');
+    this._assert$el($el, COMMANDS.SET_VALUE);
 
     if (tagName !== 'INPUT' && tagName !== 'TEXTAREA') {
         throw new Error('Unable to set value of "' + cmd.selector + '": unsupported tag "' + tagName + '"');
@@ -284,26 +201,14 @@ BrowserPuppetCommands.prototype.setValue = function (cmd) {
 };
 
 /**
- * @typedef {Command} FocusCommand
- * @property {String} type - 'focus'
- * @property {String} selector
- */
-
-/**
  * @param {FocusCommand} cmd
  * @throws {Error}
  */
 BrowserPuppetCommands.prototype.focus = function (cmd) {
     var $el = this.$(cmd.selector);
-    this._assert$el($el, 'focus');
+    this._assert$el($el, COMMANDS.FOCUS);
     $el[0].focus();
 };
-
-/**
- * @typedef {Command} GetValueCommand
- * @property {String} type - 'getValue'
- * @property {String} selector
- */
 
 /**
  * @param {GetValueCommand} cmd
@@ -314,7 +219,7 @@ BrowserPuppetCommands.prototype.getValue = function (cmd) {
     var $el = this.$(cmd.selector);
     var el = $el[0];
 
-    this._assert$el($el, 'getValue');
+    this._assert$el($el, COMMANDS.GET_VALUE);
 
     // TODO util fn to get node value
 
@@ -332,12 +237,6 @@ BrowserPuppetCommands.prototype.getValue = function (cmd) {
 };
 
 /**
- * @typedef {Command} IsVisibleCommand
- * @property {String} type - 'isVisible'
- * @property {String} selector
- */
-
-/**
  * @param {IsVisibleCommand} cmd
  * @return {Boolean}
  * @throws {Error}
@@ -345,16 +244,6 @@ BrowserPuppetCommands.prototype.getValue = function (cmd) {
 BrowserPuppetCommands.prototype.isVisible = function (cmd) {
     return this.isSelectorVisible(cmd.selector);
 };
-
-/**
- * @typedef {Command} UploadFileAndAssignCommand
- * @property {String} type - 'uploadFileAndAssign'
- * @property {Object} fileData
- * @property {String} fileData.base64 - base64 encoded file
- * @property {String} fileData.name
- * @property {String} [fileData.mime] - default: {@link DEFAULT_UPLOAD_FILE_MIME}
- * @property {String} destinationVariable - e.g. `'app.files.someFile'` assigns a `File` instance to `window.app.files.someFile` 
- */
 
 /**
  * Upload file and assign the generated File instance to a variable.
