@@ -1,3 +1,5 @@
+'use strict';
+
 const MODULES_PATH = '../../modules/';
 const Promise = require('bluebird');
 const BrowserPuppeteer = require(MODULES_PATH + 'browser-puppeteer').BrowserPuppeteer;
@@ -62,6 +64,9 @@ exports = module.exports = RecorderServer;
  * @property {Array<String>|null} [compositeEvents = ['click', 'focus']] - subsequent events of specified types will be combined into a single composite event
  * @property {Number} [compositeEventsThreshold = 200] - composite events grouping threshold
  * @property {Function} [compositeEventsComparator] - default: full selector paths similar (a in b or b in a)
+ *
+ * @property {Array<Object>} [_mockMessages] - for testing only, do not use
+ * @property {Boolean} [_preEnableRecording] - for testing only, do not use
  */
 
 /**
@@ -77,6 +82,7 @@ function RecorderServer(conf) {
         compositeEvents: ['click', 'focus'],
         compositeEventsThreshold: 200,
         compositeEventsComparator: defaultCompositeEventsComparator,
+        _mockMessages: [],
     });
 
     if (this._conf.compositeEvents === null) {
@@ -86,8 +92,8 @@ function RecorderServer(conf) {
     // TODO assert conf
     // TODO check for configs not in default conf
 
-    this._recServer = http.createServer(this._onRecRequest.bind(this));
-    this._wsServer = new WS.Server({ server: this._recServer });
+    this._recorderAppServer = http.createServer(this._onRecRequest.bind(this));
+    this._wsServer = new WS.Server({ server: this._recorderAppServer });
 
     this._log = new Loggr({
         namespace: 'RecorderServer',
@@ -101,12 +107,12 @@ function RecorderServer(conf) {
     this._proxyMessage = this._proxyMessage.bind(this);
 }
 
-// TODO better promise chain?
+// TODO better promise chain
 
-RecorderServer.prototype.start = Promise.method(function () {
+RecorderServer.prototype.start = async function () {
     this._wsServer.on('connection', () => this._log.info('recorder app connected'));
 
-    this._recServer.listen(this._conf.recorderAppPort);
+    this._recorderAppServer.listen(this._conf.recorderAppPort);
     this._puppeteer.start();
 
     console.log(`--- Open the recording app in your browser: http://localhost:${this._conf.recorderAppPort} ---`);
@@ -143,7 +149,12 @@ RecorderServer.prototype.start = Promise.method(function () {
             this._log.error(err.stack || err.message);
         }
     });
-});
+};
+
+RecorderServer.prototype.stop = async function () {
+    await this._puppeteer.stop()
+    await new Promise(resolve=>this._recorderAppServer.close(resolve));
+};
 
 RecorderServer.prototype._proxyMessage = function (data, rawData) {
     if (this._wsServer.clients.size === 1) {

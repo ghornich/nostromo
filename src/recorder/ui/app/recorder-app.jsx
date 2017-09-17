@@ -15,6 +15,8 @@ var JSON_OUTPUT_FORMATTER_NAME = 'json (built-in)';
 var NOSTROMO_OUTPUT_FORMATTER_NAME = 'nostromo (built-in)';
 var DEFAULT_OUTPUT_FILENAME = 'output';
 
+var MOCK_MESSAGE_INTERVAL = 500;
+
 var RootComp;
 
 window.RecorderApp = RecorderApp;
@@ -69,6 +71,10 @@ function RecorderApp(conf) {
 
     self._isRecording = false;
 
+    if (self._conf._preEnableRecording === true) {
+        self._isRecording = true;
+    }
+
     self.actions = {
         toggleRecording: function () {
             self._isRecording = !self._isRecording;
@@ -100,34 +106,8 @@ function RecorderApp(conf) {
 RecorderApp.prototype.start = function () {
     var self = this;
     self._wsConn = new Ws4ever(location.origin.replace('http://', 'ws://'));
-
-    self._wsConn.onmessage = function (event) {
-        var data = event.data;
-
-        try {
-            data = JSONF.parse(data);
-
-            switch (data.type) {
-                case MESSAGES.UPSTREAM.SELECTOR_BECAME_VISIBLE:
-                    self.onSelectorBecameVisibleEvent(data);
-                    break;
-                case MESSAGES.UPSTREAM.CAPTURED_EVENT:
-                    self._onCapturedEvent(data.event);
-                    break;
-                case MESSAGES.UPSTREAM.INSERT_ASSERTION:
-                    if (self._isRecording) {
-                        self.commandList.add({ type: COMMANDS.ASSERT });
-                    }
-                    break;
-                default: throw new Error('Unknown type' + data.type);
-            }
-
-            m.redraw();
-        }
-        catch (err) {
-            console.error(err);
-        }
-    };
+    self._wsConn.onmessage = self._onWsMessage.bind(self);
+    self._wsConn.onopen = self._onWsOpen.bind(self);
 
     var MountComp = {
         view: function () {
@@ -136,6 +116,67 @@ RecorderApp.prototype.start = function () {
     };
 
     m.mount($('#mount')[0], MountComp);
+};
+
+RecorderApp.prototype._onWsMessage = function (event) {
+    var data = event.data;
+
+    try {
+        data = JSONF.parse(data);
+
+        switch (data.type) {
+            case MESSAGES.UPSTREAM.SELECTOR_BECAME_VISIBLE:
+                this.onSelectorBecameVisibleEvent(data);
+                break;
+            case MESSAGES.UPSTREAM.CAPTURED_EVENT:
+                this._onCapturedEvent(data.event);
+                break;
+            case MESSAGES.UPSTREAM.INSERT_ASSERTION:
+                if (this._isRecording) {
+                    this.commandList.add({ type: COMMANDS.ASSERT });
+                }
+                break;
+            default: throw new Error('Unknown message type: ' + data.type);
+        }
+
+        m.redraw();
+    }
+    catch (err) {
+        console.error(err);
+    }
+};
+
+RecorderApp.prototype._onWsOpen = function () {
+    if (this._conf._mockMessages.length > 0) {
+        this._runNextMockMessage();
+    }
+};
+
+RecorderApp.prototype._runNextMockMessage = function (index) {
+    var self = this;
+
+    if (index === undefined) {
+        index = 0;
+    }
+
+    if (index >= self._conf._mockMessages.length) {
+        return;
+    }
+
+    var currentMockMessage = self._conf._mockMessages[index];
+
+    setTimeout(function () {
+        try {
+            self._onWsMessage({
+                data: JSONF.stringify(currentMockMessage),
+            });
+        }
+        catch (err) {
+            console.error(err);
+        }
+
+        self._runNextMockMessage(index + 1);
+    }, MOCK_MESSAGE_INTERVAL);
 };
 
 RecorderApp.prototype._getSelectedOutputFormatter = function () {
