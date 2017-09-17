@@ -23,8 +23,9 @@
     | type | `String` | 'captured-event' |
     | event | `Object` |  |
     | event.type | `String` |  |
-    | event.timestamp | `Number` |  |
+    | event.$timestamp | `Number` |  |
     | event.selector | `String` |  |
+    | event.$fullSelectorPath | `String` |  |
     | event.target | `Object` |  |
 - __InsertAssertionMessage__ - _UpstreamControlMessage_
 
