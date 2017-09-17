@@ -293,6 +293,7 @@ BrowserPuppet.prototype._onInputCapture = function (event) {
 
     try {
         var selector = this._uniqueSelector.get(target);
+        var fullSelectorPath = this._uniqueSelector.getFullSelectorPath(target);
     }
     catch (err) {
         this._log.error(err);
@@ -305,6 +306,7 @@ BrowserPuppet.prototype._onInputCapture = function (event) {
             type: 'input',
             $timestamp: Date.now(),
             selector: selector,
+            $fullSelectorPath: fullSelectorPath,
             value: target.value,
             target: getTargetNodeDTO(target),
         },
@@ -322,6 +324,7 @@ BrowserPuppet.prototype._onScrollCapture = debounce(function (event) {
 
     try {
         var selector = this._uniqueSelector.get(target);
+        var fullSelectorPath = this._uniqueSelector.getFullSelectorPath(target);
     }
     catch (err) {
         this._log.error(err);
@@ -337,6 +340,7 @@ BrowserPuppet.prototype._onScrollCapture = debounce(function (event) {
             type: 'scroll',
             $timestamp: Date.now(),
             selector: selector,
+            $fullSelectorPath: fullSelectorPath,
             target: targetDTO,
         },
     });
@@ -358,6 +362,7 @@ BrowserPuppet.prototype._onKeydownCapture = function (event) {
 
     try {
         var selector = this._uniqueSelector.get(target);
+        var fullSelectorPath = this._uniqueSelector.getFullSelectorPath(target);
     }
     catch (err) {
         this._log.error(err);
@@ -370,6 +375,7 @@ BrowserPuppet.prototype._onKeydownCapture = function (event) {
             type: 'keydown',
             $timestamp: Date.now(),
             selector: selector,
+            $fullSelectorPath: fullSelectorPath,
             keyCode: event.keyCode || event.charCode,
             ctrlKey: event.ctrlKey,
             shiftKey: event.shiftKey,
@@ -389,6 +395,7 @@ BrowserPuppet.prototype._onMouseoverCapture = function (event) {
     if (this.$(target).is(this._mouseoverSelector)) {
         try {
             var selector = this._uniqueSelector.get(target);
+            var fullSelectorPath = this._uniqueSelector.getFullSelectorPath(target);
         }
         catch (err) {
             this._log.error(err);
@@ -401,6 +408,7 @@ BrowserPuppet.prototype._onMouseoverCapture = function (event) {
                 type: 'mouseover',
                 $timestamp: Date.now(),
                 selector: selector,
+                $fullSelectorPath: fullSelectorPath,
                 target: getTargetNodeDTO(target),
             },
         });

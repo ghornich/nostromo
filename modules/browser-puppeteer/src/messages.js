@@ -55,8 +55,9 @@ exports.DOWNSTREAM = {
  * @property {String} type - 'captured-event'
  * @property {Object} event
  * @property {String} event.type
- * @property {Number} event.timestamp
+ * @property {Number} event.$timestamp
  * @property {String} [event.selector]
+ * @property {String} event.$fullSelectorPath
  * @property {Object} [event.target]
  */
 
