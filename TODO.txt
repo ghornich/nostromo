@@ -8,3 +8,5 @@ replace all string command names with const definitions
 minify dist js (-comments)
 mutation observer autotest: show dialog & focus on it
 document capturedEvent with $fullSelectorPath, $timestamp, etc
+nth: use rfr in tests
+move screenshot markers to browserSpawner module
