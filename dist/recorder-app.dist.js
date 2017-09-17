@@ -13,9 +13,165 @@ exports = module.exports = function (fileData) {
 };
 
 },{}],2:[function(require,module,exports){
+'use strict'
+
+/**
+ * Command type constants
+ * @enum {String}
+ */
+exports.COMMANDS = {
+    CLICK: 'click',
+    SET_VALUE: 'setValue',
+    PRESS_KEY: 'pressKey',
+    SCROLL: 'scroll',
+    MOUSEOVER: 'mouseover',
+    WAIT_FOR_VISIBLE: 'waitForVisible',
+    WAIT_WHILE_VISIBLE: 'waitWhileVisible',
+    FOCUS: 'focus',
+    ASSERT: 'assert',
+    COMPOSITE: 'composite',
+    UPLOAD_FILE_AND_ASSIGN: 'uploadFileAndAssign',
+};
+
+/**
+ * @memberOf BrowserPuppetCommands
+ * @typedef {Object} Command
+ */
+
+/**
+ * @typedef {Command} CompositeCommand
+ * @property {String} type - 'composite'
+ * @property {Array<Command>} commands
+ */
+
+/**
+ * @typedef {Command} ScrollCommand
+ * @property {String} type - 'scroll'
+ * @property {String} selector
+ * @property {Number} scrollTop
+ */
+
+/**
+ * @typedef {Command} MouseoverCommand
+ * @property {String} type - 'mouseover'
+ * @property {String} selector
+ */
+
+/**
+ * @typedef {Command} WaitForVisibleCommand
+ * @property {String} type - 'waitForVisible'
+ * @property {String} selector
+ * @property {Number} [pollInterval = 500]
+ * @property {Number} [timeout = 10000]
+ */
+
+/**
+ * @typedef {Command} WaitWhileVisibleCommand
+ * @property {String} type - 'waitWhileVisible'
+ * @property {String} selector
+ * @property {Number} [pollInterval = 500]
+ * @property {Number} [initialDelay = 500]
+ * @property {Number} [timeout = 10000]
+ */
+
+/**
+ * @typedef {Command} ClickCommand
+ * @property {String} type - 'click'
+ * @property {String} selector
+ */
+
+/**
+ * @typedef {Command} PressKeyCommand
+ * @property {String} type - 'pressKey'
+ * @property {String} selector
+ * @property {Number} keyCode
+ */
+
+/**
+ * @typedef {Command} SetValueCommand
+ * @property {String} type - 'setValue'
+ * @property {String} selector
+ * @property {String} value
+ */
+
+/**
+ * @typedef {Command} FocusCommand
+ * @property {String} type - 'focus'
+ * @property {String} selector
+ */
+
+/**
+ * @typedef {Command} GetValueCommand
+ * @property {String} type - 'getValue'
+ * @property {String} selector
+ */
+
+/**
+ * @typedef {Command} IsVisibleCommand
+ * @property {String} type - 'isVisible'
+ * @property {String} selector
+ */
+
+/**
+ * @typedef {Command} UploadFileAndAssignCommand
+ * @property {String} type - 'uploadFileAndAssign'
+ * @property {Object} fileData
+ * @property {String} fileData.base64 - base64 encoded file
+ * @property {String} fileData.name
+ * @property {String} [fileData.mime] - default: {@link DEFAULT_UPLOAD_FILE_MIME}
+ * @property {String} destinationVariable - e.g. `'app.files.someFile'` assigns a `File` instance to `window.app.files.someFile` 
+ */
+
+},{}],3:[function(require,module,exports){
 'use strict';
 
+/**
+ * @enum {String}
+ */
+exports.COMMAND_TYPES = {
+    CLICK: 'click',
+    SET_VALUE: 'setValue',
+    GET_VALUE: 'getValue',
+    PRESS_KEY: 'pressKey',
+    WAIT_FOR_VISIBLE: 'waitForVisible',
+    WAIT_WHILE_VISIBLE: 'waitWhileVisible',
+    FOCUS: 'focus',
+    IS_VISIBLE: 'isVisible',
+    SCROLL: 'scroll',
+    COMPOSITE: 'composite',
+    MOUSEOVER: 'mouseover',
+    UPLOAD_FILE_AND_ASSIGN: 'uploadFileAndAssign',
+};
 
+/**
+ * @enum {String}
+ */
+exports.UPSTREAM = {
+    // { type, selector, [warning] }
+    SELECTOR_BECAME_VISIBLE: 'selector-became-visible',
+    CAPTURED_EVENT: 'captured-event',
+    ACK: 'ack',
+    NAK: 'nak',
+    INSERT_ASSERTION: 'insert-assertion',
+};
+
+/**
+ * @enum {String}
+ */
+exports.DOWNSTREAM = {
+    EXEC_COMMAND: 'exec-command',
+
+    // { type, ??? }
+    EXEC_FUNCTION: 'exec-function',
+    SET_SELECTOR_BECAME_VISIBLE_DATA: 'set-selector-became-visible-data',
+    SHOW_SCREENSHOT_MARKER: 'show-screenshot-marker',
+    HIDE_SCREENSHOT_MARKER: 'hide-screenshot-marker',
+    SET_TRANSMIT_EVENTS: 'set-transmit-events',
+    TERMINATE_PUPPET: 'terminate-puppet',
+    CLEAR_PERSISTENT_DATA: 'clear-persistent-data',
+    SET_MOUSEOVER_SELECTORS: 'set-mouseover-selectors',
+    SET_IGNORED_CLASSES: 'set-ignored-classes',
+};
 
 /**
  * @typedef {Object} ControlMessage
@@ -42,8 +198,9 @@ exports = module.exports = function (fileData) {
  * @property {String} type - 'captured-event'
  * @property {Object} event
  * @property {String} event.type
- * @property {Number} event.timestamp
+ * @property {Number} event.$timestamp
  * @property {String} [event.selector]
+ * @property {String} event.$fullSelectorPath
  * @property {Object} [event.target]
  */
 
@@ -122,55 +279,7 @@ exports = module.exports = function (fileData) {
  * @property {Array<String>} classes
  */
 
-/**
- * @enum {String}
- */
-exports.COMMAND_TYPES = {
-    CLICK: 'click',
-    SET_VALUE: 'setValue',
-    GET_VALUE: 'getValue',
-    PRESS_KEY: 'pressKey',
-    WAIT_FOR_VISIBLE: 'waitForVisible',
-    WAIT_WHILE_VISIBLE: 'waitWhileVisible',
-    FOCUS: 'focus',
-    IS_VISIBLE: 'isVisible',
-    SCROLL: 'scroll',
-    COMPOSITE: 'composite',
-    MOUSEOVER: 'mouseover',
-    UPLOAD_FILE_AND_ASSIGN: 'uploadFileAndAssign',
-};
-
-/**
- * @enum {String}
- */
-exports.UPSTREAM = {
-    // { type, selector, [warning] }
-    SELECTOR_BECAME_VISIBLE: 'selector-became-visible',
-    CAPTURED_EVENT: 'captured-event',
-    ACK: 'ack',
-    NAK: 'nak',
-    INSERT_ASSERTION: 'insert-assertion',
-};
-
-/**
- * @enum {String}
- */
-exports.DOWNSTREAM = {
-    EXEC_COMMAND: 'exec-command',
-
-    // { type, ??? }
-    EXEC_FUNCTION: 'exec-function',
-    SET_SELECTOR_BECAME_VISIBLE_DATA: 'set-selector-became-visible-data',
-    SHOW_SCREENSHOT_MARKER: 'show-screenshot-marker',
-    HIDE_SCREENSHOT_MARKER: 'hide-screenshot-marker',
-    SET_TRANSMIT_EVENTS: 'set-transmit-events',
-    TERMINATE_PUPPET: 'terminate-puppet',
-    CLEAR_PERSISTENT_DATA: 'clear-persistent-data',
-    SET_MOUSEOVER_SELECTORS: 'set-mouseover-selectors',
-    SET_IGNORED_CLASSES: 'set-ignored-classes',
-};
-
-},{}],3:[function(require,module,exports){
+},{}],4:[function(require,module,exports){
 'use strict';
 
 var assert = require('assert');
@@ -178,6 +287,7 @@ var Promise = require('bluebird');
 var promiseWhile = require('../../../../modules/promise-while')(Promise);
 var base64ToFile = require('../../../../modules/base64-to-file');
 var lodashSet = require('lodash.set');
+var COMMANDS = require('../commands');
 
 /**
  * @type {String}
@@ -188,40 +298,6 @@ var DEFAULT_UPLOAD_FILE_MIME = 'application/octet-stream';
 
 exports = module.exports = BrowserPuppetCommands;
 
-/* eslint-disable no-unused-vars */
-
-/**
- * Command type constants
- * @type {Object<String>}
- * @memberOf BrowserPuppetCommands
- * @static
- */
-var COMMANDS = BrowserPuppetCommands.COMMANDS = {
-    CLICK: 'click',
-    SET_VALUE: 'setValue',
-    PRESS_KEY: 'pressKey',
-    SCROLL: 'scroll',
-    WAIT_FOR_VISIBLE: 'waitForVisible',
-    WAIT_WHILE_VISIBLE: 'waitWhileVisible',
-    FOCUS: 'focus',
-    ASSERT: 'assert',
-    COMPOSITE: 'composite',
-    UPLOAD_FILE_AND_ASSIGN: 'uploadFileAndAssign',
-};
-
-/* eslint-enable */
-
-/**
- * @memberOf BrowserPuppetCommands
- * @typedef {Object} Command
- */
-
-/**
- * @typedef {Command} CompositeCommand
- * @property {String} type - 'composite'
- * @property {Array<Command>} commands
- */
-
 /**
  * @class
  * @abstract
@@ -231,27 +307,14 @@ function BrowserPuppetCommands() {
 }
 
 /**
- * @typedef {Command} ScrollCommand
- * @property {String} type - 'scroll'
- * @property {String} selector
- * @property {Number} scrollTop
- */
-
-/**
  * @param {ScrollCommand} cmd
  * @throws {Error}
  */
 BrowserPuppetCommands.prototype.scroll = function (cmd) {
     var $el = this.$(cmd.selector);
-    this._assert$el($el, 'scroll');
+    this._assert$el($el, COMMANDS.SCROLL);
     $el[0].scrollTop = cmd.scrollTop;
 };
-
-/**
- * @typedef {Command} MouseoverCommand
- * @property {String} type - 'mouseover'
- * @property {String} selector
- */
 
 /**
  * @param {MouseoverCommand} cmd
@@ -261,19 +324,11 @@ BrowserPuppetCommands.prototype.mouseover = function (cmd) {
     this._log.trace('BrowserPuppetCommands::mouseover: ' + JSON.stringify(cmd));
 
     var $el = this.$(cmd.selector);
-    this._assert$el($el, 'mouseover');
+    this._assert$el($el, COMMANDS.MOUSEOVER);
 
     var mouseoverEvent = new Event('mouseover');
     $el[0].dispatchEvent(mouseoverEvent);
 };
-
-/**
- * @typedef {Command} WaitForVisibleCommand
- * @property {String} type - 'waitForVisible'
- * @property {String} selector
- * @property {Number} [pollInterval = 500]
- * @property {Number} [timeout = 10000]
- */
 
 /**
  * Waits for selector to become visible
@@ -320,15 +375,6 @@ BrowserPuppetCommands.prototype.waitForVisible = function (cmd) {
         );
     });
 };
-
-/**
- * @typedef {Command} WaitWhileVisibleCommand
- * @property {String} type - 'waitWhileVisible'
- * @property {String} selector
- * @property {Number} [pollInterval = 500]
- * @property {Number} [initialDelay = 500]
- * @property {Number} [timeout = 10000]
- */
 
 /**
  * Waits until selector is visible
@@ -381,18 +427,12 @@ BrowserPuppetCommands.prototype.waitWhileVisible = function (cmd) {
 };
 
 /**
- * @typedef {Command} ClickCommand
- * @property {String} type - 'click'
- * @property {String} selector
- */
-
-/**
  * @param {ClickCommand} cmd
  * @throws {Error}
  */
 BrowserPuppetCommands.prototype.click = function (cmd) {
     var $el = this.$(cmd.selector);
-    this._assert$el($el, 'click');
+    this._assert$el($el, COMMANDS.CLICK);
 
     // TODO use dispatchEvent?
     $el[0].click();
@@ -400,13 +440,6 @@ BrowserPuppetCommands.prototype.click = function (cmd) {
 
 // TODO handle meta keys, arrow keys
 // TODO which event to use? keyup, keydown, keypress?
-
-/**
- * @typedef {Command} PressKeyCommand
- * @property {String} type - 'pressKey'
- * @property {String} selector
- * @property {Number} keyCode
- */
 
 /**
  * @param {PressKeyCommand} cmd
@@ -417,7 +450,7 @@ BrowserPuppetCommands.prototype.pressKey = function (cmd) {
     var keyCodeNum = Number(cmd.keyCode);
 
     assert(Number.isFinite(keyCodeNum), 'BrowserPuppetCommands::pressKey: keyCode is not a number');
-    this._assert$el($el, 'pressKey');
+    this._assert$el($el, COMMANDS.PRESS_KEY);
 
     var keydownEvent = new Event('keydown');
 
@@ -429,13 +462,6 @@ BrowserPuppetCommands.prototype.pressKey = function (cmd) {
 };
 
 /**
- * @typedef {Command} SetValueCommand
- * @property {String} type - 'setValue'
- * @property {String} selector
- * @property {String} value
- */
-
-/**
  * @param {SetValueCommand} cmd
  * @throws {Error}
  */
@@ -444,7 +470,7 @@ BrowserPuppetCommands.prototype.setValue = function (cmd) {
     var el = $el[0];
     var tagName = el && el.tagName || '';
 
-    this._assert$el($el, 'setValue');
+    this._assert$el($el, COMMANDS.SET_VALUE);
 
     if (tagName !== 'INPUT' && tagName !== 'TEXTAREA') {
         throw new Error('Unable to set value of "' + cmd.selector + '": unsupported tag "' + tagName + '"');
@@ -457,26 +483,14 @@ BrowserPuppetCommands.prototype.setValue = function (cmd) {
 };
 
 /**
- * @typedef {Command} FocusCommand
- * @property {String} type - 'focus'
- * @property {String} selector
- */
-
-/**
  * @param {FocusCommand} cmd
  * @throws {Error}
  */
 BrowserPuppetCommands.prototype.focus = function (cmd) {
     var $el = this.$(cmd.selector);
-    this._assert$el($el, 'focus');
+    this._assert$el($el, COMMANDS.FOCUS);
     $el[0].focus();
 };
-
-/**
- * @typedef {Command} GetValueCommand
- * @property {String} type - 'getValue'
- * @property {String} selector
- */
 
 /**
  * @param {GetValueCommand} cmd
@@ -487,7 +501,7 @@ BrowserPuppetCommands.prototype.getValue = function (cmd) {
     var $el = this.$(cmd.selector);
     var el = $el[0];
 
-    this._assert$el($el, 'getValue');
+    this._assert$el($el, COMMANDS.GET_VALUE);
 
     // TODO util fn to get node value
 
@@ -505,12 +519,6 @@ BrowserPuppetCommands.prototype.getValue = function (cmd) {
 };
 
 /**
- * @typedef {Command} IsVisibleCommand
- * @property {String} type - 'isVisible'
- * @property {String} selector
- */
-
-/**
  * @param {IsVisibleCommand} cmd
  * @return {Boolean}
  * @throws {Error}
@@ -518,16 +526,6 @@ BrowserPuppetCommands.prototype.getValue = function (cmd) {
 BrowserPuppetCommands.prototype.isVisible = function (cmd) {
     return this.isSelectorVisible(cmd.selector);
 };
-
-/**
- * @typedef {Command} UploadFileAndAssignCommand
- * @property {String} type - 'uploadFileAndAssign'
- * @property {Object} fileData
- * @property {String} fileData.base64 - base64 encoded file
- * @property {String} fileData.name
- * @property {String} [fileData.mime] - default: {@link DEFAULT_UPLOAD_FILE_MIME}
- * @property {String} destinationVariable - e.g. `'app.files.someFile'` assigns a `File` instance to `window.app.files.someFile` 
- */
 
 /**
  * Upload file and assign the generated File instance to a variable.
@@ -564,7 +562,7 @@ function _defaultNum(value, def) {
     return def;
 }
 
-},{"../../../../modules/base64-to-file":1,"../../../../modules/promise-while":6,"assert":8,"bluebird":9,"lodash.set":12}],4:[function(require,module,exports){
+},{"../../../../modules/base64-to-file":1,"../../../../modules/promise-while":7,"../commands":2,"assert":9,"bluebird":10,"lodash.set":13}],5:[function(require,module,exports){
 'use strict';
 
 // TODO support ES6 arrow fns
@@ -609,7 +607,7 @@ function isStringAFunction(s) {
         /^function\s+[a-zA-Z0-9_$]+\s*\(/.test(s);
 }
 
-},{}],5:[function(require,module,exports){
+},{}],6:[function(require,module,exports){
 (function (process){
 var os = require('os');
 
@@ -754,7 +752,7 @@ Loggr.getLevelChar = function (level) {
 };
 
 }).call(this,require('_process'))
-},{"_process":15,"os":14}],6:[function(require,module,exports){
+},{"_process":16,"os":15}],7:[function(require,module,exports){
 'use strict';
 
 var assert = require('assert');
@@ -776,7 +774,7 @@ exports = module.exports = function (promiseLib) {
     };
 };
 
-},{"assert":8}],7:[function(require,module,exports){
+},{"assert":9}],8:[function(require,module,exports){
 
 if (isNode()) {
     module.exports = Ws4ever;
@@ -895,7 +893,7 @@ function isNode() {
 
 
 
-},{}],8:[function(require,module,exports){
+},{}],9:[function(require,module,exports){
 (function (global){
 'use strict';
 
@@ -1389,7 +1387,7 @@ var objectKeys = Object.keys || function (obj) {
 };
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"util/":18}],9:[function(require,module,exports){
+},{"util/":19}],10:[function(require,module,exports){
 (function (process,global){
 /* @preserve
  * The MIT License (MIT)
@@ -7011,7 +7009,7 @@ module.exports = ret;
 },{"./es5":13}]},{},[4])(4)
 });                    ;if (typeof window !== 'undefined' && window !== null) {                               window.P = window.Promise;                                                     } else if (typeof self !== 'undefined' && self !== null) {                             self.P = self.Promise;                                                         }
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"_process":15}],10:[function(require,module,exports){
+},{"_process":16}],11:[function(require,module,exports){
 /*!
  * jQuery JavaScript Library v3.2.1
  * https://jquery.com/
@@ -17266,7 +17264,7 @@ if ( !noGlobal ) {
 return jQuery;
 } );
 
-},{}],11:[function(require,module,exports){
+},{}],12:[function(require,module,exports){
 /**
  * lodash (Custom Build) <https://lodash.com/>
  * Build: `lodash modularize exports="npm" -o ./`
@@ -17936,7 +17934,7 @@ function keysIn(object) {
 
 module.exports = defaults;
 
-},{}],12:[function(require,module,exports){
+},{}],13:[function(require,module,exports){
 (function (global){
 /**
  * lodash (Custom Build) <https://lodash.com/>
@@ -18930,7 +18928,7 @@ function set(object, path, value) {
 module.exports = set;
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],13:[function(require,module,exports){
+},{}],14:[function(require,module,exports){
 (function (global){
 ;(function() {
 "use strict"
@@ -20175,7 +20173,7 @@ if (typeof module !== "undefined") module["exports"] = m
 else window.m = m
 }());
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],14:[function(require,module,exports){
+},{}],15:[function(require,module,exports){
 exports.endianness = function () { return 'LE' };
 
 exports.hostname = function () {
@@ -20222,7 +20220,7 @@ exports.tmpdir = exports.tmpDir = function () {
 
 exports.EOL = '\n';
 
-},{}],15:[function(require,module,exports){
+},{}],16:[function(require,module,exports){
 // shim for using process in browser
 var process = module.exports = {};
 
@@ -20408,7 +20406,7 @@ process.chdir = function (dir) {
 };
 process.umask = function() { return 0; };
 
-},{}],16:[function(require,module,exports){
+},{}],17:[function(require,module,exports){
 if (typeof Object.create === 'function') {
   // implementation from standard node.js 'util' module
   module.exports = function inherits(ctor, superCtor) {
@@ -20433,14 +20431,14 @@ if (typeof Object.create === 'function') {
   }
 }
 
-},{}],17:[function(require,module,exports){
+},{}],18:[function(require,module,exports){
 module.exports = function isBuffer(arg) {
   return arg && typeof arg === 'object'
     && typeof arg.copy === 'function'
     && typeof arg.fill === 'function'
     && typeof arg.readUInt8 === 'function';
 }
-},{}],18:[function(require,module,exports){
+},{}],19:[function(require,module,exports){
 (function (process,global){
 // Copyright Joyent, Inc. and other Node contributors.
 //
@@ -21030,7 +21028,7 @@ function hasOwnProperty(obj, prop) {
 }
 
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./support/isBuffer":17,"_process":15,"inherits":16}],19:[function(require,module,exports){
+},{"./support/isBuffer":18,"_process":16,"inherits":17}],20:[function(require,module,exports){
 'use strict';
 
 var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
@@ -21043,15 +21041,16 @@ var m = require('mithril');
 var Ws4ever = require('../../../../modules/ws4ever');
 
 var CommandList = require('../command-list');
-var COMMANDS = require('../../../../modules/browser-puppeteer/src/puppet/browser-puppet-commands.partial').COMMANDS;
-
-var MESSAGES = require('../../../../modules/browser-puppeteer/src/messages.js');
+var COMMANDS = require('../../../../modules/browser-puppeteer/src/commands');
+var MESSAGES = require('../../../../modules/browser-puppeteer/src/messages');
 
 var EOL = '\n';
 
 var JSON_OUTPUT_FORMATTER_NAME = 'json (built-in)';
 var NOSTROMO_OUTPUT_FORMATTER_NAME = 'nostromo (built-in)';
 var DEFAULT_OUTPUT_FILENAME = 'output';
+
+var MOCK_MESSAGE_INTERVAL = 500;
 
 var RootComp;
 
@@ -21104,6 +21103,10 @@ function RecorderApp(conf) {
 
     self._isRecording = false;
 
+    if (self._conf._preEnableRecording === true) {
+        self._isRecording = true;
+    }
+
     self.actions = {
         toggleRecording: function toggleRecording() {
             self._isRecording = !self._isRecording;
@@ -21135,34 +21138,8 @@ function RecorderApp(conf) {
 RecorderApp.prototype.start = function () {
     var self = this;
     self._wsConn = new Ws4ever(location.origin.replace('http://', 'ws://'));
-
-    self._wsConn.onmessage = function (event) {
-        var data = event.data;
-
-        try {
-            data = JSONF.parse(data);
-
-            switch (data.type) {
-                case MESSAGES.UPSTREAM.SELECTOR_BECAME_VISIBLE:
-                    self.onSelectorBecameVisibleEvent(data);
-                    break;
-                case MESSAGES.UPSTREAM.CAPTURED_EVENT:
-                    self._onCapturedEvent(data.event);
-                    break;
-                case MESSAGES.UPSTREAM.INSERT_ASSERTION:
-                    if (self._isRecording) {
-                        self.commandList.add({ type: COMMANDS.ASSERT });
-                    }
-                    break;
-                default:
-                    throw new Error('Unknown type' + data.type);
-            }
-
-            m.redraw();
-        } catch (err) {
-            console.error(err);
-        }
-    };
+    self._wsConn.onmessage = self._onWsMessage.bind(self);
+    self._wsConn.onopen = self._onWsOpen.bind(self);
 
     var MountComp = {
         view: function view() {
@@ -21171,6 +21148,66 @@ RecorderApp.prototype.start = function () {
     };
 
     m.mount($('#mount')[0], MountComp);
+};
+
+RecorderApp.prototype._onWsMessage = function (event) {
+    var data = event.data;
+
+    try {
+        data = JSONF.parse(data);
+
+        switch (data.type) {
+            case MESSAGES.UPSTREAM.SELECTOR_BECAME_VISIBLE:
+                this.onSelectorBecameVisibleEvent(data);
+                break;
+            case MESSAGES.UPSTREAM.CAPTURED_EVENT:
+                this._onCapturedEvent(data.event);
+                break;
+            case MESSAGES.UPSTREAM.INSERT_ASSERTION:
+                if (this._isRecording) {
+                    this.commandList.add({ type: COMMANDS.ASSERT });
+                }
+                break;
+            default:
+                throw new Error('Unknown message type: ' + data.type);
+        }
+
+        m.redraw();
+    } catch (err) {
+        console.error(err);
+    }
+};
+
+RecorderApp.prototype._onWsOpen = function () {
+    if (this._conf._mockMessages.length > 0) {
+        this._runNextMockMessage();
+    }
+};
+
+RecorderApp.prototype._runNextMockMessage = function (index) {
+    var self = this;
+
+    if (index === undefined) {
+        index = 0;
+    }
+
+    if (index >= self._conf._mockMessages.length) {
+        return;
+    }
+
+    var currentMockMessage = self._conf._mockMessages[index];
+
+    setTimeout(function () {
+        try {
+            self._onWsMessage({
+                data: JSONF.stringify(currentMockMessage)
+            });
+        } catch (err) {
+            console.error(err);
+        }
+
+        self._runNextMockMessage(index + 1);
+    }, MOCK_MESSAGE_INTERVAL);
 };
 
 RecorderApp.prototype._getSelectedOutputFormatter = function () {
@@ -21505,7 +21542,7 @@ function inspectVal(v) {
     }
 }
 
-},{"../../../../modules/browser-puppeteer/src/messages.js":2,"../../../../modules/browser-puppeteer/src/puppet/browser-puppet-commands.partial":3,"../../../../modules/jsonf":4,"../../../../modules/loggr":5,"../../../../modules/ws4ever":7,"../command-list":20,"jquery":10,"lodash.defaults":11,"mithril":13}],20:[function(require,module,exports){
+},{"../../../../modules/browser-puppeteer/src/commands":2,"../../../../modules/browser-puppeteer/src/messages":3,"../../../../modules/jsonf":5,"../../../../modules/loggr":6,"../../../../modules/ws4ever":8,"../command-list":21,"jquery":11,"lodash.defaults":12,"mithril":14}],21:[function(require,module,exports){
 'use strict';
 
 var COMMANDS = require('../../../modules/browser-puppeteer/src/puppet/browser-puppet-commands.partial').COMMANDS;
@@ -21605,4 +21642,4 @@ CommandList.prototype.clear = function () {
     this._commands = [];
 };
 
-},{"../../../modules/browser-puppeteer/src/puppet/browser-puppet-commands.partial":3}]},{},[19]);
+},{"../../../modules/browser-puppeteer/src/puppet/browser-puppet-commands.partial":4}]},{},[20]);
