@@ -27,6 +27,8 @@ UniqueSelector.prototype.get = function (node) {
         selectorElementList.uniqueify();
     }
 
+    selectorElementList.simplifyClasses();
+
     return selectorElementList.getSelectorPath();
 };
 

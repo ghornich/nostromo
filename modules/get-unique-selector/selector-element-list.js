@@ -1,6 +1,7 @@
 'use strict';
 
 var defaults = require('lodash.defaults');
+var SelectorElement = require('./selector-element');
 
 exports = module.exports = SelectorElementList;
 
@@ -56,36 +57,65 @@ SelectorElementList.prototype.simplify = function () {
         if (ambiguity !== newAmbiguity) {
             selectorElement.active = true;
         }
-
-
-
     }
 };
 
-// TODO if selectorElement is type CLASS and >1 classnames: simplify classnames
+SelectorElementList.prototype.simplifyClasses = function () {
+    for (var selectorElementIdx = 0, len = this._selectorElements.length; selectorElementIdx < len; selectorElementIdx++) {
+        var selectorElement = this._selectorElements[selectorElementIdx];
 
-// SelectorElementList.prototype.simplifyClasses = function () {
-//     for (var i = 0, len = this._selectorElements.length; i < len - 1; i++) {
-//         var selectorElement = this._selectorElements[i];
+        if (!selectorElement.active || selectorElement.type !== SelectorElement.TYPE.CLASS) {
+            continue;
+        }
+        var originalSelector = selectorElement.rawSelector
+        var classList = new ClassList(originalSelector)
 
-//         if (!selectorElement.active || selectorElement.type !== SelectorElement.TYPE.CLASS) {
-//             return;
-//         }
+        if (classList.length > 1) {
+            for (var classIdx = classList.length - 1; classIdx >= 0; classIdx--) {
+                var classListElement = classList.get(classIdx)
 
-//         //     var originalSelector = selectorElement.rawSelector
-//         //     var classNames = originalSelector.split(/(?=\.)/g)
-//         //     var ignoredClassIdxs = []
+                classListElement.enabled = false
+                selectorElement.rawSelector = classList.getSelector()
 
-//         //     if (classNames.length > 1) {
-//         //         for (var classIdx = 0, classLen = classNames.length; classIdx < classLen; classIdx++) {
-//         //             var className = classNames[classIdx]
+                if (selectorElement.rawSelector === '' || this.getAmbiguity() > 1) {
+                    classListElement.enabled = true
+                }
+            }
 
+            selectorElement.rawSelector = classList.getSelector()
+        }
+    }
 
-//         //         }
-//         //     }
-//     }
+};
 
-// };
+function ClassList(classSelector){
+    this.classListElements = classSelector.split(/(?=\.)/g).map(function (className) {
+        return new ClassListElement(className)
+    })
+
+    Object.defineProperty(this, 'length', {
+        get: function () {return this.classListElements.length}
+    })
+}
+
+ClassList.prototype.get=function(i){
+    return this.classListElements[i]
+}
+
+ClassList.prototype.getSelector=function(){
+    return this.classListElements.map(function (cle){
+        return cle.enabled
+            ? cle.className
+            : null
+    })
+    .filter(function(s){return s})
+    .join('')
+}
+
+function ClassListElement(className) {
+    this.enabled = true;
+    this.className=className;
+}
 
 /**
  * add "nth-child"s from back until selector becomes unique
