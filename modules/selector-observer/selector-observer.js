@@ -17,7 +17,7 @@ function SelectorObserver(conf) {
     this._conf = conf;
 
     this._selectorPrevVisible = this._conf.observeList.map(function () {
-        return false;
+        return null;
     });
 
     if ('MutationObserver' in window) {
@@ -40,7 +40,7 @@ SelectorObserver.prototype._onMutation = function () {
         // console.log('[SelectorObserver] '+item.selector+(isVisible?' visible':' not visible'))
 
         try {
-            if (!prevIsVisible && isVisible) {
+            if (prevIsVisible !== null && !prevIsVisible && isVisible) {
                 item.listener();
             }
         }
