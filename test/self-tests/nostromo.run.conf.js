@@ -2,7 +2,7 @@ const pathlib = require('path');
 
 module.exports = function (config) {
     return {
-        logLevel: config.LOG_LEVELS.TRACE,
+        logLevel: config.LOG_LEVELS.WARN,
 
         testBailout: true,
 

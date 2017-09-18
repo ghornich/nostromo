@@ -26,10 +26,166 @@ exports = module.exports = function (fileData) {
     window.browserPuppet.start();
 }());
 
-},{"../src/puppet/browser-puppet.js":5}],3:[function(require,module,exports){
+},{"../src/puppet/browser-puppet.js":6}],3:[function(require,module,exports){
+'use strict'
+
+/**
+ * Command type constants
+ * @enum {String}
+ */
+exports.COMMANDS = {
+    CLICK: 'click',
+    SET_VALUE: 'setValue',
+    PRESS_KEY: 'pressKey',
+    SCROLL: 'scroll',
+    MOUSEOVER: 'mouseover',
+    WAIT_FOR_VISIBLE: 'waitForVisible',
+    WAIT_WHILE_VISIBLE: 'waitWhileVisible',
+    FOCUS: 'focus',
+    ASSERT: 'assert',
+    COMPOSITE: 'composite',
+    UPLOAD_FILE_AND_ASSIGN: 'uploadFileAndAssign',
+};
+
+/**
+ * @memberOf BrowserPuppetCommands
+ * @typedef {Object} Command
+ */
+
+/**
+ * @typedef {Command} CompositeCommand
+ * @property {String} type - 'composite'
+ * @property {Array<Command>} commands
+ */
+
+/**
+ * @typedef {Command} ScrollCommand
+ * @property {String} type - 'scroll'
+ * @property {String} selector
+ * @property {Number} scrollTop
+ */
+
+/**
+ * @typedef {Command} MouseoverCommand
+ * @property {String} type - 'mouseover'
+ * @property {String} selector
+ */
+
+/**
+ * @typedef {Command} WaitForVisibleCommand
+ * @property {String} type - 'waitForVisible'
+ * @property {String} selector
+ * @property {Number} [pollInterval = 500]
+ * @property {Number} [timeout = 10000]
+ */
+
+/**
+ * @typedef {Command} WaitWhileVisibleCommand
+ * @property {String} type - 'waitWhileVisible'
+ * @property {String} selector
+ * @property {Number} [pollInterval = 500]
+ * @property {Number} [initialDelay = 500]
+ * @property {Number} [timeout = 10000]
+ */
+
+/**
+ * @typedef {Command} ClickCommand
+ * @property {String} type - 'click'
+ * @property {String} selector
+ */
+
+/**
+ * @typedef {Command} PressKeyCommand
+ * @property {String} type - 'pressKey'
+ * @property {String} selector
+ * @property {Number} keyCode
+ */
+
+/**
+ * @typedef {Command} SetValueCommand
+ * @property {String} type - 'setValue'
+ * @property {String} selector
+ * @property {String} value
+ */
+
+/**
+ * @typedef {Command} FocusCommand
+ * @property {String} type - 'focus'
+ * @property {String} selector
+ */
+
+/**
+ * @typedef {Command} GetValueCommand
+ * @property {String} type - 'getValue'
+ * @property {String} selector
+ */
+
+/**
+ * @typedef {Command} IsVisibleCommand
+ * @property {String} type - 'isVisible'
+ * @property {String} selector
+ */
+
+/**
+ * @typedef {Command} UploadFileAndAssignCommand
+ * @property {String} type - 'uploadFileAndAssign'
+ * @property {Object} fileData
+ * @property {String} fileData.base64 - base64 encoded file
+ * @property {String} fileData.name
+ * @property {String} [fileData.mime] - default: {@link DEFAULT_UPLOAD_FILE_MIME}
+ * @property {String} destinationVariable - e.g. `'app.files.someFile'` assigns a `File` instance to `window.app.files.someFile` 
+ */
+
+},{}],4:[function(require,module,exports){
 'use strict';
 
+/**
+ * @enum {String}
+ */
+exports.COMMAND_TYPES = {
+    CLICK: 'click',
+    SET_VALUE: 'setValue',
+    GET_VALUE: 'getValue',
+    PRESS_KEY: 'pressKey',
+    WAIT_FOR_VISIBLE: 'waitForVisible',
+    WAIT_WHILE_VISIBLE: 'waitWhileVisible',
+    FOCUS: 'focus',
+    IS_VISIBLE: 'isVisible',
+    SCROLL: 'scroll',
+    COMPOSITE: 'composite',
+    MOUSEOVER: 'mouseover',
+    UPLOAD_FILE_AND_ASSIGN: 'uploadFileAndAssign',
+};
 
+/**
+ * @enum {String}
+ */
+exports.UPSTREAM = {
+    // { type, selector, [warning] }
+    SELECTOR_BECAME_VISIBLE: 'selector-became-visible',
+    CAPTURED_EVENT: 'captured-event',
+    ACK: 'ack',
+    NAK: 'nak',
+    INSERT_ASSERTION: 'insert-assertion',
+};
+
+/**
+ * @enum {String}
+ */
+exports.DOWNSTREAM = {
+    EXEC_COMMAND: 'exec-command',
+
+    // { type, ??? }
+    EXEC_FUNCTION: 'exec-function',
+    SET_SELECTOR_BECAME_VISIBLE_DATA: 'set-selector-became-visible-data',
+    SHOW_SCREENSHOT_MARKER: 'show-screenshot-marker',
+    HIDE_SCREENSHOT_MARKER: 'hide-screenshot-marker',
+    SET_TRANSMIT_EVENTS: 'set-transmit-events',
+    TERMINATE_PUPPET: 'terminate-puppet',
+    CLEAR_PERSISTENT_DATA: 'clear-persistent-data',
+    SET_MOUSEOVER_SELECTORS: 'set-mouseover-selectors',
+    SET_IGNORED_CLASSES: 'set-ignored-classes',
+};
 
 /**
  * @typedef {Object} ControlMessage
@@ -56,8 +212,9 @@ exports = module.exports = function (fileData) {
  * @property {String} type - 'captured-event'
  * @property {Object} event
  * @property {String} event.type
- * @property {Number} event.timestamp
+ * @property {Number} event.$timestamp
  * @property {String} [event.selector]
+ * @property {String} [event.$fullSelectorPath]
  * @property {Object} [event.target]
  */
 
@@ -136,55 +293,7 @@ exports = module.exports = function (fileData) {
  * @property {Array<String>} classes
  */
 
-/**
- * @enum {String}
- */
-exports.COMMAND_TYPES = {
-    CLICK: 'click',
-    SET_VALUE: 'setValue',
-    GET_VALUE: 'getValue',
-    PRESS_KEY: 'pressKey',
-    WAIT_FOR_VISIBLE: 'waitForVisible',
-    WAIT_WHILE_VISIBLE: 'waitWhileVisible',
-    FOCUS: 'focus',
-    IS_VISIBLE: 'isVisible',
-    SCROLL: 'scroll',
-    COMPOSITE: 'composite',
-    MOUSEOVER: 'mouseover',
-    UPLOAD_FILE_AND_ASSIGN: 'uploadFileAndAssign',
-};
-
-/**
- * @enum {String}
- */
-exports.UPSTREAM = {
-    // { type, selector, [warning] }
-    SELECTOR_BECAME_VISIBLE: 'selector-became-visible',
-    CAPTURED_EVENT: 'captured-event',
-    ACK: 'ack',
-    NAK: 'nak',
-    INSERT_ASSERTION: 'insert-assertion',
-};
-
-/**
- * @enum {String}
- */
-exports.DOWNSTREAM = {
-    EXEC_COMMAND: 'exec-command',
-
-    // { type, ??? }
-    EXEC_FUNCTION: 'exec-function',
-    SET_SELECTOR_BECAME_VISIBLE_DATA: 'set-selector-became-visible-data',
-    SHOW_SCREENSHOT_MARKER: 'show-screenshot-marker',
-    HIDE_SCREENSHOT_MARKER: 'hide-screenshot-marker',
-    SET_TRANSMIT_EVENTS: 'set-transmit-events',
-    TERMINATE_PUPPET: 'terminate-puppet',
-    CLEAR_PERSISTENT_DATA: 'clear-persistent-data',
-    SET_MOUSEOVER_SELECTORS: 'set-mouseover-selectors',
-    SET_IGNORED_CLASSES: 'set-ignored-classes',
-};
-
-},{}],4:[function(require,module,exports){
+},{}],5:[function(require,module,exports){
 'use strict';
 
 var assert = require('assert');
@@ -192,25 +301,16 @@ var Promise = require('bluebird');
 var promiseWhile = require('../../../../modules/promise-while')(Promise);
 var base64ToFile = require('../../../../modules/base64-to-file');
 var lodashSet = require('lodash.set');
+var COMMANDS = require('../commands');
 
 /**
  * @type {String}
  * @memberOf BrowserPuppetCommands
+ * @default
  */
 var DEFAULT_UPLOAD_FILE_MIME = 'application/octet-stream';
 
 exports = module.exports = BrowserPuppetCommands;
-
-/**
- * @memberOf BrowserPuppetCommands
- * @typedef {Object} Command
- */
-
-/**
- * @typedef {Command} CompositeCommand
- * @property {String} type - 'composite'
- * @property {Array<Command>} commands
- */
 
 /**
  * @class
@@ -221,27 +321,14 @@ function BrowserPuppetCommands() {
 }
 
 /**
- * @typedef {Command} ScrollCommand
- * @property {String} type - 'scroll'
- * @property {String} selector
- * @property {Number} scrollTop
- */
-
-/**
  * @param {ScrollCommand} cmd
  * @throws {Error}
  */
 BrowserPuppetCommands.prototype.scroll = function (cmd) {
     var $el = this.$(cmd.selector);
-    this._assert$el($el, 'scroll');
+    this._assert$el($el, COMMANDS.SCROLL);
     $el[0].scrollTop = cmd.scrollTop;
 };
-
-/**
- * @typedef {Command} MouseoverCommand
- * @property {String} type - 'mouseover'
- * @property {String} selector
- */
 
 /**
  * @param {MouseoverCommand} cmd
@@ -251,19 +338,11 @@ BrowserPuppetCommands.prototype.mouseover = function (cmd) {
     this._log.trace('BrowserPuppetCommands::mouseover: ' + JSON.stringify(cmd));
 
     var $el = this.$(cmd.selector);
-    this._assert$el($el, 'mouseover');
+    this._assert$el($el, COMMANDS.MOUSEOVER);
 
     var mouseoverEvent = new Event('mouseover');
     $el[0].dispatchEvent(mouseoverEvent);
 };
-
-/**
- * @typedef {Command} WaitForVisibleCommand
- * @property {String} type - 'waitForVisible'
- * @property {String} selector
- * @property {Number} [pollInterval = 500]
- * @property {Number} [timeout = 10000]
- */
 
 /**
  * Waits for selector to become visible
@@ -310,15 +389,6 @@ BrowserPuppetCommands.prototype.waitForVisible = function (cmd) {
         );
     });
 };
-
-/**
- * @typedef {Command} WaitWhileVisibleCommand
- * @property {String} type - 'waitWhileVisible'
- * @property {String} selector
- * @property {Number} [pollInterval = 500]
- * @property {Number} [initialDelay = 500]
- * @property {Number} [timeout = 10000]
- */
 
 /**
  * Waits until selector is visible
@@ -371,18 +441,12 @@ BrowserPuppetCommands.prototype.waitWhileVisible = function (cmd) {
 };
 
 /**
- * @typedef {Command} ClickCommand
- * @property {String} type - 'click'
- * @property {String} selector
- */
-
-/**
  * @param {ClickCommand} cmd
  * @throws {Error}
  */
 BrowserPuppetCommands.prototype.click = function (cmd) {
     var $el = this.$(cmd.selector);
-    this._assert$el($el, 'click');
+    this._assert$el($el, COMMANDS.CLICK);
 
     // TODO use dispatchEvent?
     $el[0].click();
@@ -390,13 +454,6 @@ BrowserPuppetCommands.prototype.click = function (cmd) {
 
 // TODO handle meta keys, arrow keys
 // TODO which event to use? keyup, keydown, keypress?
-
-/**
- * @typedef {Command} PressKeyCommand
- * @property {String} type - 'pressKey'
- * @property {String} selector
- * @property {Number} keyCode
- */
 
 /**
  * @param {PressKeyCommand} cmd
@@ -407,7 +464,7 @@ BrowserPuppetCommands.prototype.pressKey = function (cmd) {
     var keyCodeNum = Number(cmd.keyCode);
 
     assert(Number.isFinite(keyCodeNum), 'BrowserPuppetCommands::pressKey: keyCode is not a number');
-    this._assert$el($el, 'pressKey');
+    this._assert$el($el, COMMANDS.PRESS_KEY);
 
     var keydownEvent = new Event('keydown');
 
@@ -419,13 +476,6 @@ BrowserPuppetCommands.prototype.pressKey = function (cmd) {
 };
 
 /**
- * @typedef {Command} SetValueCommand
- * @property {String} type - 'setValue'
- * @property {String} selector
- * @property {String} value
- */
-
-/**
  * @param {SetValueCommand} cmd
  * @throws {Error}
  */
@@ -434,7 +484,7 @@ BrowserPuppetCommands.prototype.setValue = function (cmd) {
     var el = $el[0];
     var tagName = el && el.tagName || '';
 
-    this._assert$el($el, 'setValue');
+    this._assert$el($el, COMMANDS.SET_VALUE);
 
     if (tagName !== 'INPUT' && tagName !== 'TEXTAREA') {
         throw new Error('Unable to set value of "' + cmd.selector + '": unsupported tag "' + tagName + '"');
@@ -447,26 +497,14 @@ BrowserPuppetCommands.prototype.setValue = function (cmd) {
 };
 
 /**
- * @typedef {Command} FocusCommand
- * @property {String} type - 'focus'
- * @property {String} selector
- */
-
-/**
  * @param {FocusCommand} cmd
  * @throws {Error}
  */
 BrowserPuppetCommands.prototype.focus = function (cmd) {
     var $el = this.$(cmd.selector);
-    this._assert$el($el, 'focus');
+    this._assert$el($el, COMMANDS.FOCUS);
     $el[0].focus();
 };
-
-/**
- * @typedef {Command} GetValueCommand
- * @property {String} type - 'getValue'
- * @property {String} selector
- */
 
 /**
  * @param {GetValueCommand} cmd
@@ -477,7 +515,7 @@ BrowserPuppetCommands.prototype.getValue = function (cmd) {
     var $el = this.$(cmd.selector);
     var el = $el[0];
 
-    this._assert$el($el, 'getValue');
+    this._assert$el($el, COMMANDS.GET_VALUE);
 
     // TODO util fn to get node value
 
@@ -495,12 +533,6 @@ BrowserPuppetCommands.prototype.getValue = function (cmd) {
 };
 
 /**
- * @typedef {Command} IsVisibleCommand
- * @property {String} type - 'isVisible'
- * @property {String} selector
- */
-
-/**
  * @param {IsVisibleCommand} cmd
  * @return {Boolean}
  * @throws {Error}
@@ -508,16 +540,6 @@ BrowserPuppetCommands.prototype.getValue = function (cmd) {
 BrowserPuppetCommands.prototype.isVisible = function (cmd) {
     return this.isSelectorVisible(cmd.selector);
 };
-
-/**
- * @typedef {Command} UploadFileAndAssignCommand
- * @property {String} type - 'uploadFileAndAssign'
- * @property {Object} fileData
- * @property {String} fileData.base64 - base64 encoded file
- * @property {String} fileData.name
- * @property {String} [fileData.mime] - default: {@link DEFAULT_UPLOAD_FILE_MIME}
- * @property {String} destinationVariable - e.g. `'app.files.someFile'` assigns a `File` instance to `window.app.files.someFile` 
- */
 
 /**
  * Upload file and assign the generated File instance to a variable.
@@ -554,7 +576,7 @@ function _defaultNum(value, def) {
     return def;
 }
 
-},{"../../../../modules/base64-to-file":1,"../../../../modules/promise-while":13,"assert":16,"bluebird":18,"lodash.set":24}],5:[function(require,module,exports){
+},{"../../../../modules/base64-to-file":1,"../../../../modules/promise-while":14,"../commands":3,"assert":17,"bluebird":19,"lodash.set":25}],6:[function(require,module,exports){
 'use strict';
 
 var Promise = require('bluebird');
@@ -850,6 +872,7 @@ BrowserPuppet.prototype._onInputCapture = function (event) {
 
     try {
         var selector = this._uniqueSelector.get(target);
+        var fullSelectorPath = this._uniqueSelector.getFullSelectorPath(target);
     }
     catch (err) {
         this._log.error(err);
@@ -862,6 +885,7 @@ BrowserPuppet.prototype._onInputCapture = function (event) {
             type: 'input',
             $timestamp: Date.now(),
             selector: selector,
+            $fullSelectorPath: fullSelectorPath,
             value: target.value,
             target: getTargetNodeDTO(target),
         },
@@ -879,6 +903,7 @@ BrowserPuppet.prototype._onScrollCapture = debounce(function (event) {
 
     try {
         var selector = this._uniqueSelector.get(target);
+        var fullSelectorPath = this._uniqueSelector.getFullSelectorPath(target);
     }
     catch (err) {
         this._log.error(err);
@@ -894,6 +919,7 @@ BrowserPuppet.prototype._onScrollCapture = debounce(function (event) {
             type: 'scroll',
             $timestamp: Date.now(),
             selector: selector,
+            $fullSelectorPath: fullSelectorPath,
             target: targetDTO,
         },
     });
@@ -915,6 +941,7 @@ BrowserPuppet.prototype._onKeydownCapture = function (event) {
 
     try {
         var selector = this._uniqueSelector.get(target);
+        var fullSelectorPath = this._uniqueSelector.getFullSelectorPath(target);
     }
     catch (err) {
         this._log.error(err);
@@ -927,6 +954,7 @@ BrowserPuppet.prototype._onKeydownCapture = function (event) {
             type: 'keydown',
             $timestamp: Date.now(),
             selector: selector,
+            $fullSelectorPath: fullSelectorPath,
             keyCode: event.keyCode || event.charCode,
             ctrlKey: event.ctrlKey,
             shiftKey: event.shiftKey,
@@ -946,6 +974,7 @@ BrowserPuppet.prototype._onMouseoverCapture = function (event) {
     if (this.$(target).is(this._mouseoverSelector)) {
         try {
             var selector = this._uniqueSelector.get(target);
+            var fullSelectorPath = this._uniqueSelector.getFullSelectorPath(target);
         }
         catch (err) {
             this._log.error(err);
@@ -958,6 +987,7 @@ BrowserPuppet.prototype._onMouseoverCapture = function (event) {
                 type: 'mouseover',
                 $timestamp: Date.now(),
                 selector: selector,
+                $fullSelectorPath: fullSelectorPath,
                 target: getTargetNodeDTO(target),
             },
         });
@@ -1093,7 +1123,7 @@ function assert(v, m) {
     }
 }
 
-},{"../../../../modules/get-unique-selector":8,"../../../../modules/jsonf":11,"../../../../modules/loggr":12,"../../../../modules/selector-observer":14,"../../../../modules/ws4ever":15,"../messages":3,"../screenshot-marker":6,"./browser-puppet-commands.partial":4,"bluebird":18,"jquery":21,"lodash.debounce":22,"lodash.defaults":23,"object-assign":25}],6:[function(require,module,exports){
+},{"../../../../modules/get-unique-selector":9,"../../../../modules/jsonf":12,"../../../../modules/loggr":13,"../../../../modules/selector-observer":15,"../../../../modules/ws4ever":16,"../messages":4,"../screenshot-marker":7,"./browser-puppet-commands.partial":5,"bluebird":19,"jquery":22,"lodash.debounce":23,"lodash.defaults":24,"object-assign":26}],7:[function(require,module,exports){
 (function (Buffer){
 exports.width = 4;
 exports.height = 4;
@@ -1109,7 +1139,7 @@ exports.base64 =
     'kYGD4zwAEM2++YgABJgYg+F+vzpC2zJYBBJhm3nzFAAPp6mIMTAxAMCvqMANj400GEAAAvQYMY6PVnIQAAAAASUVORK5CYII=';
 
 }).call(this,require("buffer").Buffer)
-},{"buffer":19}],7:[function(require,module,exports){
+},{"buffer":20}],8:[function(require,module,exports){
 'use strict';
 
 var DOMUtils = exports;
@@ -1130,7 +1160,7 @@ DOMUtils.getClass = function (node) {
     return node.className.trim();
 };
 
-},{}],8:[function(require,module,exports){
+},{}],9:[function(require,module,exports){
 'use strict';
 
 var defaults = require('lodash.defaults');
@@ -1159,8 +1189,6 @@ UniqueSelector.prototype.get = function (node) {
     if (!selectorElementList.isUnique()) {
         selectorElementList.uniqueify();
     }
-
-    selectorElementList.simplifyClasses();
 
     return selectorElementList.getSelectorPath();
 };
@@ -1191,11 +1219,10 @@ UniqueSelector.prototype.getFullSelectorPath = function (node) {
     return this._getFullSelectorElementList(node).getSelectorPath();
 };
 
-},{"./dom-utils":7,"./selector-element":10,"./selector-element-list":9,"lodash.defaults":23}],9:[function(require,module,exports){
+},{"./dom-utils":8,"./selector-element":11,"./selector-element-list":10,"lodash.defaults":24}],10:[function(require,module,exports){
 'use strict';
 
 var defaults = require('lodash.defaults');
-var SelectorElement = require('./selector-element');
 
 exports = module.exports = SelectorElementList;
 
@@ -1251,65 +1278,36 @@ SelectorElementList.prototype.simplify = function () {
         if (ambiguity !== newAmbiguity) {
             selectorElement.active = true;
         }
+
+
+
     }
 };
 
-SelectorElementList.prototype.simplifyClasses = function () {
-    for (var selectorElementIdx = 0, len = this._selectorElements.length; selectorElementIdx < len; selectorElementIdx++) {
-        var selectorElement = this._selectorElements[selectorElementIdx];
+// TODO if selectorElement is type CLASS and >1 classnames: simplify classnames
 
-        if (!selectorElement.active || selectorElement.type !== SelectorElement.TYPE.CLASS) {
-            continue;
-        }
-        var originalSelector = selectorElement.rawSelector
-        var classList = new ClassList(originalSelector)
+// SelectorElementList.prototype.simplifyClasses = function () {
+//     for (var i = 0, len = this._selectorElements.length; i < len - 1; i++) {
+//         var selectorElement = this._selectorElements[i];
 
-        if (classList.length > 1) {
-            for (var classIdx = classList.length - 1; classIdx >= 0; classIdx--) {
-                var classListElement = classList.get(classIdx)
+//         if (!selectorElement.active || selectorElement.type !== SelectorElement.TYPE.CLASS) {
+//             return;
+//         }
 
-                classListElement.enabled = false
-                selectorElement.rawSelector = classList.getSelector()
+//         //     var originalSelector = selectorElement.rawSelector
+//         //     var classNames = originalSelector.split(/(?=\.)/g)
+//         //     var ignoredClassIdxs = []
 
-                if (selectorElement.rawSelector === '' || this.getAmbiguity() > 1) {
-                    classListElement.enabled = true
-                }
-            }
+//         //     if (classNames.length > 1) {
+//         //         for (var classIdx = 0, classLen = classNames.length; classIdx < classLen; classIdx++) {
+//         //             var className = classNames[classIdx]
 
-            selectorElement.rawSelector = classList.getSelector()
-        }
-    }
 
-};
+//         //         }
+//         //     }
+//     }
 
-function ClassList(classSelector){
-    this.classListElements = classSelector.split(/(?=\.)/g).map(function (className) {
-        return new ClassListElement(className)
-    })
-
-    Object.defineProperty(this, 'length', {
-        get: function () {return this.classListElements.length}
-    })
-}
-
-ClassList.prototype.get=function(i){
-    return this.classListElements[i]
-}
-
-ClassList.prototype.getSelector=function(){
-    return this.classListElements.map(function (cle){
-        return cle.enabled
-            ? cle.className
-            : null
-    })
-    .filter(function(s){return s})
-    .join('')
-}
-
-function ClassListElement(className) {
-    this.enabled = true;
-    this.className=className;
-}
+// };
 
 /**
  * add "nth-child"s from back until selector becomes unique
@@ -1342,7 +1340,7 @@ SelectorElementList.prototype.uniqueify = function () {
     }
 };
 
-},{"./selector-element":10,"lodash.defaults":23}],10:[function(require,module,exports){
+},{"lodash.defaults":24}],11:[function(require,module,exports){
 'use strict';
 
 var DOMUtils = require('./dom-utils');
@@ -1505,7 +1503,7 @@ SelectorElement._getNodeSelectorData = function (node, rawOptions) {
     };
 };
 
-},{"./dom-utils":7}],11:[function(require,module,exports){
+},{"./dom-utils":8}],12:[function(require,module,exports){
 'use strict';
 
 // TODO support ES6 arrow fns
@@ -1550,7 +1548,7 @@ function isStringAFunction(s) {
         /^function\s+[a-zA-Z0-9_$]+\s*\(/.test(s);
 }
 
-},{}],12:[function(require,module,exports){
+},{}],13:[function(require,module,exports){
 (function (process){
 var os = require('os');
 
@@ -1695,7 +1693,7 @@ Loggr.getLevelChar = function (level) {
 };
 
 }).call(this,require('_process'))
-},{"_process":27,"os":26}],13:[function(require,module,exports){
+},{"_process":28,"os":27}],14:[function(require,module,exports){
 'use strict';
 
 var assert = require('assert');
@@ -1717,7 +1715,7 @@ exports = module.exports = function (promiseLib) {
     };
 };
 
-},{"assert":16}],14:[function(require,module,exports){
+},{"assert":17}],15:[function(require,module,exports){
 'use strict';
 
 var assert = require('assert');
@@ -1780,7 +1778,7 @@ function __isArray(val) {
     return Object.prototype.toString.call(val) === '[object Array]';
 }
 
-},{"assert":16,"jquery":21}],15:[function(require,module,exports){
+},{"assert":17,"jquery":22}],16:[function(require,module,exports){
 
 if (isNode()) {
     module.exports = Ws4ever;
@@ -1899,7 +1897,7 @@ function isNode() {
 
 
 
-},{}],16:[function(require,module,exports){
+},{}],17:[function(require,module,exports){
 (function (global){
 'use strict';
 
@@ -2393,7 +2391,7 @@ var objectKeys = Object.keys || function (obj) {
 };
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"util/":30}],17:[function(require,module,exports){
+},{"util/":31}],18:[function(require,module,exports){
 'use strict'
 
 exports.byteLength = byteLength
@@ -2509,7 +2507,7 @@ function fromByteArray (uint8) {
   return parts.join('')
 }
 
-},{}],18:[function(require,module,exports){
+},{}],19:[function(require,module,exports){
 (function (process,global){
 /* @preserve
  * The MIT License (MIT)
@@ -8131,7 +8129,7 @@ module.exports = ret;
 },{"./es5":13}]},{},[4])(4)
 });                    ;if (typeof window !== 'undefined' && window !== null) {                               window.P = window.Promise;                                                     } else if (typeof self !== 'undefined' && self !== null) {                             self.P = self.Promise;                                                         }
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"_process":27}],19:[function(require,module,exports){
+},{"_process":28}],20:[function(require,module,exports){
 /*!
  * The buffer module from node.js, for the browser.
  *
@@ -9847,7 +9845,7 @@ function numberIsNaN (obj) {
   return obj !== obj // eslint-disable-line no-self-compare
 }
 
-},{"base64-js":17,"ieee754":20}],20:[function(require,module,exports){
+},{"base64-js":18,"ieee754":21}],21:[function(require,module,exports){
 exports.read = function (buffer, offset, isLE, mLen, nBytes) {
   var e, m
   var eLen = nBytes * 8 - mLen - 1
@@ -9933,7 +9931,7 @@ exports.write = function (buffer, value, offset, isLE, mLen, nBytes) {
   buffer[offset + i - d] |= s * 128
 }
 
-},{}],21:[function(require,module,exports){
+},{}],22:[function(require,module,exports){
 /*!
  * jQuery JavaScript Library v3.2.1
  * https://jquery.com/
@@ -20188,7 +20186,7 @@ if ( !noGlobal ) {
 return jQuery;
 } );
 
-},{}],22:[function(require,module,exports){
+},{}],23:[function(require,module,exports){
 (function (global){
 /**
  * lodash (Custom Build) <https://lodash.com/>
@@ -20569,7 +20567,7 @@ function toNumber(value) {
 module.exports = debounce;
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],23:[function(require,module,exports){
+},{}],24:[function(require,module,exports){
 /**
  * lodash (Custom Build) <https://lodash.com/>
  * Build: `lodash modularize exports="npm" -o ./`
@@ -21239,7 +21237,7 @@ function keysIn(object) {
 
 module.exports = defaults;
 
-},{}],24:[function(require,module,exports){
+},{}],25:[function(require,module,exports){
 (function (global){
 /**
  * lodash (Custom Build) <https://lodash.com/>
@@ -22233,7 +22231,7 @@ function set(object, path, value) {
 module.exports = set;
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],25:[function(require,module,exports){
+},{}],26:[function(require,module,exports){
 /*
 object-assign
 (c) Sindre Sorhus
@@ -22325,7 +22323,7 @@ module.exports = shouldUseNative() ? Object.assign : function (target, source) {
 	return to;
 };
 
-},{}],26:[function(require,module,exports){
+},{}],27:[function(require,module,exports){
 exports.endianness = function () { return 'LE' };
 
 exports.hostname = function () {
@@ -22372,7 +22370,7 @@ exports.tmpdir = exports.tmpDir = function () {
 
 exports.EOL = '\n';
 
-},{}],27:[function(require,module,exports){
+},{}],28:[function(require,module,exports){
 // shim for using process in browser
 var process = module.exports = {};
 
@@ -22558,7 +22556,7 @@ process.chdir = function (dir) {
 };
 process.umask = function() { return 0; };
 
-},{}],28:[function(require,module,exports){
+},{}],29:[function(require,module,exports){
 if (typeof Object.create === 'function') {
   // implementation from standard node.js 'util' module
   module.exports = function inherits(ctor, superCtor) {
@@ -22583,14 +22581,14 @@ if (typeof Object.create === 'function') {
   }
 }
 
-},{}],29:[function(require,module,exports){
+},{}],30:[function(require,module,exports){
 module.exports = function isBuffer(arg) {
   return arg && typeof arg === 'object'
     && typeof arg.copy === 'function'
     && typeof arg.fill === 'function'
     && typeof arg.readUInt8 === 'function';
 }
-},{}],30:[function(require,module,exports){
+},{}],31:[function(require,module,exports){
 (function (process,global){
 // Copyright Joyent, Inc. and other Node contributors.
 //
@@ -23180,4 +23178,4 @@ function hasOwnProperty(obj, prop) {
 }
 
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./support/isBuffer":29,"_process":27,"inherits":28}]},{},[2]);
+},{"./support/isBuffer":30,"_process":28,"inherits":29}]},{},[2]);

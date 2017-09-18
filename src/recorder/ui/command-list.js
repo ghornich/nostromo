@@ -1,13 +1,18 @@
-var Command = require('./command');
-var TYPES = Command.TYPES;
-var CLICK_FOCUS_MIN_SEPARATION = 200;
+'use strict';
 
-// TODO ASSERT_SCREENSHOT -> ASSERT
+var COMMANDS = require('../../../modules/browser-puppeteer/src/puppet/browser-puppet-commands.partial').COMMANDS;
 
 exports = module.exports = CommandList;
 
-function CommandList(commands) {
-    this._commands = commands || [];
+/**
+ * 
+ * @param {Object} opts
+ * @param {Array<String>} opts.compositeEvents
+ * @param {Number} opts.compositeEventsThreshold
+ */
+function CommandList(opts) {
+    this._opts = opts;
+    this._commands = [];
     this._compact();
 }
 
@@ -28,31 +33,34 @@ CommandList.prototype._compact = function () {
             continue;
         }
 
-        var timestampDiff = Math.abs(cmd.$timestamp - lastNewCmd.$timestamp);
+        var eventsInCompositeThreshold = Math.abs(cmd.$timestamp - lastNewCmd.$timestamp) < this._opts.compositeEventsThreshold;
+        var cmdInComposite = this._opts.compositeEvents.indexOf(cmd.type) >= 0;
+        var lastNewCmdInComposite = this._opts.compositeEvents.indexOf(lastNewCmd.type) >= 0;
 
-        if ((cmd.type === TYPES.CLICK && lastNewCmd.type === TYPES.FOCUS || cmd.type === TYPES.FOCUS && lastNewCmd.type === TYPES.CLICK) &&
-                timestampDiff < CLICK_FOCUS_MIN_SEPARATION && stringsSimilar(cmd.$fullSelectorPath, lastNewCmd.$fullSelectorPath)) {
-            // insert composite command
-            newCommands[lastNewIdx] = {
-                type: TYPES.COMPOSITE,
-                commands: [lastNewCmd, cmd],
-            };
+        if (cmd.type !== lastNewCmd.type && cmdInComposite && lastNewCmdInComposite && eventsInCompositeThreshold) {
+            if (this._opts.compositeEventsComparator(cmd, lastNewCmd)) {
+                // insert composite command
+                newCommands[lastNewIdx] = {
+                    type: COMMANDS.COMPOSITE,
+                    commands: [lastNewCmd, cmd],
+                };
+            }
         }
-        else if (cmd.type === TYPES.SET_VALUE && lastNewCmd.type === TYPES.SET_VALUE && cmd.selector === lastNewCmd.selector) {
+        else if (cmd.type === COMMANDS.SET_VALUE && lastNewCmd.type === COMMANDS.SET_VALUE && cmd.selector === lastNewCmd.selector) {
             newCommands[lastNewIdx] = cmd;
         }
 
-        else if (cmd.type === TYPES.FOCUS && lastNewCmd.type === TYPES.FOCUS && cmd.selector === lastNewCmd.selector) {
+        else if (cmd.type === COMMANDS.FOCUS && lastNewCmd.type === COMMANDS.FOCUS && cmd.selector === lastNewCmd.selector) {
             newCommands[lastNewIdx] = cmd;
         }
         // TODO ???????
-        // else if (cmd.type===TYPES.SCROLL && lastNewCmd.type===TYPES.SCROLL && cmd.selector===lastNewCmd.selector) {
+        // else if (cmd.type===COMMANDS.SCROLL && lastNewCmd.type===COMMANDS.SCROLL && cmd.selector===lastNewCmd.selector) {
         //     newCommands[lastNewIdx]=cmd
         // }
-        else if (cmd.type === TYPES.ASSERT_SCREENSHOT && lastNewCmd.type === TYPES.ASSERT_SCREENSHOT) {
+        else if (cmd.type === COMMANDS.ASSERT && lastNewCmd.type === COMMANDS.ASSERT) {
             continue;
         }
-        else if (cmd.type === TYPES.UPLOAD_FILE_AND_ASSIGN && lastNewCmd.type === TYPES.UPLOAD_FILE_AND_ASSIGN) {
+        else if (cmd.type === COMMANDS.UPLOAD_FILE_AND_ASSIGN && lastNewCmd.type === COMMANDS.UPLOAD_FILE_AND_ASSIGN) {
             continue;
         }
         else {
@@ -88,9 +96,3 @@ CommandList.prototype.map = function (iteratee) {
 CommandList.prototype.clear = function () {
     this._commands = [];
 };
-
-function stringsSimilar(a, b) {
-    return a.indexOf(b) >= 0 || b.indexOf(a) >= 0;
-}
-
-

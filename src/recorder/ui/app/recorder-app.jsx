@@ -6,15 +6,16 @@ var m = require('mithril');
 var Ws4ever = require('../../../../modules/ws4ever');
 
 var CommandList = require('../command-list');
-var CMD_TYPES = require('../command').TYPES;
-
-var MESSAGES = require('../../../../modules/browser-puppeteer/src/messages.js');
+var COMMANDS = require('../../../../modules/browser-puppeteer/src/commands');
+var MESSAGES = require('../../../../modules/browser-puppeteer/src/messages');
 
 var EOL = '\n';
 
 var JSON_OUTPUT_FORMATTER_NAME = 'json (built-in)';
 var NOSTROMO_OUTPUT_FORMATTER_NAME = 'nostromo (built-in)';
 var DEFAULT_OUTPUT_FILENAME = 'output';
+
+var MOCK_MESSAGE_INTERVAL = 500;
 
 var RootComp;
 
@@ -62,9 +63,17 @@ function RecorderApp(conf) {
     });
 
     self._wsConn = null;
-    self.commandList = new CommandList();
+    self.commandList = new CommandList({
+        compositeEvents: self._conf.compositeEvents,
+        compositeEventsThreshold: self._conf.compositeEventsThreshold,
+        compositeEventsComparator: self._conf.compositeEventsComparator,
+    });
 
     self._isRecording = false;
+
+    if (self._conf._preEnableRecording === true) {
+        self._isRecording = true;
+    }
 
     self.actions = {
         toggleRecording: function () {
@@ -74,7 +83,7 @@ function RecorderApp(conf) {
             self.commandList.clear();
         },
         addAssertion: function () {
-            self.commandList.add({ type: CMD_TYPES.ASSERT });
+            self.commandList.add({ type: COMMANDS.ASSERT });
         },
         downloadOutput: function () {
             var formatter = self._getSelectedOutputFormatter();
@@ -97,34 +106,8 @@ function RecorderApp(conf) {
 RecorderApp.prototype.start = function () {
     var self = this;
     self._wsConn = new Ws4ever(location.origin.replace('http://', 'ws://'));
-
-    self._wsConn.onmessage = function (event) {
-        var data = event.data;
-
-        try {
-            data = JSONF.parse(data);
-
-            switch (data.type) {
-                case MESSAGES.UPSTREAM.SELECTOR_BECAME_VISIBLE:
-                    self.onSelectorBecameVisibleEvent(data);
-                    break;
-                case MESSAGES.UPSTREAM.CAPTURED_EVENT:
-                    self._onCapturedEvent(data.event);
-                    break;
-                case MESSAGES.UPSTREAM.INSERT_ASSERTION:
-                    if (self._isRecording) {
-                        self.commandList.add({ type: CMD_TYPES.ASSERT });
-                    }
-                    break;
-                default: throw new Error('Unknown type' + data.type);
-            }
-
-            m.redraw();
-        }
-        catch (err) {
-            console.warn('message error: ' + err);
-        }
-    };
+    self._wsConn.onmessage = self._onWsMessage.bind(self);
+    self._wsConn.onopen = self._onWsOpen.bind(self);
 
     var MountComp = {
         view: function () {
@@ -133,6 +116,68 @@ RecorderApp.prototype.start = function () {
     };
 
     m.mount($('#mount')[0], MountComp);
+};
+
+RecorderApp.prototype._onWsMessage = function (event) {
+    var data = event.data;
+
+    try {
+        data = JSONF.parse(data);
+
+        switch (data.type) {
+            case MESSAGES.UPSTREAM.SELECTOR_BECAME_VISIBLE:
+                this.onSelectorBecameVisibleEvent(data);
+                break;
+            case MESSAGES.UPSTREAM.CAPTURED_EVENT:
+                this._onCapturedEvent(data.event);
+                break;
+            case MESSAGES.UPSTREAM.INSERT_ASSERTION:
+                if (this._isRecording) {
+                    this.commandList.add({ type: COMMANDS.ASSERT });
+                }
+                break;
+            default: throw new Error('Unknown message type: ' + data.type);
+        }
+    }
+    catch (err) {
+        console.error(err);
+    }
+    finally {
+        m.redraw();
+    }
+};
+
+RecorderApp.prototype._onWsOpen = function () {
+    if (this._conf._mockMessages.length > 0) {
+        this._runNextMockMessage();
+    }
+};
+
+RecorderApp.prototype._runNextMockMessage = function (index) {
+    var self = this;
+
+    if (index === undefined) {
+        index = 0;
+    }
+
+    if (index >= self._conf._mockMessages.length) {
+        return;
+    }
+
+    var currentMockMessage = self._conf._mockMessages[index];
+
+    setTimeout(function () {
+        try {
+            self._onWsMessage({
+                data: JSONF.stringify(currentMockMessage),
+            });
+        }
+        catch (err) {
+            console.error(err);
+        }
+
+        self._runNextMockMessage(index + 1);
+    }, MOCK_MESSAGE_INTERVAL);
 };
 
 RecorderApp.prototype._getSelectedOutputFormatter = function () {
@@ -349,8 +394,8 @@ function jsonOutputFormatter(cmds, rawIndent) {
 
     return '[' + EOL +
         cmds.map(function (cmd) {
-            if (cmd.type === CMD_TYPES.COMPOSITE) {
-                return indent + '{"type":"' + CMD_TYPES.COMPOSITE + '","commands":[' + EOL +
+            if (cmd.type === COMMANDS.COMPOSITE) {
+                return indent + '{"type":"' + COMMANDS.COMPOSITE + '","commands":[' + EOL +
                     cmd.commands.map(function (subcmd) {
                         return indent + indent + JSON.stringify(cleanCmd(subcmd));
                     }).join(',' + EOL) + EOL +

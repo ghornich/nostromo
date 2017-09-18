@@ -31,7 +31,7 @@ exports = module.exports = function (test) {
                 window.uniqueSelector2.get(document.querySelector('[data-test="3"]')),
                 window.uniqueSelector2.get(document.querySelector('[data-test="4"]')),
                 window.uniqueSelector2.get(document.querySelector('[data-test="5"]')),
-                window.uniqueSelector1.get(document.querySelector('[data-test="6"]')),
+                window.uniqueSelector2.get(document.querySelector('[data-test="6"]')),
             ];
         });
 
