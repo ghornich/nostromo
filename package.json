@@ -4,10 +4,11 @@
   "description": "",
   "main": "src/cli.js",
   "scripts": {
-    "build": "npm run build-ui && npm run build-diff-app && npm run build-browser-puppet",
+    "build": "npm run build-ui && npm run build-diff-app && npm run build-browser-puppet && npm run build-get-unique-selector",
     "build-ui": "babel src/recorder/ui/app/recorder-app.jsx -o src/recorder/ui/app/babel-temp.js && browserify src/recorder/ui/app/babel-temp.js -o dist/recorder-app.dist.js",
     "build-diff-app": "babel src/differ/web-app/src/diff-app.jsx -o src/differ/web-app/build/babel-temp.js && browserify src/differ/web-app/build/babel-temp.js -o dist/diff-app.dist.js",
     "build-browser-puppet": "node modules/browser-puppeteer/build/script/build.js",
+    "build-get-unique-selector": "browserify modules/get-unique-selector/build/get-unique-selector.build.js -o modules/get-unique-selector/dist/get-unique-selector.dist.js",
     "watch": "watchmen",
     "watch-diff-app_FIXME": "watchmen \"npm run build-diff-app\" src/differ/web-app/src",
     "lint": "eslint **/*.js **/*.jsx",
