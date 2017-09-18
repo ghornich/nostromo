@@ -54,7 +54,7 @@ test('recorder-app: composite events: defaults', async t=>{
     const browser = new Chrome({
         name: 'Chrome',
         path: 'C:/Program Files (x86)/Google/Chrome/Application/chrome.exe',
-        // bounds: { size: { width: 1024, height: 750 }, position: { x: 5, y: 5 } },
+        bounds: { size: { width: 1024, height: 750 }, position: { x: 5, y: 5 } },
     })
 
     await recorderServer.start()
