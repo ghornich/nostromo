@@ -138,11 +138,12 @@ RecorderApp.prototype._onWsMessage = function (event) {
                 break;
             default: throw new Error('Unknown message type: ' + data.type);
         }
-
-        m.redraw();
     }
     catch (err) {
         console.error(err);
+    }
+    finally {
+        m.redraw();
     }
 };
 
