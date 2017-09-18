@@ -10,6 +10,8 @@ exports = module.exports = SelectorObserver;
  * @param {String} conf.observeList
  */
 function SelectorObserver(conf) {
+    assert('MutationObserver' in window, 'MutationObserver not supported');
+
     assert(typeof conf === 'object', 'conf is not an object');
     assert(__isArray(conf.observeList), 'conf.observeList is not an array');
     // TODO observeList.selector's must be unique
@@ -20,14 +22,11 @@ function SelectorObserver(conf) {
         return null;
     });
 
-    if ('MutationObserver' in window) {
-        this._mutationObserver = new window.MutationObserver(this._onMutation.bind(this));
-        this._mutationObserver.observe(document.body, { childList: true, subtree: true, attributeFilter: ['style', 'class'] });
-    }
-    else {
-        // TODO implement polling?
-        throw new Error('MutationObserver not supported');
-    }
+    // first run: determine starting states of observed selectors
+    this._onMutation();
+
+    this._mutationObserver = new window.MutationObserver(this._onMutation.bind(this));
+    this._mutationObserver.observe(document.body, { childList: true, subtree: true, attributeFilter: ['style', 'class'] });
 }
 
 SelectorObserver.prototype._onMutation = function () {
