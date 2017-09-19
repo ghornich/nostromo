@@ -22,15 +22,17 @@ window.BrowserPuppet = require('../src/puppet/browser-puppet.js');
  * Command type constants
  * @enum {String}
  */
-exports.COMMANDS = {
+exports = module.exports = {
     CLICK: 'click',
     SET_VALUE: 'setValue',
+    GET_VALUE: 'getValue',
     PRESS_KEY: 'pressKey',
     SCROLL: 'scroll',
     MOUSEOVER: 'mouseover',
     WAIT_FOR_VISIBLE: 'waitForVisible',
     WAIT_WHILE_VISIBLE: 'waitWhileVisible',
     FOCUS: 'focus',
+    IS_VISIBLE: 'isVisible',
     ASSERT: 'assert',
     COMPOSITE: 'composite',
     UPLOAD_FILE_AND_ASSIGN: 'uploadFileAndAssign',
@@ -131,24 +133,6 @@ exports.COMMANDS = {
 /**
  * @enum {String}
  */
-exports.COMMAND_TYPES = {
-    CLICK: 'click',
-    SET_VALUE: 'setValue',
-    GET_VALUE: 'getValue',
-    PRESS_KEY: 'pressKey',
-    WAIT_FOR_VISIBLE: 'waitForVisible',
-    WAIT_WHILE_VISIBLE: 'waitWhileVisible',
-    FOCUS: 'focus',
-    IS_VISIBLE: 'isVisible',
-    SCROLL: 'scroll',
-    COMPOSITE: 'composite',
-    MOUSEOVER: 'mouseover',
-    UPLOAD_FILE_AND_ASSIGN: 'uploadFileAndAssign',
-};
-
-/**
- * @enum {String}
- */
 exports.UPSTREAM = {
     // { type, selector, [warning] }
     SELECTOR_BECAME_VISIBLE: 'selector-became-visible',
@@ -203,7 +187,7 @@ exports.DOWNSTREAM = {
  * @property {String} event.type
  * @property {Number} event.$timestamp
  * @property {String} [event.selector]
- * @property {String} [event.$fullSelectorPath]
+ * @property {String} event.$fullSelectorPath
  * @property {Object} [event.target]
  */
 
@@ -1179,6 +1163,8 @@ UniqueSelector.prototype.get = function (node) {
         selectorElementList.uniqueify();
     }
 
+    selectorElementList.simplifyClasses();
+
     return selectorElementList.getSelectorPath();
 };
 
@@ -1212,6 +1198,7 @@ UniqueSelector.prototype.getFullSelectorPath = function (node) {
 'use strict';
 
 var defaults = require('lodash.defaults');
+var SelectorElement = require('./selector-element');
 
 exports = module.exports = SelectorElementList;
 
@@ -1267,36 +1254,65 @@ SelectorElementList.prototype.simplify = function () {
         if (ambiguity !== newAmbiguity) {
             selectorElement.active = true;
         }
-
-
-
     }
 };
 
-// TODO if selectorElement is type CLASS and >1 classnames: simplify classnames
+SelectorElementList.prototype.simplifyClasses = function () {
+    for (var selectorElementIdx = 0, len = this._selectorElements.length; selectorElementIdx < len; selectorElementIdx++) {
+        var selectorElement = this._selectorElements[selectorElementIdx];
 
-// SelectorElementList.prototype.simplifyClasses = function () {
-//     for (var i = 0, len = this._selectorElements.length; i < len - 1; i++) {
-//         var selectorElement = this._selectorElements[i];
+        if (!selectorElement.active || selectorElement.type !== SelectorElement.TYPE.CLASS) {
+            continue;
+        }
+        var originalSelector = selectorElement.rawSelector
+        var classList = new ClassList(originalSelector)
 
-//         if (!selectorElement.active || selectorElement.type !== SelectorElement.TYPE.CLASS) {
-//             return;
-//         }
+        if (classList.length > 1) {
+            for (var classIdx = classList.length - 1; classIdx >= 0; classIdx--) {
+                var classListElement = classList.get(classIdx)
 
-//         //     var originalSelector = selectorElement.rawSelector
-//         //     var classNames = originalSelector.split(/(?=\.)/g)
-//         //     var ignoredClassIdxs = []
+                classListElement.enabled = false
+                selectorElement.rawSelector = classList.getSelector()
 
-//         //     if (classNames.length > 1) {
-//         //         for (var classIdx = 0, classLen = classNames.length; classIdx < classLen; classIdx++) {
-//         //             var className = classNames[classIdx]
+                if (selectorElement.rawSelector === '' || this.getAmbiguity() > 1) {
+                    classListElement.enabled = true
+                }
+            }
 
+            selectorElement.rawSelector = classList.getSelector()
+        }
+    }
 
-//         //         }
-//         //     }
-//     }
+};
 
-// };
+function ClassList(classSelector){
+    this.classListElements = classSelector.split(/(?=\.)/g).map(function (className) {
+        return new ClassListElement(className)
+    })
+
+    Object.defineProperty(this, 'length', {
+        get: function () {return this.classListElements.length}
+    })
+}
+
+ClassList.prototype.get=function(i){
+    return this.classListElements[i]
+}
+
+ClassList.prototype.getSelector=function(){
+    return this.classListElements.map(function (cle){
+        return cle.enabled
+            ? cle.className
+            : null
+    })
+    .filter(function(s){return s})
+    .join('')
+}
+
+function ClassListElement(className) {
+    this.enabled = true;
+    this.className=className;
+}
 
 /**
  * add "nth-child"s from back until selector becomes unique
@@ -1329,7 +1345,7 @@ SelectorElementList.prototype.uniqueify = function () {
     }
 };
 
-},{"lodash.defaults":24}],11:[function(require,module,exports){
+},{"./selector-element":11,"lodash.defaults":24}],11:[function(require,module,exports){
 'use strict';
 
 var DOMUtils = require('./dom-utils');
@@ -1717,6 +1733,8 @@ exports = module.exports = SelectorObserver;
  * @param {String} conf.observeList
  */
 function SelectorObserver(conf) {
+    assert('MutationObserver' in window, 'MutationObserver not supported');
+
     assert(typeof conf === 'object', 'conf is not an object');
     assert(__isArray(conf.observeList), 'conf.observeList is not an array');
     // TODO observeList.selector's must be unique
@@ -1724,17 +1742,14 @@ function SelectorObserver(conf) {
     this._conf = conf;
 
     this._selectorPrevVisible = this._conf.observeList.map(function () {
-        return false;
+        return null;
     });
 
-    if ('MutationObserver' in window) {
-        this._mutationObserver = new window.MutationObserver(this._onMutation.bind(this));
-        this._mutationObserver.observe(document.body, { childList: true, subtree: true, attributeFilter: ['style', 'class'] });
-    }
-    else {
-        // TODO implement polling?
-        throw new Error('MutationObserver not supported');
-    }
+    // first run: determine starting states of observed selectors
+    this._onMutation();
+
+    this._mutationObserver = new window.MutationObserver(this._onMutation.bind(this));
+    this._mutationObserver.observe(document.body, { childList: true, subtree: true, attributeFilter: ['style', 'class'] });
 }
 
 SelectorObserver.prototype._onMutation = function () {
@@ -1747,7 +1762,7 @@ SelectorObserver.prototype._onMutation = function () {
         // console.log('[SelectorObserver] '+item.selector+(isVisible?' visible':' not visible'))
 
         try {
-            if (!prevIsVisible && isVisible) {
+            if (prevIsVisible !== null && !prevIsVisible && isVisible) {
                 item.listener();
             }
         }

@@ -1,6 +1,6 @@
 'use strict';
 
-var COMMANDS = require('../../../modules/browser-puppeteer/src/puppet/browser-puppet-commands.partial').COMMANDS;
+var COMMANDS = require('../../../modules/browser-puppeteer').COMMANDS;
 
 exports = module.exports = CommandList;
 
