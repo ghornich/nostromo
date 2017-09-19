@@ -121,12 +121,12 @@ SelectorElement._getNodeSelectorData = function (node, rawOptions) {
     var options = rawOptions || {};
     options.ignoredClasses = options.ignoredClasses || [];
 
-    if (DOMUtils.hasId(node)) {
-        return {
-            selector: '#' + DOMUtils.getId(node),
-            type: SelectorElement.TYPE.ID,
-        };
-    }
+    // if (DOMUtils.hasId(node)) {
+    //     return {
+    //         selector: '#' + DOMUtils.getId(node),
+    //         type: SelectorElement.TYPE.ID,
+    //     };
+    // }
 
     if (DOMUtils.hasClass(node)) {
         var classNames = DOMUtils.getClass(node);
@@ -134,6 +134,10 @@ SelectorElement._getNodeSelectorData = function (node, rawOptions) {
         options.ignoredClasses.forEach(function (ignoredClass) {
             classNames = classNames.replace(ignoredClass, '');
         });
+
+        if (options.preferredClass && options.preferredClass.test(classNames)) {
+            classNames = classNames.match(options.preferredClass)[0];
+        }
 
         classNames = classNames.trim();
 

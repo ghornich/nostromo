@@ -14952,8 +14952,8 @@ function RecorderApp(conf) {
     }
 
     self._conf = defaults({}, confObj, {
-        pressKeyFilter: function pressKeyFilter(command) {
-            return [13, 27].indexOf(command.keyCode) >= 0;
+        pressKeyFilter: function pressKeyFilter(data) {
+            return [13, 27].indexOf(data.command.keyCode) >= 0;
         },
         captureFilter: noop,
         outputFormatters: [],
