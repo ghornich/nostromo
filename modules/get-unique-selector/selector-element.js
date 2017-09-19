@@ -121,12 +121,12 @@ SelectorElement._getNodeSelectorData = function (node, rawOptions) {
     var options = rawOptions || {};
     options.ignoredClasses = options.ignoredClasses || [];
 
-    // if (DOMUtils.hasId(node)) {
-    //     return {
-    //         selector: '#' + DOMUtils.getId(node),
-    //         type: SelectorElement.TYPE.ID,
-    //     };
-    // }
+    if (options.useIds && DOMUtils.hasId(node)) {
+        return {
+            selector: '#' + DOMUtils.getId(node),
+            type: SelectorElement.TYPE.ID,
+        };
+    }
 
     if (DOMUtils.hasClass(node)) {
         var classNames = DOMUtils.getClass(node);

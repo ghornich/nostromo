@@ -41,7 +41,13 @@ function BrowserPuppet(opts) {
 
     this.$ = $;
 
-    this._uniqueSelector = new UniqueSelector();
+    // TODO remove hardcoded values
+    this._uniqueSelector = new UniqueSelector({
+        useIds: false,
+        preferredClass: /test--[^ ]+/,
+        useClosestParentWithPreferredClass: true,
+        preferredClassParentLimit: 3,
+    });
 
     this._selectorObserver = null;
 

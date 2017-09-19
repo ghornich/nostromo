@@ -38,15 +38,47 @@ function UniqueSelector(options) {
     this._opts = defaults({}, options, {
         querySelectorAll: document.querySelectorAll.bind(document),
         ignoredClasses: [],
+        useIds: true,
+        // regex
+        preferredClass: null,
+        useClosestParentWithPreferredClass: false,
+        preferredClassParentLimit: 0,
     });
 }
 
 UniqueSelector.prototype.get = function (node) {
-    if (DOMUtils.hasId(node)) {
-        return '#' + DOMUtils.getId(node);
+    var _node = node;
+
+    if (this._opts.useIds && DOMUtils.hasId(_node)) {
+        return '#' + DOMUtils.getId(_node);
     }
 
-    var selectorElementList = this._getFullSelectorElementList(node);
+    // traverse up until prefClass is found or max depth reached or body reached
+    if (this._opts.preferredClass && this._opts.useClosestParentWithPreferredClass) {
+        var currentNode = _node
+        var depth = 0;
+        var depthLimit = 1000;
+
+        while (currentNode && currentNode.tagName !== 'BODY') {
+            if (depth >= this._opts.preferredClassParentLimit) {
+                break;
+            }
+
+            if (depth >= depthLimit) {
+                throw new Error('Infinite loop error');
+            }
+
+            if (this._opts.preferredClass.test(currentNode.className)) {
+                _node = currentNode
+                break
+            }
+
+            currentNode = currentNode.parentNode
+            depth++;
+        }
+    }
+
+    var selectorElementList = this._getFullSelectorElementList(_node);
 
     selectorElementList.simplify();
 
@@ -71,9 +103,9 @@ UniqueSelector.prototype._getFullSelectorElementList = function (node) {
 
         selectorElementList.addElement(selectorElement);
 
-        if (selectorElement.type === SelectorElement.TYPE.ID) {
-            break;
-        }
+        // if (selectorElement.type === SelectorElement.TYPE.ID) {
+        //     break;
+        // }
 
         currentNode = currentNode.parentNode;
     }
@@ -360,7 +392,7 @@ SelectorElement._getNodeSelectorData = function (node, rawOptions) {
     var options = rawOptions || {};
     options.ignoredClasses = options.ignoredClasses || [];
 
-    if (DOMUtils.hasId(node)) {
+    if (options.useIds && DOMUtils.hasId(node)) {
         return {
             selector: '#' + DOMUtils.getId(node),
             type: SelectorElement.TYPE.ID,
@@ -373,6 +405,10 @@ SelectorElement._getNodeSelectorData = function (node, rawOptions) {
         options.ignoredClasses.forEach(function (ignoredClass) {
             classNames = classNames.replace(ignoredClass, '');
         });
+
+        if (options.preferredClass && options.preferredClass.test(classNames)) {
+            classNames = classNames.match(options.preferredClass)[0];
+        }
 
         classNames = classNames.trim();
 

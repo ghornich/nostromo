@@ -604,7 +604,13 @@ function BrowserPuppet(opts) {
 
     this.$ = $;
 
-    this._uniqueSelector = new UniqueSelector();
+    // TODO remove hardcoded values
+    this._uniqueSelector = new UniqueSelector({
+        useIds: false,
+        preferredClass: /test--[^ ]+/,
+        useClosestParentWithPreferredClass: true,
+        preferredClassParentLimit: 3,
+    });
 
     this._selectorObserver = null;
 
@@ -1158,66 +1164,23 @@ function UniqueSelector(options) {
     this._opts = defaults({}, options, {
         querySelectorAll: document.querySelectorAll.bind(document),
         ignoredClasses: [],
+        useIds: true,
         // regex
-        preferredClass: /test--[^ ]+/, // TODO remove hardcoded value
-        preferredClassParentLimit: 3, // TODO remove hardcoded value
+        preferredClass: null,
+        useClosestParentWithPreferredClass: false,
+        preferredClassParentLimit: 0,
     });
 }
-
-// UniqueSelector.prototype.getWithPreferredClass = function (node) {
-//     var preferredClass = this._opts.preferredClass;
-
-//     if (!preferredClass) {
-//         return null;
-//     }
-
-//     var currentNode = node;
-//     var prefClassList = [];
-//     var preferredClassFound = false;
-//     var preferredClassParentNumber = 0;
-
-//     while (currentNode && currentNode.tagName !== 'BODY') {
-//         if (preferredClass.test(currentNode.className)) {
-//             preferredClassFound = true;
-//             prefClassList.unshift(currentNode.className.match(preferredClass)[0]);
-//         }
-//         else {
-//             if (!preferredClassFound) {
-//                 preferredClassParentNumber++;
-//             }
-//         }
-
-//         if (preferredClassParentNumber > this._opts.preferredClassParentLimit) {
-//             return null;
-//         }
-
-//         currentNode = currentNode.parentNode;
-//     }
-
-
-
-//     function getSelectorFromPrefClassList(){
-//         return '.' + prefClassList.join(' .')
-//     }
-
-//     ........
-// };
 
 UniqueSelector.prototype.get = function (node) {
     var _node = node;
 
-    // var maybeSelectorWithPreferredClass = this.getWithPreferredClass(_node);
-
-    // if (maybeSelectorWithPreferredClass) {
-    //     return maybeSelectorWithPreferredClass;
-    // }
-
-    // if (DOMUtils.hasId(_node)) {
-    //     return '#' + DOMUtils.getId(_node);
-    // }
+    if (this._opts.useIds && DOMUtils.hasId(_node)) {
+        return '#' + DOMUtils.getId(_node);
+    }
 
     // traverse up until prefClass is found or max depth reached or body reached
-    if (this._opts.preferredClass) {
+    if (this._opts.preferredClass && this._opts.useClosestParentWithPreferredClass) {
         var currentNode = _node
         var depth = 0;
         var depthLimit = 1000;
@@ -1555,12 +1518,12 @@ SelectorElement._getNodeSelectorData = function (node, rawOptions) {
     var options = rawOptions || {};
     options.ignoredClasses = options.ignoredClasses || [];
 
-    // if (DOMUtils.hasId(node)) {
-    //     return {
-    //         selector: '#' + DOMUtils.getId(node),
-    //         type: SelectorElement.TYPE.ID,
-    //     };
-    // }
+    if (options.useIds && DOMUtils.hasId(node)) {
+        return {
+            selector: '#' + DOMUtils.getId(node),
+            type: SelectorElement.TYPE.ID,
+        };
+    }
 
     if (DOMUtils.hasClass(node)) {
         var classNames = DOMUtils.getClass(node);
