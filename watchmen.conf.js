@@ -13,4 +13,18 @@ exports=module.exports=[
         ],
         command: 'npm run build-browser-puppet',
     },
+    {
+        name: 'GetUniqueSelector',
+        paths: [
+            'modules/get-unique-selector/src',
+        ],
+        command: 'npm run build-get-unique-selector',
+    },
+    // {
+    //     name: 'DiffApp',
+    //     paths: [
+    //         'src/differ/web-app/src',
+    //     ],
+    //     command: 'npm run build-diff-app',
+    // }
 ];
