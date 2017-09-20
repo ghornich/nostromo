@@ -1,4 +1,4 @@
-const SelectorElement = require('../selector-element');
+const SelectorElement = require('../src/selector-element');
 const test = require('tape');
 
 test('SelectorElement::ctor', t => {

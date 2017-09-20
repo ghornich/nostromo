@@ -1,4 +1,4 @@
-const DOMUtils = require('../dom-utils');
+const DOMUtils = require('../src/dom-utils');
 const test = require('tape');
 
 test('DOMUtils::hasId', t => {

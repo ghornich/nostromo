@@ -1,6 +1,5 @@
 'use strict';
 
-var defaults = require('lodash.defaults');
 var DOMUtils = require('./dom-utils');
 var SelectorElement = require('./selector-element');
 var SelectorElementList = require('./selector-element-list');
@@ -8,7 +7,7 @@ var SelectorElementList = require('./selector-element-list');
 exports = module.exports = UniqueSelector;
 
 function UniqueSelector(options) {
-    this._opts = defaults({}, options, {
+    this._opts = Object.assign({}, {
         querySelectorAll: document.querySelectorAll.bind(document),
         ignoredClasses: [],
         useIds: true,
@@ -16,7 +15,11 @@ function UniqueSelector(options) {
         preferredClass: null,
         useClosestParentWithPreferredClass: false,
         preferredClassParentLimit: 0,
-    });
+    }, options);
+
+    if (this._opts.preferredClass && this._opts.preferredClass.global) {
+        throw new Error('Global flag not allowed for "preferredClass"');
+    }
 }
 
 UniqueSelector.prototype.get = function (node) {
@@ -51,7 +54,7 @@ UniqueSelector.prototype.get = function (node) {
         }
     }
 
-    var selectorElementList = this._getFullSelectorElementList(_node);
+    var selectorElementList = this._getParentSelectorPath(_node);
 
     selectorElementList.simplify();
 
@@ -59,15 +62,25 @@ UniqueSelector.prototype.get = function (node) {
         selectorElementList.uniqueify();
     }
 
-    selectorElementList.simplifyClasses();
+    selectorElementList.simplifyClasses(false);
+
+    if (this._opts.preferredClass) {
+        // run simplify alg again, remove unnecessary preferred classes
+        selectorElementList.simplify(false);
+    }
 
     return selectorElementList.getSelectorPath();
 };
 
-UniqueSelector.prototype._getFullSelectorElementList = function (node) {
-    var selectorElementList = new SelectorElementList({
-        querySelectorAll: this._opts.querySelectorAll,
-    });
+UniqueSelector.prototype._getAllUniquePaths = function (node) {
+    var sp = this._getParentSelectorPath(node);
+
+
+}
+
+
+UniqueSelector.prototype._getParentSelectorPath = function (node) {
+    var selectorElementList = new SelectorElementList(this._opts);
 
     var currentNode = node;
 
@@ -76,9 +89,9 @@ UniqueSelector.prototype._getFullSelectorElementList = function (node) {
 
         selectorElementList.addElement(selectorElement);
 
-        // if (selectorElement.type === SelectorElement.TYPE.ID) {
-        //     break;
-        // }
+        if (this._opts.useIds && selectorElement.type === SelectorElement.TYPE.ID) {
+            break;
+        }
 
         currentNode = currentNode.parentNode;
     }
@@ -87,5 +100,5 @@ UniqueSelector.prototype._getFullSelectorElementList = function (node) {
 };
 
 UniqueSelector.prototype.getFullSelectorPath = function (node) {
-    return this._getFullSelectorElementList(node).getSelectorPath();
+    return this._getParentSelectorPath(node).getSelectorPath();
 };
