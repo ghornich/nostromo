@@ -598,7 +598,7 @@ function BrowserPuppet(opts) {
         useIds: false,
         preferredClass: /test--[^ ]+/,
         useClosestParentWithPreferredClass: true,
-        preferredClassParentLimit: 3,
+        preferredClassParentLimit: 6,
     });
 
     this._selectorObserver = null;
@@ -1142,7 +1142,6 @@ DOMUtils.getClass = function (node) {
 },{}],9:[function(require,module,exports){
 'use strict';
 
-var defaults = require('lodash.defaults');
 var DOMUtils = require('./dom-utils');
 var SelectorElement = require('./selector-element');
 var SelectorElementList = require('./selector-element-list');
@@ -1150,7 +1149,7 @@ var SelectorElementList = require('./selector-element-list');
 exports = module.exports = UniqueSelector;
 
 function UniqueSelector(options) {
-    this._opts = defaults({}, options, {
+    this._opts = Object.assign({}, {
         querySelectorAll: document.querySelectorAll.bind(document),
         ignoredClasses: [],
         useIds: true,
@@ -1158,7 +1157,11 @@ function UniqueSelector(options) {
         preferredClass: null,
         useClosestParentWithPreferredClass: false,
         preferredClassParentLimit: 0,
-    });
+    }, options);
+
+    if (this._opts.preferredClass && this._opts.preferredClass.global) {
+        throw new Error('Global flag not allowed for "preferredClass"');
+    }
 }
 
 UniqueSelector.prototype.get = function (node) {
@@ -1193,7 +1196,7 @@ UniqueSelector.prototype.get = function (node) {
         }
     }
 
-    var selectorElementList = this._getFullSelectorElementList(_node);
+    var selectorElementList = this._getParentSelectorPath(_node);
 
     selectorElementList.simplify();
 
@@ -1201,15 +1204,25 @@ UniqueSelector.prototype.get = function (node) {
         selectorElementList.uniqueify();
     }
 
-    selectorElementList.simplifyClasses();
+    selectorElementList.simplifyClasses(false);
+
+    if (this._opts.preferredClass) {
+        // run simplify alg again, remove unnecessary preferred classes
+        selectorElementList.simplify(false);
+    }
 
     return selectorElementList.getSelectorPath();
 };
 
-UniqueSelector.prototype._getFullSelectorElementList = function (node) {
-    var selectorElementList = new SelectorElementList({
-        querySelectorAll: this._opts.querySelectorAll,
-    });
+UniqueSelector.prototype._getAllUniquePaths = function (node) {
+    var sp = this._getParentSelectorPath(node);
+
+
+}
+
+
+UniqueSelector.prototype._getParentSelectorPath = function (node) {
+    var selectorElementList = new SelectorElementList(this._opts);
 
     var currentNode = node;
 
@@ -1218,9 +1231,9 @@ UniqueSelector.prototype._getFullSelectorElementList = function (node) {
 
         selectorElementList.addElement(selectorElement);
 
-        // if (selectorElement.type === SelectorElement.TYPE.ID) {
-        //     break;
-        // }
+        if (this._opts.useIds && selectorElement.type === SelectorElement.TYPE.ID) {
+            break;
+        }
 
         currentNode = currentNode.parentNode;
     }
@@ -1229,10 +1242,10 @@ UniqueSelector.prototype._getFullSelectorElementList = function (node) {
 };
 
 UniqueSelector.prototype.getFullSelectorPath = function (node) {
-    return this._getFullSelectorElementList(node).getSelectorPath();
+    return this._getParentSelectorPath(node).getSelectorPath();
 };
 
-},{"./dom-utils":8,"./selector-element":11,"./selector-element-list":10,"lodash.defaults":24}],10:[function(require,module,exports){
+},{"./dom-utils":8,"./selector-element":11,"./selector-element-list":10}],10:[function(require,module,exports){
 'use strict';
 
 var defaults = require('lodash.defaults');
@@ -1253,15 +1266,16 @@ function SelectorElementList(options) {
 SelectorElementList.prototype.getSelectorPath = function () {
     return this._selectorElements
     .map(function (selectorElement) {
-        return selectorElement.selector;
+        return (selectorElement.selector || '');
     })
-    .filter(function (selector) {
-        return Boolean(selector);
-    })
-    .join(' ')
+    .join('>')
+    .replace(/>{2,}/g, ' ')
+    .replace(/^>|>$/, '')
+    .replace(/>/g, ' > ')
     .trim()
-    .replace(/ +/g, ' ');
 };
+
+SelectorElementList.prototype.toString = SelectorElementList.prototype.getSelectorPath;
 
 SelectorElementList.prototype.addElement = function (element) {
     this._selectorElements.unshift(element);
@@ -1275,13 +1289,19 @@ SelectorElementList.prototype.isUnique = function () {
     return this.getAmbiguity() === 1;
 };
 
-SelectorElementList.prototype.simplify = function () {
+SelectorElementList.prototype.simplify = function (enableUsePreferredClass) {
     var ambiguity = this.getAmbiguity();
+    enableUsePreferredClass = enableUsePreferredClass === undefined ? true : enableUsePreferredClass;
 
     for (var i = 0, len = this._selectorElements.length; i < len - 1; i++) {
         var selectorElement = this._selectorElements[i];
+        var isTypeOfClass = selectorElement.type === SelectorElement.TYPE.CLASS;
 
         if (!selectorElement.active) {
+            continue;
+        }
+
+        if (enableUsePreferredClass && this._opts.preferredClass && isTypeOfClass && this._opts.preferredClass.test(selectorElement.selector)) {
             continue;
         }
 
@@ -1295,19 +1315,26 @@ SelectorElementList.prototype.simplify = function () {
     }
 };
 
-SelectorElementList.prototype.simplifyClasses = function () {
+SelectorElementList.prototype.simplifyClasses = function (enableUsePreferredClass) {
+    enableUsePreferredClass = enableUsePreferredClass === undefined ? true : enableUsePreferredClass;
+
     for (var selectorElementIdx = 0, len = this._selectorElements.length; selectorElementIdx < len; selectorElementIdx++) {
         var selectorElement = this._selectorElements[selectorElementIdx];
 
         if (!selectorElement.active || selectorElement.type !== SelectorElement.TYPE.CLASS) {
             continue;
         }
+
         var originalSelector = selectorElement.rawSelector
         var classList = new ClassList(originalSelector)
 
         if (classList.length > 1) {
             for (var classIdx = classList.length - 1; classIdx >= 0; classIdx--) {
                 var classListElement = classList.get(classIdx)
+
+                if (enableUsePreferredClass && this._opts.preferredClass && this._opts.preferredClass.test(classListElement.className)) {
+                    continue;
+                }
 
                 classListElement.enabled = false
                 selectorElement.rawSelector = classList.getSelector()
@@ -1522,7 +1549,15 @@ SelectorElement._getNodeSelectorData = function (node, rawOptions) {
         });
 
         if (options.preferredClass && options.preferredClass.test(classNames)) {
-            classNames = classNames.match(options.preferredClass)[0];
+            var regex = new RegExp(options.preferredClass.source, 'g');
+            var match;
+            var matches = [];
+
+            while (match = regex.exec(classNames)) {
+                 matches.push(match[0]);
+            }
+
+            classNames = matches.join(' ');
         }
 
         classNames = classNames.trim();
