@@ -72,13 +72,6 @@ UniqueSelector.prototype.get = function (node) {
     return selectorElementList.getSelectorPath();
 };
 
-UniqueSelector.prototype._getAllUniquePaths = function (node) {
-    var sp = this._getParentSelectorPath(node);
-
-
-}
-
-
 UniqueSelector.prototype._getParentSelectorPath = function (node) {
     var selectorElementList = new SelectorElementList(this._opts);
 
