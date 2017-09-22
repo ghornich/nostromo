@@ -18,15 +18,16 @@ function SelectorElementList(options) {
 SelectorElementList.prototype.getSelectorPath = function () {
     return this._selectorElements
     .map(function (selectorElement) {
-        return selectorElement.selector;
+        return (selectorElement.selector || '');
     })
-    .filter(function (selector) {
-        return Boolean(selector);
-    })
-    .join(' ')
+    .join('>')
+    .replace(/>{2,}/g, ' ')
+    .replace(/^>|>$/, '')
+    .replace(/>/g, ' > ')
     .trim()
-    .replace(/ +/g, ' ');
 };
+
+SelectorElementList.prototype.toString = SelectorElementList.prototype.getSelectorPath;
 
 SelectorElementList.prototype.addElement = function (element) {
     this._selectorElements.unshift(element);
@@ -40,13 +41,19 @@ SelectorElementList.prototype.isUnique = function () {
     return this.getAmbiguity() === 1;
 };
 
-SelectorElementList.prototype.simplify = function () {
+SelectorElementList.prototype.simplify = function (enableUsePreferredClass) {
     var ambiguity = this.getAmbiguity();
+    enableUsePreferredClass = enableUsePreferredClass === undefined ? true : enableUsePreferredClass;
 
     for (var i = 0, len = this._selectorElements.length; i < len - 1; i++) {
         var selectorElement = this._selectorElements[i];
+        var isTypeOfClass = selectorElement.type === SelectorElement.TYPE.CLASS;
 
         if (!selectorElement.active) {
+            continue;
+        }
+
+        if (enableUsePreferredClass && this._opts.preferredClass && isTypeOfClass && this._opts.preferredClass.test(selectorElement.selector)) {
             continue;
         }
 
@@ -60,19 +67,26 @@ SelectorElementList.prototype.simplify = function () {
     }
 };
 
-SelectorElementList.prototype.simplifyClasses = function () {
+SelectorElementList.prototype.simplifyClasses = function (enableUsePreferredClass) {
+    enableUsePreferredClass = enableUsePreferredClass === undefined ? true : enableUsePreferredClass;
+
     for (var selectorElementIdx = 0, len = this._selectorElements.length; selectorElementIdx < len; selectorElementIdx++) {
         var selectorElement = this._selectorElements[selectorElementIdx];
 
         if (!selectorElement.active || selectorElement.type !== SelectorElement.TYPE.CLASS) {
             continue;
         }
+
         var originalSelector = selectorElement.rawSelector
         var classList = new ClassList(originalSelector)
 
         if (classList.length > 1) {
             for (var classIdx = classList.length - 1; classIdx >= 0; classIdx--) {
                 var classListElement = classList.get(classIdx)
+
+                if (enableUsePreferredClass && this._opts.preferredClass && this._opts.preferredClass.test(classListElement.className)) {
+                    continue;
+                }
 
                 classListElement.enabled = false
                 selectorElement.rawSelector = classList.getSelector()

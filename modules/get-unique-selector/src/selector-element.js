@@ -121,7 +121,7 @@ SelectorElement._getNodeSelectorData = function (node, rawOptions) {
     var options = rawOptions || {};
     options.ignoredClasses = options.ignoredClasses || [];
 
-    if (DOMUtils.hasId(node)) {
+    if (options.useIds && DOMUtils.hasId(node)) {
         return {
             selector: '#' + DOMUtils.getId(node),
             type: SelectorElement.TYPE.ID,
@@ -134,6 +134,18 @@ SelectorElement._getNodeSelectorData = function (node, rawOptions) {
         options.ignoredClasses.forEach(function (ignoredClass) {
             classNames = classNames.replace(ignoredClass, '');
         });
+
+        if (options.preferredClass && options.preferredClass.test(classNames)) {
+            var regex = new RegExp(options.preferredClass.source, 'g');
+            var match;
+            var matches = [];
+
+            while (match = regex.exec(classNames)) {
+                 matches.push(match[0]);
+            }
+
+            classNames = matches.join(' ');
+        }
 
         classNames = classNames.trim();
 

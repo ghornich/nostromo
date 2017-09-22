@@ -121,7 +121,7 @@ test('browser puppeteer messages', async t => {
                     resolve();
                 }
                 else {
-                    reject(new Error('"SetTransmitEventsMessage ON" test failure: unexpected selector'));
+                    reject(new Error(`"SetTransmitEventsMessage ON" test failure: unexpected selector: "${capturedEventMessage.event.selector}"`));
                 }
             });
         });

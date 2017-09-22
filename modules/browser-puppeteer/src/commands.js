@@ -4,7 +4,7 @@
  * Command type constants
  * @enum {String}
  */
-exports.COMMANDS = {
+exports = module.exports = {
     CLICK: 'click',
     SET_VALUE: 'setValue',
     GET_VALUE: 'getValue',

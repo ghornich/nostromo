@@ -6,8 +6,8 @@ var m = require('mithril');
 var Ws4ever = require('../../../../modules/ws4ever');
 
 var CommandList = require('../command-list');
-var COMMANDS = require('../../../../modules/browser-puppeteer/src/commands');
-var MESSAGES = require('../../../../modules/browser-puppeteer/src/messages');
+var COMMANDS = require('../../../../modules/browser-puppeteer').COMMANDS;
+var MESSAGES = require('../../../../modules/browser-puppeteer').MESSAGES;
 
 var EOL = '\n';
 
@@ -35,8 +35,8 @@ function RecorderApp(conf) {
     }
 
     self._conf = defaults({}, confObj, {
-        pressKeyFilter: function (command) {
-            return [13, 27].indexOf(command.keyCode) >= 0;
+        pressKeyFilter: function (data) {
+            return [13, 27].indexOf(data.command.keyCode) >= 0;
         },
         captureFilter: noop,
         outputFormatters: [],

@@ -22,15 +22,17 @@ window.BrowserPuppet = require('../src/puppet/browser-puppet.js');
  * Command type constants
  * @enum {String}
  */
-exports.COMMANDS = {
+exports = module.exports = {
     CLICK: 'click',
     SET_VALUE: 'setValue',
+    GET_VALUE: 'getValue',
     PRESS_KEY: 'pressKey',
     SCROLL: 'scroll',
     MOUSEOVER: 'mouseover',
     WAIT_FOR_VISIBLE: 'waitForVisible',
     WAIT_WHILE_VISIBLE: 'waitWhileVisible',
     FOCUS: 'focus',
+    IS_VISIBLE: 'isVisible',
     ASSERT: 'assert',
     COMPOSITE: 'composite',
     UPLOAD_FILE_AND_ASSIGN: 'uploadFileAndAssign',
@@ -131,24 +133,6 @@ exports.COMMANDS = {
 /**
  * @enum {String}
  */
-exports.COMMAND_TYPES = {
-    CLICK: 'click',
-    SET_VALUE: 'setValue',
-    GET_VALUE: 'getValue',
-    PRESS_KEY: 'pressKey',
-    WAIT_FOR_VISIBLE: 'waitForVisible',
-    WAIT_WHILE_VISIBLE: 'waitWhileVisible',
-    FOCUS: 'focus',
-    IS_VISIBLE: 'isVisible',
-    SCROLL: 'scroll',
-    COMPOSITE: 'composite',
-    MOUSEOVER: 'mouseover',
-    UPLOAD_FILE_AND_ASSIGN: 'uploadFileAndAssign',
-};
-
-/**
- * @enum {String}
- */
 exports.UPSTREAM = {
     // { type, selector, [warning] }
     SELECTOR_BECAME_VISIBLE: 'selector-became-visible',
@@ -203,7 +187,7 @@ exports.DOWNSTREAM = {
  * @property {String} event.type
  * @property {Number} event.$timestamp
  * @property {String} [event.selector]
- * @property {String} [event.$fullSelectorPath]
+ * @property {String} event.$fullSelectorPath
  * @property {Object} [event.target]
  */
 
@@ -609,7 +593,13 @@ function BrowserPuppet(opts) {
 
     this.$ = $;
 
-    this._uniqueSelector = new UniqueSelector();
+    // TODO remove hardcoded values
+    this._uniqueSelector = new UniqueSelector({
+        useIds: false,
+        preferredClass: /test--[^ ]+/,
+        useClosestParentWithPreferredClass: true,
+        preferredClassParentLimit: 6,
+    });
 
     this._selectorObserver = null;
 
@@ -1152,7 +1142,6 @@ DOMUtils.getClass = function (node) {
 },{}],9:[function(require,module,exports){
 'use strict';
 
-var defaults = require('lodash.defaults');
 var DOMUtils = require('./dom-utils');
 var SelectorElement = require('./selector-element');
 var SelectorElementList = require('./selector-element-list');
@@ -1160,18 +1149,54 @@ var SelectorElementList = require('./selector-element-list');
 exports = module.exports = UniqueSelector;
 
 function UniqueSelector(options) {
-    this._opts = defaults({}, options, {
+    this._opts = Object.assign({}, {
         querySelectorAll: document.querySelectorAll.bind(document),
         ignoredClasses: [],
-    });
+        useIds: true,
+        // regex
+        preferredClass: null,
+        useClosestParentWithPreferredClass: false,
+        preferredClassParentLimit: 0,
+    }, options);
+
+    if (this._opts.preferredClass && this._opts.preferredClass.global) {
+        throw new Error('Global flag not allowed for "preferredClass"');
+    }
 }
 
 UniqueSelector.prototype.get = function (node) {
-    if (DOMUtils.hasId(node)) {
-        return '#' + DOMUtils.getId(node);
+    var _node = node;
+
+    if (this._opts.useIds && DOMUtils.hasId(_node)) {
+        return '#' + DOMUtils.getId(_node);
     }
 
-    var selectorElementList = this._getFullSelectorElementList(node);
+    // traverse up until prefClass is found or max depth reached or body reached
+    if (this._opts.preferredClass && this._opts.useClosestParentWithPreferredClass) {
+        var currentNode = _node
+        var depth = 0;
+        var depthLimit = 1000;
+
+        while (currentNode && currentNode.tagName !== 'BODY') {
+            if (depth >= this._opts.preferredClassParentLimit) {
+                break;
+            }
+
+            if (depth >= depthLimit) {
+                throw new Error('Infinite loop error');
+            }
+
+            if (this._opts.preferredClass.test(currentNode.className)) {
+                _node = currentNode
+                break
+            }
+
+            currentNode = currentNode.parentNode
+            depth++;
+        }
+    }
+
+    var selectorElementList = this._getParentSelectorPath(_node);
 
     selectorElementList.simplify();
 
@@ -1179,13 +1204,18 @@ UniqueSelector.prototype.get = function (node) {
         selectorElementList.uniqueify();
     }
 
+    selectorElementList.simplifyClasses(false);
+
+    if (this._opts.preferredClass) {
+        // run simplify alg again, remove unnecessary preferred classes
+        selectorElementList.simplify(false);
+    }
+
     return selectorElementList.getSelectorPath();
 };
 
-UniqueSelector.prototype._getFullSelectorElementList = function (node) {
-    var selectorElementList = new SelectorElementList({
-        querySelectorAll: this._opts.querySelectorAll,
-    });
+UniqueSelector.prototype._getParentSelectorPath = function (node) {
+    var selectorElementList = new SelectorElementList(this._opts);
 
     var currentNode = node;
 
@@ -1194,7 +1224,7 @@ UniqueSelector.prototype._getFullSelectorElementList = function (node) {
 
         selectorElementList.addElement(selectorElement);
 
-        if (selectorElement.type === SelectorElement.TYPE.ID) {
+        if (this._opts.useIds && selectorElement.type === SelectorElement.TYPE.ID) {
             break;
         }
 
@@ -1205,13 +1235,14 @@ UniqueSelector.prototype._getFullSelectorElementList = function (node) {
 };
 
 UniqueSelector.prototype.getFullSelectorPath = function (node) {
-    return this._getFullSelectorElementList(node).getSelectorPath();
+    return this._getParentSelectorPath(node).getSelectorPath();
 };
 
-},{"./dom-utils":8,"./selector-element":11,"./selector-element-list":10,"lodash.defaults":24}],10:[function(require,module,exports){
+},{"./dom-utils":8,"./selector-element":11,"./selector-element-list":10}],10:[function(require,module,exports){
 'use strict';
 
 var defaults = require('lodash.defaults');
+var SelectorElement = require('./selector-element');
 
 exports = module.exports = SelectorElementList;
 
@@ -1228,15 +1259,16 @@ function SelectorElementList(options) {
 SelectorElementList.prototype.getSelectorPath = function () {
     return this._selectorElements
     .map(function (selectorElement) {
-        return selectorElement.selector;
+        return (selectorElement.selector || '');
     })
-    .filter(function (selector) {
-        return Boolean(selector);
-    })
-    .join(' ')
+    .join('>')
+    .replace(/>{2,}/g, ' ')
+    .replace(/^>|>$/, '')
+    .replace(/>/g, ' > ')
     .trim()
-    .replace(/ +/g, ' ');
 };
+
+SelectorElementList.prototype.toString = SelectorElementList.prototype.getSelectorPath;
 
 SelectorElementList.prototype.addElement = function (element) {
     this._selectorElements.unshift(element);
@@ -1250,13 +1282,19 @@ SelectorElementList.prototype.isUnique = function () {
     return this.getAmbiguity() === 1;
 };
 
-SelectorElementList.prototype.simplify = function () {
+SelectorElementList.prototype.simplify = function (enableUsePreferredClass) {
     var ambiguity = this.getAmbiguity();
+    enableUsePreferredClass = enableUsePreferredClass === undefined ? true : enableUsePreferredClass;
 
     for (var i = 0, len = this._selectorElements.length; i < len - 1; i++) {
         var selectorElement = this._selectorElements[i];
+        var isTypeOfClass = selectorElement.type === SelectorElement.TYPE.CLASS;
 
         if (!selectorElement.active) {
+            continue;
+        }
+
+        if (enableUsePreferredClass && this._opts.preferredClass && isTypeOfClass && this._opts.preferredClass.test(selectorElement.selector)) {
             continue;
         }
 
@@ -1267,36 +1305,72 @@ SelectorElementList.prototype.simplify = function () {
         if (ambiguity !== newAmbiguity) {
             selectorElement.active = true;
         }
-
-
-
     }
 };
 
-// TODO if selectorElement is type CLASS and >1 classnames: simplify classnames
+SelectorElementList.prototype.simplifyClasses = function (enableUsePreferredClass) {
+    enableUsePreferredClass = enableUsePreferredClass === undefined ? true : enableUsePreferredClass;
 
-// SelectorElementList.prototype.simplifyClasses = function () {
-//     for (var i = 0, len = this._selectorElements.length; i < len - 1; i++) {
-//         var selectorElement = this._selectorElements[i];
+    for (var selectorElementIdx = 0, len = this._selectorElements.length; selectorElementIdx < len; selectorElementIdx++) {
+        var selectorElement = this._selectorElements[selectorElementIdx];
 
-//         if (!selectorElement.active || selectorElement.type !== SelectorElement.TYPE.CLASS) {
-//             return;
-//         }
+        if (!selectorElement.active || selectorElement.type !== SelectorElement.TYPE.CLASS) {
+            continue;
+        }
 
-//         //     var originalSelector = selectorElement.rawSelector
-//         //     var classNames = originalSelector.split(/(?=\.)/g)
-//         //     var ignoredClassIdxs = []
+        var originalSelector = selectorElement.rawSelector
+        var classList = new ClassList(originalSelector)
 
-//         //     if (classNames.length > 1) {
-//         //         for (var classIdx = 0, classLen = classNames.length; classIdx < classLen; classIdx++) {
-//         //             var className = classNames[classIdx]
+        if (classList.length > 1) {
+            for (var classIdx = classList.length - 1; classIdx >= 0; classIdx--) {
+                var classListElement = classList.get(classIdx)
 
+                if (enableUsePreferredClass && this._opts.preferredClass && this._opts.preferredClass.test(classListElement.className)) {
+                    continue;
+                }
 
-//         //         }
-//         //     }
-//     }
+                classListElement.enabled = false
+                selectorElement.rawSelector = classList.getSelector()
 
-// };
+                if (selectorElement.rawSelector === '' || this.getAmbiguity() > 1) {
+                    classListElement.enabled = true
+                }
+            }
+
+            selectorElement.rawSelector = classList.getSelector()
+        }
+    }
+
+};
+
+function ClassList(classSelector){
+    this.classListElements = classSelector.split(/(?=\.)/g).map(function (className) {
+        return new ClassListElement(className)
+    })
+
+    Object.defineProperty(this, 'length', {
+        get: function () {return this.classListElements.length}
+    })
+}
+
+ClassList.prototype.get=function(i){
+    return this.classListElements[i]
+}
+
+ClassList.prototype.getSelector=function(){
+    return this.classListElements.map(function (cle){
+        return cle.enabled
+            ? cle.className
+            : null
+    })
+    .filter(function(s){return s})
+    .join('')
+}
+
+function ClassListElement(className) {
+    this.enabled = true;
+    this.className=className;
+}
 
 /**
  * add "nth-child"s from back until selector becomes unique
@@ -1329,7 +1403,7 @@ SelectorElementList.prototype.uniqueify = function () {
     }
 };
 
-},{"lodash.defaults":24}],11:[function(require,module,exports){
+},{"./selector-element":11,"lodash.defaults":24}],11:[function(require,module,exports){
 'use strict';
 
 var DOMUtils = require('./dom-utils');
@@ -1453,7 +1527,7 @@ SelectorElement._getNodeSelectorData = function (node, rawOptions) {
     var options = rawOptions || {};
     options.ignoredClasses = options.ignoredClasses || [];
 
-    if (DOMUtils.hasId(node)) {
+    if (options.useIds && DOMUtils.hasId(node)) {
         return {
             selector: '#' + DOMUtils.getId(node),
             type: SelectorElement.TYPE.ID,
@@ -1466,6 +1540,18 @@ SelectorElement._getNodeSelectorData = function (node, rawOptions) {
         options.ignoredClasses.forEach(function (ignoredClass) {
             classNames = classNames.replace(ignoredClass, '');
         });
+
+        if (options.preferredClass && options.preferredClass.test(classNames)) {
+            var regex = new RegExp(options.preferredClass.source, 'g');
+            var match;
+            var matches = [];
+
+            while (match = regex.exec(classNames)) {
+                 matches.push(match[0]);
+            }
+
+            classNames = matches.join(' ');
+        }
 
         classNames = classNames.trim();
 
@@ -1717,6 +1803,8 @@ exports = module.exports = SelectorObserver;
  * @param {String} conf.observeList
  */
 function SelectorObserver(conf) {
+    assert('MutationObserver' in window, 'MutationObserver not supported');
+
     assert(typeof conf === 'object', 'conf is not an object');
     assert(__isArray(conf.observeList), 'conf.observeList is not an array');
     // TODO observeList.selector's must be unique
@@ -1724,17 +1812,14 @@ function SelectorObserver(conf) {
     this._conf = conf;
 
     this._selectorPrevVisible = this._conf.observeList.map(function () {
-        return false;
+        return null;
     });
 
-    if ('MutationObserver' in window) {
-        this._mutationObserver = new window.MutationObserver(this._onMutation.bind(this));
-        this._mutationObserver.observe(document.body, { childList: true, subtree: true, attributeFilter: ['style', 'class'] });
-    }
-    else {
-        // TODO implement polling?
-        throw new Error('MutationObserver not supported');
-    }
+    // first run: determine starting states of observed selectors
+    this._onMutation();
+
+    this._mutationObserver = new window.MutationObserver(this._onMutation.bind(this));
+    this._mutationObserver.observe(document.body, { childList: true, subtree: true, attributeFilter: ['style', 'class'] });
 }
 
 SelectorObserver.prototype._onMutation = function () {
@@ -1747,7 +1832,7 @@ SelectorObserver.prototype._onMutation = function () {
         // console.log('[SelectorObserver] '+item.selector+(isVisible?' visible':' not visible'))
 
         try {
-            if (!prevIsVisible && isVisible) {
+            if (prevIsVisible !== null && !prevIsVisible && isVisible) {
                 item.listener();
             }
         }

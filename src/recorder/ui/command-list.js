@@ -1,6 +1,6 @@
 'use strict';
 
-var COMMANDS = require('../../../modules/browser-puppeteer/src/puppet/browser-puppet-commands.partial').COMMANDS;
+var COMMANDS = require('../../../modules/browser-puppeteer').COMMANDS;
 
 exports = module.exports = CommandList;
 
@@ -44,6 +44,9 @@ CommandList.prototype._compact = function () {
                     type: COMMANDS.COMPOSITE,
                     commands: [lastNewCmd, cmd],
                 };
+            }
+            else {
+                newCommands.push(cmd);
             }
         }
         else if (cmd.type === COMMANDS.SET_VALUE && lastNewCmd.type === COMMANDS.SET_VALUE && cmd.selector === lastNewCmd.selector) {
