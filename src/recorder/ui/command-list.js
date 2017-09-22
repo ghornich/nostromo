@@ -45,6 +45,9 @@ CommandList.prototype._compact = function () {
                     commands: [lastNewCmd, cmd],
                 };
             }
+            else {
+                newCommands.push(cmd);
+            }
         }
         else if (cmd.type === COMMANDS.SET_VALUE && lastNewCmd.type === COMMANDS.SET_VALUE && cmd.selector === lastNewCmd.selector) {
             newCommands[lastNewIdx] = cmd;
