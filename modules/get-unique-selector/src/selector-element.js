@@ -138,7 +138,15 @@ SelectorElement._getNodeSelectorData = function (node, rawOptions) {
         });
 
         if (options.preferredClass && options.preferredClass.test(classNames)) {
-            classNames = classNames.match(options.preferredClass)[0];
+            var regex = new RegExp(options.preferredClass.source, 'g');
+            var match;
+            var matches = [];
+
+            while (match = regex.exec(classNames)) {
+                 matches.push(match[0]);
+            }
+
+            classNames = matches.join(' ');
         }
 
         classNames = classNames.trim();

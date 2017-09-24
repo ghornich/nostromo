@@ -46,7 +46,7 @@ function BrowserPuppet(opts) {
         useIds: false,
         preferredClass: /test--[^ ]+/,
         useClosestParentWithPreferredClass: true,
-        preferredClassParentLimit: 3,
+        preferredClassParentLimit: 6,
     });
 
     this._selectorObserver = null;
