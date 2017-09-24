@@ -7,6 +7,19 @@ var SelectorElementList = require('./selector-element-list');
 
 exports = module.exports = UniqueSelector;
 
+/**
+ * @typedef {Object} GetUniqueSelectorOptions
+ * @property {Function} [querySelectorAll]
+ * @property {Array<String>} [ignoredClasses] - ignored class names (without leading '.')
+ * @property {Boolean} [useIds = true]
+ * @property {RegExp} [preferredClass] - e.g. /test--[^ ]+/
+ * @property {Boolean} [useClosestParentWithPreferredClass = false]
+ * @property {Number} [preferredClassParentLimit = 0]
+ */
+
+/**
+ * @param {GetUniqueSelectorOptions} options
+ */
 function UniqueSelector(options) {
     this._opts = defaults({}, options, {
         querySelectorAll: document.querySelectorAll.bind(document),
