@@ -132,7 +132,9 @@ SelectorElement._getNodeSelectorData = function (node, rawOptions) {
         var classNames = DOMUtils.getClass(node);
 
         options.ignoredClasses.forEach(function (ignoredClass) {
-            classNames = classNames.replace(ignoredClass, '');
+            var replaceRegex = new RegExp('\\b' + ignoredClass + '\\b', 'i');
+
+            classNames = classNames.replace(replaceRegex, '');
         });
 
         if (options.preferredClass && options.preferredClass.test(classNames)) {
