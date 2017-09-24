@@ -10,6 +10,10 @@ mutation observer autotest: show dialog & focus on it
 document capturedEvent with $fullSelectorPath, $timestamp, etc
 nth: use rfr in tests
 change test ports (recorderApp, puppeteer)
+find browser path automatically
+throw a big fat error if browser executable wasn't found
+assert downloaded files?
+vector-based assertion?
 
 BUGS:
 recorderApp doesn't redraw

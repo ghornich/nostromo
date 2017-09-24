@@ -59,7 +59,9 @@ exports = module.exports = RecorderServer;
  * @property {String} [selectedOutputFormatter] - Selected output formatter name
  *
  * @property {Array<String>} [mouseoverSelectors] - Detect mouseover events only for these selectors
- * @property {Array<String>} [ignoredClasses] - Ignored classnames
+ *
+ * @property {Array<String>} [ignoredClasses] - DEPRECATED (use getUniqueSelectorOptions) Ignored classnames
+ * @property {GetUniqueSelectorOptions} [getUniqueSelectorOptions]
  *
  * @property {Array<String>|null} [compositeEvents = ['click', 'focus']] - subsequent events of specified types will be combined into a single composite event
  * @property {Number} [compositeEventsThreshold = 200] - composite events grouping threshold
@@ -78,7 +80,10 @@ function RecorderServer(conf) {
         recorderAppPort: DEFAULT_RECORDER_APP_PORT,
         onSelectorBecameVisible: [],
         mouseoverSelectors: [],
-        ignoredClasses: [],
+        // deprecated
+        // ignoredClasses: [],
+        // TODO implement this
+        getUniqueSelectorOptions: {},
         compositeEvents: ['click', 'focus'],
         compositeEventsThreshold: 200,
         compositeEventsComparator: defaultCompositeEventsComparator,
@@ -123,6 +128,9 @@ RecorderServer.prototype.start = async function () {
 
     this._puppeteer.on('puppetConnected', async () => {
         try {
+
+            // TODO create & use setPuppetSettings?
+
             await this._puppeteer.setTransmitEvents(true);
 
             const selectors = (this._conf.onSelectorBecameVisible).map(data => data.selector);
