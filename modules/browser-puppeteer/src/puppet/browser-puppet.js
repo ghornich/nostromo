@@ -535,17 +535,47 @@ BrowserPuppet.prototype.setScreenshotMarkerState = function (state) {
 };
 
 function getTargetNodeDTO(target) {
-    return {
+    var dto = {
         className: target.className,
         id: target.id,
         innerText: target.innerText,
         tagName: target.tagName,
         type: target.type,
     };
+
+    var attributes = target.attributes;
+
+    __each(target.attributes, function (attr) {
+        if (attr.name.indexOf('data-') === 0) {
+            dto[attr.name] = attr.value;
+        }
+    })
+
+    if (target.tagName === 'input' && target.type === 'file' && target.files.length > 0) {
+        dto.$fileNames = __map(target.files, function (file) { return file.name });
+    }
+
+    return dto;
 }
 
 function assert(v, m) {
     if (!v) {
         throw new Error(m);
+    }
+}
+
+function __map(arrayLike, iteratee) {
+    var result=[]
+
+    for (var i=0;i<arrayLike.length;i++){
+        result.push(iteratee(arrayLike[i], i, arrayLike))
+    }
+
+    return result;
+}
+
+function __each(arrayLike, iteratee) {
+    for (var i=0;i<arrayLike.length;i++){
+        iteratee(arrayLike[i], i, arrayLike)
     }
 }
