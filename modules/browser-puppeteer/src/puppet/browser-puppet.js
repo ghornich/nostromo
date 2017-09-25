@@ -551,7 +551,7 @@ function getTargetNodeDTO(target) {
         }
     })
 
-    if (target.tagName === 'input' && target.type === 'file' && target.files.length > 0) {
+    if (target.tagName === 'INPUT' && target.type === 'file') {
         dto.$fileNames = __map(target.files, function (file) { return file.name });
     }
 
