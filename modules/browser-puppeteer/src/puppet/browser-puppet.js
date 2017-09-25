@@ -41,18 +41,10 @@ function BrowserPuppet(opts) {
 
     this.$ = $;
 
-    // TODO remove hardcoded values
-    this._uniqueSelector = new UniqueSelector({
-        useIds: false,
-        preferredClass: /test--[^ ]+/,
-        useClosestParentWithPreferredClass: true,
-        preferredClassParentLimit: 6,
-    });
+    this._uniqueSelector = new UniqueSelector();
 
     this._selectorObserver = null;
-
     this._mouseoverSelector = null;
-
     this._activeElementBeforeWindowBlur = null;
 
     this._log = new Loggr({
@@ -167,6 +159,10 @@ BrowserPuppet.prototype._onMessage = function (rawData) {
             case MESSAGES.DOWNSTREAM.SET_IGNORED_CLASSES:
                 // TODO ugly
                 self._uniqueSelector._opts.ignoredClasses = data.classes;
+                return;
+
+            case MESSAGES.DOWNSTREAM.SET_GET_UNIQUE_SELECTOR_OPTIONS:
+                self._uniqueSelector = new UniqueSelector(data.options);
                 return;
 
             case MESSAGES.DOWNSTREAM.TERMINATE_PUPPET:

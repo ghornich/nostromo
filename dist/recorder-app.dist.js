@@ -156,6 +156,7 @@ exports.DOWNSTREAM = {
     CLEAR_PERSISTENT_DATA: 'clear-persistent-data',
     SET_MOUSEOVER_SELECTORS: 'set-mouseover-selectors',
     SET_IGNORED_CLASSES: 'set-ignored-classes',
+    SET_GET_UNIQUE_SELECTOR_OPTIONS: 'set-get-unique-selector-options',
 };
 
 /**
@@ -264,6 +265,12 @@ exports.DOWNSTREAM = {
  * @property {Array<String>} classes
  */
 
+/**
+ * @typedef {DownstreamControlMessage} SetGetUniqueSelectorOptionsMessage
+ * @property {String} type - 'set-get-unique-selector-options'
+ * @property {GetUniqueSelectorOptions} options
+ */
+
 },{}],4:[function(require,module,exports){
 (function (Buffer){
 exports.width = 4;
@@ -289,7 +296,7 @@ var JSONF = exports;
 
 JSONF.stringify = function (o) {
     return JSON.stringify(o, function (key, val) {
-        if (typeof val === 'function') {
+        if (typeof val === 'function' || val instanceof RegExp) {
             return val.toString();
         }
 
@@ -299,21 +306,19 @@ JSONF.stringify = function (o) {
 
 JSONF.parse = function (s) {
     return JSON.parse(s, function (key, val) {
-        if (isStringAFunction(val)) {
-            try {
-                // eslint-disable-next-line no-new-func
-                return new Function(
-                    // http://www.kristofdegrave.be/2012/07/json-serialize-and-deserialize.html
-                    val.match(/\(([^)]*)\)/)[1],
-                    val.match(/\{([\s\S]*)\}/)[1]
-                );
+        try {
+            if (isStringAFunction(val)) {
+                return parseFunction(val);
             }
-            catch (e) {
-                // TODO throw a big fat error?
-                console.log('JSONF err: ' + val);
-                console.error(e);
-                return val;
+
+            if (isStringARegExp(val)) {
+                return parseRegExp(val);
             }
+        }
+        catch (e) {
+            // TODO throw a big fat error?
+            console.error('JSONF error', val, e);
+            return val;
         }
 
         return val;
@@ -323,6 +328,25 @@ JSONF.parse = function (s) {
 function isStringAFunction(s) {
     return /^function\s*\(/.test(s) ||
         /^function\s+[a-zA-Z0-9_$]+\s*\(/.test(s);
+}
+
+function isStringARegExp(s) {
+    return /^\/.+\/[gimuy]*$/.test(s);
+}
+
+function parseFunction(s) {
+    // eslint-disable-next-line no-new-func
+    return new Function(
+        // http://www.kristofdegrave.be/2012/07/json-serialize-and-deserialize.html
+        s.match(/\(([^)]*)\)/)[1],
+        s.match(/\{([\s\S]*)\}/)[1]
+    );
+}
+
+function parseRegExp(s) {
+    var matches = /\/(.+)\/([gimuy]*)/.exec(s);
+
+    return new RegExp(matches[1], matches[2]);
 }
 
 },{}],6:[function(require,module,exports){

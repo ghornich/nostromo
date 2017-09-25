@@ -249,7 +249,7 @@ test('browser puppeteer messages', async t => {
             return browserPuppet._uniqueSelector.get(document.querySelector('.ignored-class'));
         });
 
-        t.equal(afterIgnoreClassesUniqueSelector, '#ignoredClassTest span:nth-child(2)', 'after setting ignored class');
+        t.equal(afterIgnoreClassesUniqueSelector, '#ignoredClassTest > span:nth-child(2)', 'after setting ignored class');
 
         // UPSTREAM
 
