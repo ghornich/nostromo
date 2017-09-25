@@ -81,9 +81,8 @@ function RecorderServer(conf) {
         onSelectorBecameVisible: [],
         mouseoverSelectors: [],
         // deprecated
-        // ignoredClasses: [],
-        // TODO implement this
-        getUniqueSelectorOptions: {},
+        ignoredClasses: [],
+        getUniqueSelectorOptions: null,
         compositeEvents: ['click', 'focus'],
         compositeEventsThreshold: 200,
         compositeEventsComparator: defaultCompositeEventsComparator,
@@ -150,6 +149,13 @@ RecorderServer.prototype.start = async function () {
                 await this._puppeteer.sendMessage({
                     type: MESSAGES.DOWNSTREAM.SET_IGNORED_CLASSES,
                     classes: this._conf.ignoredClasses,
+                });
+            }
+
+            if (this._conf.getUniqueSelectorOptions) {
+                await this._puppeteer.sendMessage({
+                    type: MESSAGES.DOWNSTREAM.SET_GET_UNIQUE_SELECTOR_OPTIONS,
+                    options: this._conf.getUniqueSelectorOptions,
                 });
             }
         }
