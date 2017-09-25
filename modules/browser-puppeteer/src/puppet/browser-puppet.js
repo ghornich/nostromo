@@ -169,6 +169,10 @@ BrowserPuppet.prototype._onMessage = function (rawData) {
                 self._uniqueSelector._opts.ignoredClasses = data.classes;
                 return;
 
+            case MESSAGES.DOWNSTREAM.SET_GET_UNIQUE_SELECTOR_OPTIONS:
+                self._uniqueSelector = new UniqueSelector(data.options);
+                return;
+
             case MESSAGES.DOWNSTREAM.TERMINATE_PUPPET:
                 self._isTerminating = true;
                 return;

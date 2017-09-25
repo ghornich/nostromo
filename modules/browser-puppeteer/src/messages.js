@@ -28,6 +28,7 @@ exports.DOWNSTREAM = {
     CLEAR_PERSISTENT_DATA: 'clear-persistent-data',
     SET_MOUSEOVER_SELECTORS: 'set-mouseover-selectors',
     SET_IGNORED_CLASSES: 'set-ignored-classes',
+    SET_GET_UNIQUE_SELECTOR_OPTIONS: 'set-get-unique-selector-options',
 };
 
 /**
@@ -134,4 +135,10 @@ exports.DOWNSTREAM = {
  * @typedef {DownstreamControlMessage} SetIgnoredClassesMessage
  * @property {String} type - 'set-ignored-classes'
  * @property {Array<String>} classes
+ */
+
+/**
+ * @typedef {DownstreamControlMessage} SetGetUniqueSelectorOptionsMessage
+ * @property {String} type - 'set-get-unique-selector-options'
+ * @property {GetUniqueSelectorOptions} options
  */
