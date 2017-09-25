@@ -33,6 +33,19 @@ var SelectorElementList = require('./selector-element-list');
 
 exports = module.exports = UniqueSelector;
 
+/**
+ * @typedef {Object} GetUniqueSelectorOptions
+ * @property {Function} [querySelectorAll]
+ * @property {Array<String>} [ignoredClasses] - ignored class names (without leading '.')
+ * @property {Boolean} [useIds = true]
+ * @property {RegExp} [preferredClass] - e.g. /test--[^ ]+/
+ * @property {Boolean} [useClosestParentWithPreferredClass = false]
+ * @property {Number} [preferredClassParentLimit = 0]
+ */
+
+/**
+ * @param {GetUniqueSelectorOptions} options
+ */
 function UniqueSelector(options) {
     this._opts = Object.assign({}, {
         querySelectorAll: document.querySelectorAll.bind(document),
@@ -423,7 +436,9 @@ SelectorElement._getNodeSelectorData = function (node, rawOptions) {
         var classNames = DOMUtils.getClass(node);
 
         options.ignoredClasses.forEach(function (ignoredClass) {
-            classNames = classNames.replace(ignoredClass, '');
+            var replaceRegex = new RegExp('\\b' + ignoredClass + '\\b', 'i');
+
+            classNames = classNames.replace(replaceRegex, '');
         });
 
         if (options.preferredClass && options.preferredClass.test(classNames)) {

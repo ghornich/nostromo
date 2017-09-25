@@ -1098,13 +1098,27 @@ BrowserPuppet.prototype.setScreenshotMarkerState = function (state) {
 };
 
 function getTargetNodeDTO(target) {
-    return {
+    var dto = {
         className: target.className,
         id: target.id,
         innerText: target.innerText,
         tagName: target.tagName,
         type: target.type,
     };
+
+    var attributes = target.attributes;
+
+    __each(target.attributes, function (attr) {
+        if (attr.name.indexOf('data-') === 0) {
+            dto[attr.name] = attr.value;
+        }
+    })
+
+    if (target.tagName === 'INPUT' && target.type === 'file') {
+        dto.$fileNames = __map(target.files, function (file) { return file.name });
+    }
+
+    return dto;
 }
 
 function assert(v, m) {
@@ -1113,6 +1127,21 @@ function assert(v, m) {
     }
 }
 
+function __map(arrayLike, iteratee) {
+    var result=[]
+
+    for (var i=0;i<arrayLike.length;i++){
+        result.push(iteratee(arrayLike[i], i, arrayLike))
+    }
+
+    return result;
+}
+
+function __each(arrayLike, iteratee) {
+    for (var i=0;i<arrayLike.length;i++){
+        iteratee(arrayLike[i], i, arrayLike)
+    }
+}
 },{"../../../../modules/get-unique-selector":9,"../../../../modules/jsonf":12,"../../../../modules/loggr":13,"../../../../modules/selector-observer":15,"../../../../modules/ws4ever":16,"../messages":4,"../screenshot-marker":7,"./browser-puppet-commands.partial":5,"bluebird":19,"jquery":22,"lodash.debounce":23,"lodash.defaults":24,"object-assign":26}],7:[function(require,module,exports){
 (function (Buffer){
 exports.width = 4;
@@ -1159,6 +1188,19 @@ var SelectorElementList = require('./selector-element-list');
 
 exports = module.exports = UniqueSelector;
 
+/**
+ * @typedef {Object} GetUniqueSelectorOptions
+ * @property {Function} [querySelectorAll]
+ * @property {Array<String>} [ignoredClasses] - ignored class names (without leading '.')
+ * @property {Boolean} [useIds = true]
+ * @property {RegExp} [preferredClass] - e.g. /test--[^ ]+/
+ * @property {Boolean} [useClosestParentWithPreferredClass = false]
+ * @property {Number} [preferredClassParentLimit = 0]
+ */
+
+/**
+ * @param {GetUniqueSelectorOptions} options
+ */
 function UniqueSelector(options) {
     this._opts = Object.assign({}, {
         querySelectorAll: document.querySelectorAll.bind(document),
@@ -1549,7 +1591,9 @@ SelectorElement._getNodeSelectorData = function (node, rawOptions) {
         var classNames = DOMUtils.getClass(node);
 
         options.ignoredClasses.forEach(function (ignoredClass) {
-            classNames = classNames.replace(ignoredClass, '');
+            var replaceRegex = new RegExp('\\b' + ignoredClass + '\\b', 'i');
+
+            classNames = classNames.replace(replaceRegex, '');
         });
 
         if (options.preferredClass && options.preferredClass.test(classNames)) {
