@@ -40,7 +40,7 @@ exports = module.exports = RecorderServer;
  * @typedef {Object} OutputFormatter
  * @property {String} name - Display name
  * @property {String} [filename = RecorderApp.DEFAULT_OUTPUT_FILENAME]
- * @property {Function} fn - Formatter function, argument: Array<Commmand>, return: String
+ * @property {Function} fn - Formatter function, argument: Array&lt;Command&gt;, return: String
  */
 
 /**
