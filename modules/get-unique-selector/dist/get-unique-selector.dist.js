@@ -47,6 +47,7 @@ exports = module.exports = UniqueSelector;
  * @param {GetUniqueSelectorOptions} options
  */
 function UniqueSelector(options) {
+    // TODO test all options
     this._opts = Object.assign({}, {
         querySelectorAll: document.querySelectorAll.bind(document),
         ignoredClasses: [],
