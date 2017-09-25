@@ -1,11 +1,11 @@
 const test = require('tape');
 const JSONF = require('../jsonf');
 
-test(t => {
+test('JSONF test', t => {
 
     /* eslint-disable */
 
-	var testObject = {
+	const testObject = {
 		a:[1,2,3, function (a,b) {
 			/*          */
 			return a*b
@@ -20,7 +20,11 @@ test(t => {
 		e: function (x) {
 			return x + '\r\n';
 		},
-		f: function(){}
+		f: function(){},
+		g: {
+			regex1: /^[a-z]+ latenc(y|ies)$/gi,
+			regex2: /[a-z]*\\\/\..+?/
+		}
 	};
 
 	/* eslint-enable */
@@ -32,7 +36,8 @@ test(t => {
 "b":"function (a){return a*a/*\\n\\n\\n\\t\\t*/}",\
 "c":{"d":5},\
 "e":"function (x) {\\n\\t\\t\\treturn x + \'\\\\r\\\\n\';\\n\\t\\t}",\
-"f":"function (){}"}';
+"f":"function (){}",\
+"g":{"regex1":"/^[a-z]+ latenc(y|ies)$/gi","regex2":"/[a-z]*\\\\\\\\\\\\/\\\\..+?/"}}';
 
     t.equal(stringified, expectedStringified);
 
