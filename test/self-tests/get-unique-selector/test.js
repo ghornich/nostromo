@@ -1,5 +1,7 @@
 'use strict';
 
+// TODO test using node-dom instead of nostromo
+
 exports = module.exports = function (test) {
     test('get-unique-selector', async t => {
         const results = await t.execFunction(function () {
@@ -17,9 +19,9 @@ exports = module.exports = function (test) {
             'li:nth-child(2)',
             '#li3',
             '.class2',
-            '.class1 .class1',
+            '.class1 > .class1',
             'input[name="user"]',
-            'span a',
+            'span > a',
         ]);
     });
 
@@ -38,10 +40,10 @@ exports = module.exports = function (test) {
         t.equal(results, [
             'li:nth-child(2)',
             '#li3',
-            'li span',
-            'div div:nth-child(2)',
+            'li > span',
+            'div > div:nth-child(2)',
             'input[name="user"]',
-            'span a',
+            'span > a',
         ]);
 
     });
