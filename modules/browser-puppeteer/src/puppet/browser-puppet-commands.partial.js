@@ -30,7 +30,7 @@ function BrowserPuppetCommands() {
  */
 BrowserPuppetCommands.prototype.scroll = function (cmd) {
     var $el = this.$(cmd.selector);
-    this._assert$el($el, COMMANDS.SCROLL);
+    this._assert$el($el, cmd);
     $el[0].scrollTop = cmd.scrollTop;
 };
 
@@ -42,7 +42,7 @@ BrowserPuppetCommands.prototype.mouseover = function (cmd) {
     this._log.trace('BrowserPuppetCommands::mouseover: ' + JSON.stringify(cmd));
 
     var $el = this.$(cmd.selector);
-    this._assert$el($el, COMMANDS.MOUSEOVER);
+    this._assert$el($el, cmd);
 
     var mouseoverEvent = new Event('mouseover');
     $el[0].dispatchEvent(mouseoverEvent);
@@ -150,7 +150,7 @@ BrowserPuppetCommands.prototype.waitWhileVisible = function (cmd) {
  */
 BrowserPuppetCommands.prototype.click = function (cmd) {
     var $el = this.$(cmd.selector);
-    this._assert$el($el, COMMANDS.CLICK);
+    this._assert$el($el, cmd);
 
     // TODO use dispatchEvent?
     $el[0].click();
@@ -168,7 +168,7 @@ BrowserPuppetCommands.prototype.pressKey = function (cmd) {
     var keyCodeNum = Number(cmd.keyCode);
 
     assert(Number.isFinite(keyCodeNum), 'BrowserPuppetCommands::pressKey: keyCode is not a number');
-    this._assert$el($el, COMMANDS.PRESS_KEY);
+    this._assert$el($el, cmd);
 
     var keydownEvent = new Event('keydown', { bubbles: true });
 
@@ -188,7 +188,7 @@ BrowserPuppetCommands.prototype.setValue = function (cmd) {
     var el = $el[0];
     var tagName = el && el.tagName || '';
 
-    this._assert$el($el, COMMANDS.SET_VALUE);
+    this._assert$el($el, cmd);
 
     if (tagName !== 'INPUT' && tagName !== 'TEXTAREA') {
         throw new Error('Unable to set value of "' + cmd.selector + '": unsupported tag "' + tagName + '"');
@@ -206,7 +206,7 @@ BrowserPuppetCommands.prototype.setValue = function (cmd) {
  */
 BrowserPuppetCommands.prototype.focus = function (cmd) {
     var $el = this.$(cmd.selector);
-    this._assert$el($el, COMMANDS.FOCUS);
+    this._assert$el($el, cmd);
     $el[0].focus();
 };
 
@@ -219,7 +219,7 @@ BrowserPuppetCommands.prototype.getValue = function (cmd) {
     var $el = this.$(cmd.selector);
     var el = $el[0];
 
-    this._assert$el($el, COMMANDS.GET_VALUE);
+    this._assert$el($el, cmd);
 
     // TODO util fn to get node value
 
@@ -256,17 +256,17 @@ BrowserPuppetCommands.prototype.uploadFileAndAssign = function (cmd) {
     lodashSet(window, cmd.destinationVariable, base64ToFile(cmd.fileData));
 };
 
-BrowserPuppetCommands.prototype._assert$el = function ($el, commandName) {
+BrowserPuppetCommands.prototype._assert$el = function ($el, cmd) {
     if ($el.length === 0) {
-        throw new Error(commandName + ': selector not found: "' + $el.selector + '"');
+        throw new Error(cmd.type + ': selector not found: "' + cmd.selector + '"');
     }
 
     if ($el.length > 1) {
-        throw new Error(commandName + ': selector not unique: "' + $el.selector + '"');
+        throw new Error(cmd.type + ': selector not unique: "' + cmd.selector + '"');
     }
 
     if (!this._isJQueryElementsVisible($el)) {
-        throw new Error(commandName + ': selector not visible: "' + $el.selector + '"');
+        throw new Error(cmd.type + ': selector not visible: "' + cmd.selector + '"');
     }
 };
 
