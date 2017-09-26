@@ -154,7 +154,7 @@ RecorderServer.prototype.start = async function () {
 
             if (this._conf.uniqueSelectorOptions) {
                 await this._puppeteer.sendMessage({
-                    type: MESSAGES.DOWNSTREAM.SET_GET_UNIQUE_SELECTOR_OPTIONS,
+                    type: MESSAGES.DOWNSTREAM.SET_UNIQUE_SELECTOR_OPTIONS,
                     options: this._conf.uniqueSelectorOptions,
                 });
             }
