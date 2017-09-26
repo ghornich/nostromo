@@ -80,8 +80,19 @@ const IMG_THRESHOLD = 20 * PPM;
 exports = module.exports = Testrunner;
 
 /**
- * @callback BeforeAfterTestCallback
- * @param {Object} t - test assert API (without before/after side effects, "directAPI")
+ * test assert API (without before/after side effects, "directAPI"), TODO define
+ * @typedef {Object} TestAssertAPIDirect
+ */
+
+/**
+ * @callback BeforeAfterCommandCallback
+ * @param {TestAssertAPIDirect} t
+ * @param {Command} command - command before/after this callback
+ */
+
+/**
+ * @callback AfterLastCommandCallback
+ * @param {TestAssertAPIDirect} t
  */
 
 /**
@@ -91,10 +102,11 @@ exports = module.exports = Testrunner;
  * @property {Array<String>} testFiles - relative/absolute paths and/or globs
  * @property {Function} [beforeSuite]
  * @property {Function} [afterSuite]
- * @property {BeforeAfterTestCallback} [beforeTest]
- * @property {BeforeAfterTestCallback} [afterTest]
- * @property {Function} [beforeCommand]
- * @property {Function} [afterCommand]
+ * @property {Function} [beforeTest]
+ * @property {Function} [afterTest]
+ * @property {BeforeAfterCommandCallback} [beforeCommand]
+ * @property {BeforeAfterCommandCallback} [afterCommand]
+ * @property {AfterLastCommandCallback} [afterLastCommand]
  */
 
 /**
@@ -107,10 +119,11 @@ exports = module.exports = Testrunner;
  * @property {String} [referenceScreenshotDir = 'referenceScreenshots']
  * @property {Function} [defaultBeforeSuite]
  * @property {Function} [defaultAfterSuite]
- * @property {BeforeAfterTestCallback} [defaultBeforeTest]
- * @property {BeforeAfterTestCallback} [defaultAfterTest]
- * @property {Function} [defaultBeforeCommand]
- * @property {Function} [defaultAfterCommand]
+ * @property {Function} [defaultBeforeTest]
+ * @property {Function} [defaultAfterTest]
+ * @property {BeforeAfterCommandCallback} [defaultBeforeCommand]
+ * @property {BeforeAfterCommandCallback} [defaultAfterCommand]
+ * @property {AfterLastCommandCallback} [defaultAfterLastCommand]
  * @property {Array<BrowserSpawner>} browsers - see example run config file
  * @property {Array<Suite>} suites
  */
@@ -469,6 +482,9 @@ Testrunner.prototype._runTestFile = async function (testFilePath, data) {
     const currentBeforeTest = suite.beforeTest || conf.defaultBeforeTest;
     const currentAfterTest = suite.afterTest || conf.defaultAfterTest;
 
+    // TODO test
+    const currentAfterLastCommand = suite.afterLastCommand || conf.defaultAfterLastCommand || noop;
+
     for (const testData of testDatas) {
         this._log.debug(`running test: ${testData.name}`);
 
@@ -494,20 +510,18 @@ Testrunner.prototype._runTestFile = async function (testFilePath, data) {
             }
 
             await maybeTestPromise;
+
+            this._log.debug('running afterLastCommand');
+            await currentAfterLastCommand(this.directAPI);
+            this._log.debug('completed afterLastCommand');
         }
         catch (err) {
             process.exitCode = 1;
             maybeTestError = err;
         }
 
-        // TODO enabling this if() will break the tests, browserpuppet isn't closed after this test
-        // delete this or use terminatePuppet()
-
-        // if (testIndex < testDatas.length - 1) {
         await this._browserPuppeteer.clearPersistentData();
         await this._browserPuppeteer.terminatePuppet();
-        // browser.open('');
-        // }
 
         if (currentAfterTest) {
             this._log.debug('running afterTest');

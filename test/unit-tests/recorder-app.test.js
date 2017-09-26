@@ -57,15 +57,15 @@ test('recorder-app: composite events: defaults', async t=>{
         bounds: { size: { width: 1024, height: 750 }, position: { x: 5, y: 5 } },
     })
 
-    await recorderServer.start()
-    await browser.start()
+    // await recorderServer.start()
+    // await browser.start()
 
-    browser.open('http://localhost:7700')
+    // browser.open('http://localhost:7700')
 
-    await new Promise(r=>setTimeout(r,10000))
+    // await new Promise(r=>setTimeout(r,10000))
 
-    await browser.stop()
-    recorderServer.stop()
+    // await browser.stop()
+    // recorderServer.stop()
 
     // TODO finish test
 

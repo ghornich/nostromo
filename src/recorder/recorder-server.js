@@ -60,8 +60,8 @@ exports = module.exports = RecorderServer;
  *
  * @property {Array<String>} [mouseoverSelectors] - Detect mouseover events only for these selectors
  *
- * @property {Array<String>} [ignoredClasses] - DEPRECATED (use getUniqueSelectorOptions) Ignored classnames
- * @property {GetUniqueSelectorOptions} [getUniqueSelectorOptions]
+ * @property {Array<String>} [ignoredClasses] - DEPRECATED (use uniqueSelectorOptions) Ignored classnames
+ * @property {UniqueSelectorOptions} [uniqueSelectorOptions]
  *
  * @property {Array<String>|null} [compositeEvents = ['click', 'focus']] - subsequent events of specified types will be combined into a single composite event
  * @property {Number} [compositeEventsThreshold = 200] - composite events grouping threshold
@@ -82,7 +82,7 @@ function RecorderServer(conf) {
         mouseoverSelectors: [],
         // deprecated
         ignoredClasses: [],
-        getUniqueSelectorOptions: null,
+        uniqueSelectorOptions: null,
         compositeEvents: ['click', 'focus'],
         compositeEventsThreshold: 200,
         compositeEventsComparator: defaultCompositeEventsComparator,
@@ -152,10 +152,10 @@ RecorderServer.prototype.start = async function () {
                 });
             }
 
-            if (this._conf.getUniqueSelectorOptions) {
+            if (this._conf.uniqueSelectorOptions) {
                 await this._puppeteer.sendMessage({
                     type: MESSAGES.DOWNSTREAM.SET_GET_UNIQUE_SELECTOR_OPTIONS,
-                    options: this._conf.getUniqueSelectorOptions,
+                    options: this._conf.uniqueSelectorOptions,
                 });
             }
         }

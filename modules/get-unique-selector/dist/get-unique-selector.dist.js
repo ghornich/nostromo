@@ -34,7 +34,7 @@ var SelectorElementList = require('./selector-element-list');
 exports = module.exports = UniqueSelector;
 
 /**
- * @typedef {Object} GetUniqueSelectorOptions
+ * @typedef {Object} UniqueSelectorOptions
  * @property {Function} [querySelectorAll]
  * @property {Array<String>} [ignoredClasses] - ignored class names (without leading '.')
  * @property {Boolean} [useIds = true]
@@ -44,7 +44,7 @@ exports = module.exports = UniqueSelector;
  */
 
 /**
- * @param {GetUniqueSelectorOptions} options
+ * @param {UniqueSelectorOptions} options
  */
 function UniqueSelector(options) {
     // TODO test all options
@@ -437,9 +437,9 @@ SelectorElement._getNodeSelectorData = function (node, rawOptions) {
         var classNames = DOMUtils.getClass(node);
 
         options.ignoredClasses.forEach(function (ignoredClass) {
-            var replaceRegex = new RegExp('\\b' + ignoredClass + '\\b', 'i');
+            var replaceRegex = new RegExp('(^|\\s+)' + ignoredClass + '($|\\s+)', 'i');
 
-            classNames = classNames.replace(replaceRegex, '');
+            classNames = classNames.replace(replaceRegex, ' ');
         });
 
         if (options.preferredClass && options.preferredClass.test(classNames)) {

@@ -44,11 +44,11 @@ exports = module.exports = function (config) {
             '#add-dialog .close-button'
         ],
 
-        getUniqueSelectorOptions: {
+        uniqueSelectorOptions: {
             ignoredClasses: [
-                'icon-prev',
-                'icon-next',
-                'entity-info'
+                'class1',
+                'class2'
+                // ...
             ],
             // useIds: true/false,
             // preferredClass: /some-classname-[^ ]+/,
