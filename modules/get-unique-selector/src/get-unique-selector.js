@@ -7,7 +7,7 @@ var SelectorElementList = require('./selector-element-list');
 exports = module.exports = UniqueSelector;
 
 /**
- * @typedef {Object} GetUniqueSelectorOptions
+ * @typedef {Object} UniqueSelectorOptions
  * @property {Function} [querySelectorAll]
  * @property {Array<String>} [ignoredClasses] - ignored class names (without leading '.')
  * @property {Boolean} [useIds = true]
@@ -17,7 +17,7 @@ exports = module.exports = UniqueSelector;
  */
 
 /**
- * @param {GetUniqueSelectorOptions} options
+ * @param {UniqueSelectorOptions} options
  */
 function UniqueSelector(options) {
     // TODO test all options
