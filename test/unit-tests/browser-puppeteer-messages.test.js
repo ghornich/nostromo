@@ -112,11 +112,13 @@ test('browser puppeteer messages', async t => {
         await puppeteer.setTransmitEvents(true);
 
         const capturedEventPromise = new Promise((resolve, reject) => {
-            setTimeout(() => {
+            const timeoutId = setTimeout(() => {
                 reject(new Error('"SetTransmitEventsMessage ON" test timed out'));
             }, 3000);
 
             puppeteer.once(MESSAGES.UPSTREAM.CAPTURED_EVENT, capturedEventMessage => {
+                clearTimeout(timeoutId);
+
                 if (capturedEventMessage.event.selector === '#clickTest') {
                     resolve();
                 }
@@ -195,11 +197,13 @@ test('browser puppeteer messages', async t => {
         await puppeteer.setTransmitEvents(true);
 
         const capturedMouseEventPromise = new Promise((resolve, reject) => {
-            setTimeout(() => {
+            const timeoutId = setTimeout(() => {
                 reject(new Error('"SetMouseoverSelectorsMessage" test timed out'));
             }, 3000);
 
             puppeteer.once(MESSAGES.UPSTREAM.CAPTURED_EVENT, capturedEventMessage => {
+                clearTimeout(timeoutId);
+
                 if (capturedEventMessage.event.selector === '#mouseoverTest') {
                     resolve();
                 }
@@ -259,11 +263,13 @@ test('browser puppeteer messages', async t => {
         await puppeteer.setTransmitEvents(true);
 
         const selectorBecameVisiblePromise = new Promise((resolve, reject) => {
-            setTimeout(() => {
+            const timeoutId = setTimeout(() => {
                 reject(new Error('SelectorBecameVisibleMessage test: timed out'));
             }, 3000);
 
             puppeteer.once(MESSAGES.UPSTREAM.SELECTOR_BECAME_VISIBLE, data => {
+                clearTimeout(timeoutId);
+
                 if (data.selector === '#selectorBecameVisibleTest') {
                     resolve();
                 }
@@ -305,9 +311,14 @@ test('browser puppeteer messages', async t => {
         t.fail(error.message);
     }
     finally {
-        await browser.stop();
-        await puppeteer.stop();
-        httpServer.close();
+        try {
+            await browser.stop();
+            await puppeteer.stop();
+            httpServer.close();
+        }
+        catch (error) {
+            console.error('Failed to stop server(s)', error);
+        }
 
         t.end();
     }
