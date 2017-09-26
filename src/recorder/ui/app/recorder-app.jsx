@@ -75,6 +75,8 @@ function RecorderApp(conf) {
         self._isRecording = true;
     }
 
+    self._scrollToBottomFlag = false;
+
     self.actions = {
         toggleRecording: function () {
             self._isRecording = !self._isRecording;
@@ -100,6 +102,8 @@ function RecorderApp(conf) {
             self._conf.selectedOutputFormatter = event.target.value;
         },
     };
+
+    self._onContentVNodeUpdate = self._onContentVNodeUpdate.bind(self);
 }
 
 // TODO promise, resolve when loaded
@@ -138,6 +142,8 @@ RecorderApp.prototype._onWsMessage = function (event) {
                 break;
             default: throw new Error('Unknown message type: ' + data.type);
         }
+
+        this._scrollToBottomFlag = true;
     }
     catch (err) {
         console.error(err);
@@ -301,6 +307,14 @@ RecorderApp.prototype.addCommand = function (cmd) {
     this.commandList.add(cmd);
 };
 
+RecorderApp.prototype._onContentVNodeUpdate = function (vnode) {
+    if (this._scrollToBottomFlag) {
+        this._scrollToBottomFlag = false;
+
+        vnode.dom.scrollTop = vnode.dom.scrollHeight;
+    }
+};
+
 RecorderApp.prototype.onSelectorBecameVisibleEvent = function (data) {
     if (!this._isRecording) {
         return;
@@ -339,7 +353,7 @@ RootComp = {
                 <button class="button--danger clear-recording-btn" onclick={ actions.clearRecording }>Clear recording</button>
             </nav>
 
-            <div class="content">
+            <div class="content" onupdate={ app._onContentVNodeUpdate }>
                 <section>
                     <div class="info-bar">
                         <div class="info-icon"></div>
