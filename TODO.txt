@@ -1,4 +1,4 @@
-precommit hooks (autotest?, test (OK), lint, doc)
+precommit hooks (lint, doc)
 generate docs from docblock
 create referenceErrors folder on-demand
 test per-test and per-run bailout
@@ -15,6 +15,8 @@ throw a big fat error if browser executable wasn't found
 assert downloaded files?
 vector-based assertion?
 
+recorder, testrunner should survive browser restarts
+move composite events logic to config
+
 BUGS:
-recorderApp doesn't redraw
 SBV error if selector is visible when starting page
