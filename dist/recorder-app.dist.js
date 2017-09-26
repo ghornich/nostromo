@@ -156,7 +156,7 @@ exports.DOWNSTREAM = {
     CLEAR_PERSISTENT_DATA: 'clear-persistent-data',
     SET_MOUSEOVER_SELECTORS: 'set-mouseover-selectors',
     SET_IGNORED_CLASSES: 'set-ignored-classes',
-    SET_GET_UNIQUE_SELECTOR_OPTIONS: 'set-get-unique-selector-options',
+    SET_UNIQUE_SELECTOR_OPTIONS: 'set-unique-selector-options',
 };
 
 /**
@@ -265,10 +265,12 @@ exports.DOWNSTREAM = {
  * @property {Array<String>} classes
  */
 
+// TODO test
+
 /**
- * @typedef {DownstreamControlMessage} SetGetUniqueSelectorOptionsMessage
- * @property {String} type - 'set-get-unique-selector-options'
- * @property {GetUniqueSelectorOptions} options
+ * @typedef {DownstreamControlMessage} SetUniqueSelectorOptionsMessage
+ * @property {String} type - 'set-unique-selector-options'
+ * @property {UniqueSelectorOptions} options
  */
 
 },{}],4:[function(require,module,exports){
@@ -15013,6 +15015,8 @@ function RecorderApp(conf) {
         self._isRecording = true;
     }
 
+    self._scrollToBottomFlag = false;
+
     self.actions = {
         toggleRecording: function toggleRecording() {
             self._isRecording = !self._isRecording;
@@ -15038,6 +15042,8 @@ function RecorderApp(conf) {
             self._conf.selectedOutputFormatter = event.target.value;
         }
     };
+
+    self._onContentVNodeUpdate = self._onContentVNodeUpdate.bind(self);
 }
 
 // TODO promise, resolve when loaded
@@ -15077,6 +15083,8 @@ RecorderApp.prototype._onWsMessage = function (event) {
             default:
                 throw new Error('Unknown message type: ' + data.type);
         }
+
+        this._scrollToBottomFlag = true;
     } catch (err) {
         console.error(err);
     } finally {
@@ -15237,6 +15245,14 @@ RecorderApp.prototype.addCommand = function (cmd) {
     this.commandList.add(cmd);
 };
 
+RecorderApp.prototype._onContentVNodeUpdate = function (vnode) {
+    if (this._scrollToBottomFlag) {
+        this._scrollToBottomFlag = false;
+
+        vnode.dom.scrollTop = vnode.dom.scrollHeight;
+    }
+};
+
 RecorderApp.prototype.onSelectorBecameVisibleEvent = function (data) {
     if (!this._isRecording) {
         return;
@@ -15293,7 +15309,7 @@ RootComp = {
             ),
             m(
                 'div',
-                { 'class': 'content' },
+                { 'class': 'content', onupdate: app._onContentVNodeUpdate },
                 m(
                     'section',
                     null,

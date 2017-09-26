@@ -158,7 +158,7 @@ exports.DOWNSTREAM = {
     CLEAR_PERSISTENT_DATA: 'clear-persistent-data',
     SET_MOUSEOVER_SELECTORS: 'set-mouseover-selectors',
     SET_IGNORED_CLASSES: 'set-ignored-classes',
-    SET_GET_UNIQUE_SELECTOR_OPTIONS: 'set-get-unique-selector-options',
+    SET_UNIQUE_SELECTOR_OPTIONS: 'set-unique-selector-options',
 };
 
 /**
@@ -267,10 +267,12 @@ exports.DOWNSTREAM = {
  * @property {Array<String>} classes
  */
 
+// TODO test
+
 /**
- * @typedef {DownstreamControlMessage} SetGetUniqueSelectorOptionsMessage
- * @property {String} type - 'set-get-unique-selector-options'
- * @property {GetUniqueSelectorOptions} options
+ * @typedef {DownstreamControlMessage} SetUniqueSelectorOptionsMessage
+ * @property {String} type - 'set-unique-selector-options'
+ * @property {UniqueSelectorOptions} options
  */
 
 },{}],5:[function(require,module,exports){
@@ -306,7 +308,7 @@ function BrowserPuppetCommands() {
  */
 BrowserPuppetCommands.prototype.scroll = function (cmd) {
     var $el = this.$(cmd.selector);
-    this._assert$el($el, COMMANDS.SCROLL);
+    this._assert$el($el, cmd);
     $el[0].scrollTop = cmd.scrollTop;
 };
 
@@ -318,7 +320,7 @@ BrowserPuppetCommands.prototype.mouseover = function (cmd) {
     this._log.trace('BrowserPuppetCommands::mouseover: ' + JSON.stringify(cmd));
 
     var $el = this.$(cmd.selector);
-    this._assert$el($el, COMMANDS.MOUSEOVER);
+    this._assert$el($el, cmd);
 
     var mouseoverEvent = new Event('mouseover');
     $el[0].dispatchEvent(mouseoverEvent);
@@ -426,7 +428,7 @@ BrowserPuppetCommands.prototype.waitWhileVisible = function (cmd) {
  */
 BrowserPuppetCommands.prototype.click = function (cmd) {
     var $el = this.$(cmd.selector);
-    this._assert$el($el, COMMANDS.CLICK);
+    this._assert$el($el, cmd);
 
     // TODO use dispatchEvent?
     $el[0].click();
@@ -444,9 +446,9 @@ BrowserPuppetCommands.prototype.pressKey = function (cmd) {
     var keyCodeNum = Number(cmd.keyCode);
 
     assert(Number.isFinite(keyCodeNum), 'BrowserPuppetCommands::pressKey: keyCode is not a number');
-    this._assert$el($el, COMMANDS.PRESS_KEY);
+    this._assert$el($el, cmd);
 
-    var keydownEvent = new Event('keydown');
+    var keydownEvent = new Event('keydown', { bubbles: true });
 
     keydownEvent.which = keyCodeNum;
     keydownEvent.keyCode = keyCodeNum;
@@ -464,7 +466,7 @@ BrowserPuppetCommands.prototype.setValue = function (cmd) {
     var el = $el[0];
     var tagName = el && el.tagName || '';
 
-    this._assert$el($el, COMMANDS.SET_VALUE);
+    this._assert$el($el, cmd);
 
     if (tagName !== 'INPUT' && tagName !== 'TEXTAREA') {
         throw new Error('Unable to set value of "' + cmd.selector + '": unsupported tag "' + tagName + '"');
@@ -482,7 +484,7 @@ BrowserPuppetCommands.prototype.setValue = function (cmd) {
  */
 BrowserPuppetCommands.prototype.focus = function (cmd) {
     var $el = this.$(cmd.selector);
-    this._assert$el($el, COMMANDS.FOCUS);
+    this._assert$el($el, cmd);
     $el[0].focus();
 };
 
@@ -495,7 +497,7 @@ BrowserPuppetCommands.prototype.getValue = function (cmd) {
     var $el = this.$(cmd.selector);
     var el = $el[0];
 
-    this._assert$el($el, COMMANDS.GET_VALUE);
+    this._assert$el($el, cmd);
 
     // TODO util fn to get node value
 
@@ -532,17 +534,17 @@ BrowserPuppetCommands.prototype.uploadFileAndAssign = function (cmd) {
     lodashSet(window, cmd.destinationVariable, base64ToFile(cmd.fileData));
 };
 
-BrowserPuppetCommands.prototype._assert$el = function ($el, commandName) {
+BrowserPuppetCommands.prototype._assert$el = function ($el, cmd) {
     if ($el.length === 0) {
-        throw new Error(commandName + ': selector not found: "' + $el.selector + '"');
+        throw new Error(cmd.type + ': selector not found: "' + cmd.selector + '"');
     }
 
     if ($el.length > 1) {
-        throw new Error(commandName + ': selector not unique: "' + $el.selector + '"');
+        throw new Error(cmd.type + ': selector not unique: "' + cmd.selector + '"');
     }
 
     if (!this._isJQueryElementsVisible($el)) {
-        throw new Error(commandName + ': selector not visible: "' + $el.selector + '"');
+        throw new Error(cmd.type + ': selector not visible: "' + cmd.selector + '"');
     }
 };
 
@@ -720,7 +722,7 @@ BrowserPuppet.prototype._onMessage = function (rawData) {
                 self._uniqueSelector._opts.ignoredClasses = data.classes;
                 return;
 
-            case MESSAGES.DOWNSTREAM.SET_GET_UNIQUE_SELECTOR_OPTIONS:
+            case MESSAGES.DOWNSTREAM.SET_UNIQUE_SELECTOR_OPTIONS:
                 self._uniqueSelector = new UniqueSelector(data.options);
                 return;
 
@@ -1181,7 +1183,7 @@ var SelectorElementList = require('./selector-element-list');
 exports = module.exports = UniqueSelector;
 
 /**
- * @typedef {Object} GetUniqueSelectorOptions
+ * @typedef {Object} UniqueSelectorOptions
  * @property {Function} [querySelectorAll]
  * @property {Array<String>} [ignoredClasses] - ignored class names (without leading '.')
  * @property {Boolean} [useIds = true]
@@ -1191,9 +1193,10 @@ exports = module.exports = UniqueSelector;
  */
 
 /**
- * @param {GetUniqueSelectorOptions} options
+ * @param {UniqueSelectorOptions} options
  */
 function UniqueSelector(options) {
+    // TODO test all options
     this._opts = Object.assign({}, {
         querySelectorAll: document.querySelectorAll.bind(document),
         ignoredClasses: [],
@@ -1583,9 +1586,9 @@ SelectorElement._getNodeSelectorData = function (node, rawOptions) {
         var classNames = DOMUtils.getClass(node);
 
         options.ignoredClasses.forEach(function (ignoredClass) {
-            var replaceRegex = new RegExp('\\b' + ignoredClass + '\\b', 'i');
+            var replaceRegex = new RegExp('(^|\\s+)' + ignoredClass + '($|\\s+)', 'i');
 
-            classNames = classNames.replace(replaceRegex, '');
+            classNames = classNames.replace(replaceRegex, ' ');
         });
 
         if (options.preferredClass && options.preferredClass.test(classNames)) {

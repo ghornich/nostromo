@@ -106,7 +106,7 @@
     
 
     
-    <h4 class="name" id="BeforeAfterTestCallback"><span class="type-signature"></span>BeforeAfterTestCallback<span class="signature">(t)</span><span class="type-signature"></span></h4>
+    <h4 class="name" id="AfterLastCommandCallback"><span class="type-signature"></span>AfterLastCommandCallback<span class="signature">(t)</span><span class="type-signature"></span></h4>
     
 
     
@@ -152,7 +152,7 @@
             <td class="type">
             
                 
-<span class="param-type">Object</span>
+<span class="param-type"><a href="global.html#TestAssertAPIDirect">TestAssertAPIDirect</a></span>
 
 
             
@@ -162,7 +162,7 @@
 
             
 
-            <td class="description last">test assert API (without before/after side effects, "directAPI")</td>
+            <td class="description last"></td>
         </tr>
 
     
@@ -203,7 +203,161 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="testrunner.js.html">testrunner.js</a>, <a href="testrunner.js.html#line82">line 82</a>
+        <a href="testrunner.js.html">testrunner.js</a>, <a href="testrunner.js.html#line93">line 93</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+            
+                
+
+    
+
+    
+    <h4 class="name" id="BeforeAfterCommandCallback"><span class="type-signature"></span>BeforeAfterCommandCallback<span class="signature">(t, command)</span><span class="type-signature"></span></h4>
+    
+
+    
+
+
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>t</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type"><a href="global.html#TestAssertAPIDirect">TestAssertAPIDirect</a></span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>command</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Command</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">command before/after this callback</td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="testrunner.js.html">testrunner.js</a>, <a href="testrunner.js.html#line87">line 87</a>
     </li></ul></dd>
     
 
@@ -437,7 +591,7 @@
             <td class="type">
             
                 
-<span class="param-type"><a href="global.html#BeforeAfterTestCallback">BeforeAfterTestCallback</a></span>
+<span class="param-type">function</span>
 
 
             
@@ -468,7 +622,7 @@
             <td class="type">
             
                 
-<span class="param-type"><a href="global.html#BeforeAfterTestCallback">BeforeAfterTestCallback</a></span>
+<span class="param-type">function</span>
 
 
             
@@ -499,7 +653,7 @@
             <td class="type">
             
                 
-<span class="param-type">function</span>
+<span class="param-type"><a href="global.html#BeforeAfterCommandCallback">BeforeAfterCommandCallback</a></span>
 
 
             
@@ -530,7 +684,38 @@
             <td class="type">
             
                 
-<span class="param-type">function</span>
+<span class="param-type"><a href="global.html#BeforeAfterCommandCallback">BeforeAfterCommandCallback</a></span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+                </td>
+            
+
+            
+
+            <td class="description last"></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>afterLastCommand</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type"><a href="global.html#AfterLastCommandCallback">AfterLastCommandCallback</a></span>
 
 
             
@@ -587,7 +772,79 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="testrunner.js.html">testrunner.js</a>, <a href="testrunner.js.html#line87">line 87</a>
+        <a href="testrunner.js.html">testrunner.js</a>, <a href="testrunner.js.html#line98">line 98</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+            
+                
+<h4 class="name" id="TestAssertAPIDirect">TestAssertAPIDirect</h4>
+
+
+
+
+<div class="description">
+    test assert API (without before/after side effects, "directAPI"), TODO define
+</div>
+
+
+
+    <h5>Type:</h5>
+    <ul>
+        <li>
+            
+<span class="param-type">Object</span>
+
+
+        </li>
+    </ul>
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="testrunner.js.html">testrunner.js</a>, <a href="testrunner.js.html#line82">line 82</a>
     </li></ul></dd>
     
 
@@ -953,7 +1210,7 @@
             <td class="type">
             
                 
-<span class="param-type"><a href="global.html#BeforeAfterTestCallback">BeforeAfterTestCallback</a></span>
+<span class="param-type">function</span>
 
 
             
@@ -988,7 +1245,7 @@
             <td class="type">
             
                 
-<span class="param-type"><a href="global.html#BeforeAfterTestCallback">BeforeAfterTestCallback</a></span>
+<span class="param-type">function</span>
 
 
             
@@ -1023,7 +1280,7 @@
             <td class="type">
             
                 
-<span class="param-type">function</span>
+<span class="param-type"><a href="global.html#BeforeAfterCommandCallback">BeforeAfterCommandCallback</a></span>
 
 
             
@@ -1058,7 +1315,42 @@
             <td class="type">
             
                 
-<span class="param-type">function</span>
+<span class="param-type"><a href="global.html#BeforeAfterCommandCallback">BeforeAfterCommandCallback</a></span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                </td>
+            
+
+            <td class="description last"></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>defaultAfterLastCommand</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type"><a href="global.html#AfterLastCommandCallback">AfterLastCommandCallback</a></span>
 
 
             
@@ -1185,7 +1477,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="testrunner.js.html">testrunner.js</a>, <a href="testrunner.js.html#line100">line 100</a>
+        <a href="testrunner.js.html">testrunner.js</a>, <a href="testrunner.js.html#line112">line 112</a>
     </li></ul></dd>
     
 
@@ -1221,7 +1513,7 @@
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.5.5</a> on Mon Sep 25 2017 09:48:33 GMT+0200 (Central Europe Daylight Time)
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.5.5</a> on Tue Sep 26 2017 12:28:31 GMT+0200 (Central Europe Daylight Time)
 </footer>
 
 <script> prettyPrint(); </script>

@@ -71,12 +71,6 @@
     |Name|Type|Description|
     |---|---|---|
     | type | `String` | 'hide-screenshot-marker' |
-- __SetGetUniqueSelectorOptionsMessage__ - _DownstreamControlMessage_
-
-    |Name|Type|Description|
-    |---|---|---|
-    | type | `String` | 'set-get-unique-selector-options' |
-    | options | `GetUniqueSelectorOptions` |  |
 - __SetIgnoredClassesMessage__ - _DownstreamControlMessage_
 
     |Name|Type|Description|
@@ -101,6 +95,12 @@
     |---|---|---|
     | type | `String` | 'set-transmit-events' |
     | value | `Boolean` |  |
+- __SetUniqueSelectorOptionsMessage__ - _DownstreamControlMessage_
+
+    |Name|Type|Description|
+    |---|---|---|
+    | type | `String` | 'set-unique-selector-options' |
+    | options | `UniqueSelectorOptions` |  |
 - __ShowScreenshotMarkerMessage__ - _DownstreamControlMessage_
 
     |Name|Type|Description|
