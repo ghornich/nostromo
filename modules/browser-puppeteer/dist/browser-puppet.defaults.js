@@ -784,6 +784,7 @@ BrowserPuppet.prototype._attachCaptureEventListeners = function () {
     document.addEventListener('input', this._onInputCapture.bind(this), true);
     document.addEventListener('scroll', this._onScrollCapture.bind(this), true);
     document.addEventListener('keydown', this._onKeydownCapture.bind(this), true);
+    document.addEventListener('change', this._onChangeCapture.bind(this), true);
 
     window.addEventListener('blur', this._onWindowBlur.bind(this));
 };
@@ -954,6 +955,34 @@ BrowserPuppet.prototype._onKeydownCapture = function (event) {
             ctrlKey: event.ctrlKey,
             shiftKey: event.shiftKey,
             altKey: event.altKey,
+            target: getTargetNodeDTO(target),
+        },
+    });
+};
+
+BrowserPuppet.prototype._onChangeCapture = function (event) {
+    if (!this._canCapture()) {
+        return;
+    }
+
+    var target = event.target;
+
+    try {
+        var selector = this._uniqueSelector.get(target);
+        // var fullSelectorPath = this._uniqueSelector.getFullSelectorPath(target);
+    }
+    catch (err) {
+        this._log.error(err);
+        return;
+    }
+
+    this._sendMessage({
+        type: MESSAGES.UPSTREAM.CAPTURED_EVENT,
+        event: {
+            type: 'change',
+            $timestamp: Date.now(),
+            selector: selector,
+            // $fullSelectorPath: fullSelectorPath,
             target: getTargetNodeDTO(target),
         },
     });

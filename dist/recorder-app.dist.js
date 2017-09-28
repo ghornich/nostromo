@@ -14978,10 +14978,12 @@ function RecorderApp(conf) {
     }
 
     self._conf = defaults({}, confObj, {
+        // TODO move these to recorder server?
         pressKeyFilter: function pressKeyFilter(data) {
             return [13, 27].indexOf(data.command.keyCode) >= 0;
         },
         captureFilter: noop,
+        onChangeEvent: noop,
         outputFormatters: [],
         selectedOutputFormatter: JSON_OUTPUT_FORMATTER_NAME
     });
@@ -15145,6 +15147,11 @@ RecorderApp.prototype._getFormattedOutput = function () {
 
 RecorderApp.prototype._onCapturedEvent = function (event) {
     if (!this._isRecording) {
+        return;
+    }
+
+    if (event.type === 'change') {
+        this._conf.onChangeEvent({ event: event, recorderInstance: this });
         return;
     }
 
@@ -15404,6 +15411,7 @@ function renderTestfile(cmds, rawIndent) {
 }
 
 // TODO move to own file
+// TODO use js formatter module
 function renderCmd(cmd, indent) {
     switch (cmd.type) {
         case 'setValue':
@@ -15431,7 +15439,7 @@ function renderCmd(cmd, indent) {
             }).join(',' + EOL) + EOL + indent + indent + '])';
 
         case 'uploadFileAndAssign':
-            return 't.uploadFileAndAssign({' + EOL + indent + indent + indent + 'filePath: ' + apos(cmd.filePath) + ',' + EOL + indent + indent + indent + 'destinationVariable: ' + apos(cmd.destinationVariable) + EOL + indent + indent + '})';
+            return 't.uploadFileAndAssign({' + EOL + indent + indent + indent + 'selector: ' + apos(cmd.selector) + ',' + EOL + indent + indent + indent + 'filePath: ' + apos(cmd.filePath) + ',' + EOL + indent + indent + indent + 'destinationVariable: ' + apos(cmd.destinationVariable) + EOL + indent + indent + '})';
 
         case 'mouseover':
             return 't.mouseover(' + apos(cmd.selector) + ')';
