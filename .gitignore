@@ -7,4 +7,3 @@ bc-test
 bc-test*.js
 babel-temp.js
 lint.txt
-branch.conf.json
