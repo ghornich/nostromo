@@ -118,6 +118,7 @@ exports = module.exports = {
 /**
  * @typedef {Command} UploadFileAndAssignCommand
  * @property {String} type - 'uploadFileAndAssign'
+ * @property {String} selector - unique selector of the file input node
  * @property {Object} fileData
  * @property {String} fileData.base64 - base64 encoded file
  * @property {String} fileData.name
@@ -284,9 +285,14 @@ exports.data = Buffer.from([
     0x99, 0xd9, 0xea, 0xff, 0x99, 0xd9, 0xea, 0xff, 0x00, 0x00, 0x00, 0xff, 0x00, 0x00, 0x00, 0xff,
 ]);
 
+/* [0, 0, 0, 255,        0, 0, 0, 255,        153, 217, 234, 255,   153, 217, 234, 255,
+	0, 0, 0, 255,        255, 127, 39, 255,   255, 127, 39, 255,    153, 217, 234, 255,
+	153, 217, 234, 255,  255, 127, 39, 255,   255, 127, 39, 255,    0, 0, 0, 255,
+	153, 217, 234, 255,  153, 217, 234, 255,  0, 0, 0, 255,         0, 0, 0, 255
+] */
+
 exports.base64 =
-    'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAYAAACp8Z5+AAAAAklEQVR4AewaftIAAAA5SURBVGN' +
-    'kYGD4zwAEM2++YgABJgYg+F+vzpC2zJYBBJhm3nzFAAPp6mIMTAxAMCvqMANj400GEAAAvQYMY6PVnIQAAAAASUVORK5CYII=';
+    'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAYAAACp8Z5+AAAAAklEQVR4AewaftIAAAA5SURBVGNkYGD4zwAEM2++YgABJgYg+F+vzpC2zJYBBJhm3nzFAAPp6mIMTAxAMCvqMANj400GEAAAvQYMY6PVnIQAAAAASUVORK5CYII=';
 
 }).call(this,require("buffer").Buffer)
 },{"buffer":9}],5:[function(require,module,exports){
@@ -14978,10 +14984,12 @@ function RecorderApp(conf) {
     }
 
     self._conf = defaults({}, confObj, {
+        // TODO move these to recorder server?
         pressKeyFilter: function pressKeyFilter(data) {
             return [13, 27].indexOf(data.command.keyCode) >= 0;
         },
         captureFilter: noop,
+        onChangeEvent: noop,
         outputFormatters: [],
         selectedOutputFormatter: JSON_OUTPUT_FORMATTER_NAME
     });
@@ -15145,6 +15153,11 @@ RecorderApp.prototype._getFormattedOutput = function () {
 
 RecorderApp.prototype._onCapturedEvent = function (event) {
     if (!this._isRecording) {
+        return;
+    }
+
+    if (event.type === 'change') {
+        this._conf.onChangeEvent({ event: event, recorderInstance: this });
         return;
     }
 
@@ -15404,6 +15417,7 @@ function renderTestfile(cmds, rawIndent) {
 }
 
 // TODO move to own file
+// TODO use js formatter module
 function renderCmd(cmd, indent) {
     switch (cmd.type) {
         case 'setValue':
@@ -15431,7 +15445,7 @@ function renderCmd(cmd, indent) {
             }).join(',' + EOL) + EOL + indent + indent + '])';
 
         case 'uploadFileAndAssign':
-            return 't.uploadFileAndAssign({' + EOL + indent + indent + indent + 'filePath: ' + apos(cmd.filePath) + ',' + EOL + indent + indent + indent + 'destinationVariable: ' + apos(cmd.destinationVariable) + EOL + indent + indent + '})';
+            return 't.uploadFileAndAssign({' + EOL + indent + indent + indent + 'selector: ' + apos(cmd.selector) + ',' + EOL + indent + indent + indent + 'filePath: ' + apos(cmd.filePath) + ',' + EOL + indent + indent + indent + 'destinationVariable: ' + apos(cmd.destinationVariable) + EOL + indent + indent + '})';
 
         case 'mouseover':
             return 't.mouseover(' + apos(cmd.selector) + ')';

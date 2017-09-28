@@ -131,6 +131,7 @@ exports = module.exports = {
 /**
  * @typedef {Command} UploadFileAndAssignCommand
  * @property {String} type - 'uploadFileAndAssign'
+ * @property {String} selector - unique selector of the file input node
  * @property {Object} fileData
  * @property {String} fileData.base64 - base64 encoded file
  * @property {String} fileData.name
@@ -784,6 +785,7 @@ BrowserPuppet.prototype._attachCaptureEventListeners = function () {
     document.addEventListener('input', this._onInputCapture.bind(this), true);
     document.addEventListener('scroll', this._onScrollCapture.bind(this), true);
     document.addEventListener('keydown', this._onKeydownCapture.bind(this), true);
+    document.addEventListener('change', this._onChangeCapture.bind(this), true);
 
     window.addEventListener('blur', this._onWindowBlur.bind(this));
 };
@@ -954,6 +956,34 @@ BrowserPuppet.prototype._onKeydownCapture = function (event) {
             ctrlKey: event.ctrlKey,
             shiftKey: event.shiftKey,
             altKey: event.altKey,
+            target: getTargetNodeDTO(target),
+        },
+    });
+};
+
+BrowserPuppet.prototype._onChangeCapture = function (event) {
+    if (!this._canCapture()) {
+        return;
+    }
+
+    var target = event.target;
+
+    try {
+        var selector = this._uniqueSelector.get(target);
+        // var fullSelectorPath = this._uniqueSelector.getFullSelectorPath(target);
+    }
+    catch (err) {
+        this._log.error(err);
+        return;
+    }
+
+    this._sendMessage({
+        type: MESSAGES.UPSTREAM.CAPTURED_EVENT,
+        event: {
+            type: 'change',
+            $timestamp: Date.now(),
+            selector: selector,
+            // $fullSelectorPath: fullSelectorPath,
             target: getTargetNodeDTO(target),
         },
     });
@@ -1151,16 +1181,37 @@ function __each(arrayLike, iteratee) {
 (function (Buffer){
 exports.width = 4;
 exports.height = 4;
-exports.data = Buffer.from([
-    0x00, 0x00, 0x00, 0xff, 0x00, 0x00, 0x00, 0xff, 0x99, 0xd9, 0xea, 0xff, 0x99, 0xd9, 0xea, 0xff,
-    0x00, 0x00, 0x00, 0xff, 0xff, 0x7f, 0x27, 0xff, 0xff, 0x7f, 0x27, 0xff, 0x99, 0xd9, 0xea, 0xff,
-    0x99, 0xd9, 0xea, 0xff, 0xff, 0x7f, 0x27, 0xff, 0xff, 0x7f, 0x27, 0xff, 0x00, 0x00, 0x00, 0xff,
-    0x99, 0xd9, 0xea, 0xff, 0x99, 0xd9, 0xea, 0xff, 0x00, 0x00, 0x00, 0xff, 0x00, 0x00, 0x00, 0xff,
-]);
+// exports.data = Buffer.from([
+//     0x00, 0x00, 0x00, 0xff, 0x00, 0x00, 0x00, 0xff, 0x99, 0xd9, 0xea, 0xff, 0x99, 0xd9, 0xea, 0xff,
+//     0x00, 0x00, 0x00, 0xff, 0xff, 0x7f, 0x27, 0xff, 0xff, 0x7f, 0x27, 0xff, 0x99, 0xd9, 0xea, 0xff,
+//     0x99, 0xd9, 0xea, 0xff, 0xff, 0x7f, 0x27, 0xff, 0xff, 0x7f, 0x27, 0xff, 0x00, 0x00, 0x00, 0xff,
+//     0x99, 0xd9, 0xea, 0xff, 0x99, 0xd9, 0xea, 0xff, 0x00, 0x00, 0x00, 0xff, 0x00, 0x00, 0x00, 0xff,
+// ]);
 
-exports.base64 =
-    'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAYAAACp8Z5+AAAAAklEQVR4AewaftIAAAA5SURBVGN' +
-    'kYGD4zwAEM2++YgABJgYg+F+vzpC2zJYBBJhm3nzFAAPp6mIMTAxAMCvqMANj400GEAAAvQYMY6PVnIQAAAAASUVORK5CYII=';
+var B = [0, 0, 0, 0xff];
+var W = [0xff, 0xff, 0xff, 0xff];
+
+exports.data = Buffer.from([].concat(
+	B, W, B, B,
+	B, W, B, W,
+	W, B, W, B,
+	B, W, B, W,
+
+));
+
+exports.base64 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAIAAAAmkwkpAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAAbSURBVBhXYwCC////gygIgHBAJIIFAVD+//8A4WAU7De8PqQAAAAASUVORK5CYII=';
+
+
+/* [0, 0, 0, 255,        0, 0, 0, 255,        153, 217, 234, 255,   153, 217, 234, 255,
+	0, 0, 0, 255,        255, 127, 39, 255,   255, 127, 39, 255,    153, 217, 234, 255,
+	153, 217, 234, 255,  255, 127, 39, 255,   255, 127, 39, 255,    0, 0, 0, 255,
+	153, 217, 234, 255,  153, 217, 234, 255,  0, 0, 0, 255,         0, 0, 0, 255
+] */
+
+// exports.base64 =
+//     'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAYAAACp8Z5+AAAAAklEQVR4AewaftIAAAA5SURBVGNkYGD4zwAEM2++YgABJgYg+F+vzpC2zJYBBJhm3nzFAAPp6mIMTAxAMCvqMANj400GEAAAvQYMY6PVnIQAAAAASUVORK5CYII=';
+
+
 
 }).call(this,require("buffer").Buffer)
 },{"buffer":20}],8:[function(require,module,exports){

@@ -102,6 +102,7 @@ exports = module.exports = {
 /**
  * @typedef {Command} UploadFileAndAssignCommand
  * @property {String} type - 'uploadFileAndAssign'
+ * @property {String} selector - unique selector of the file input node
  * @property {Object} fileData
  * @property {String} fileData.base64 - base64 encoded file
  * @property {String} fileData.name

@@ -25,10 +25,17 @@ exports = module.exports = RecorderServer;
 /**
  * @callback FilterCallback
  * @param {Object} data
- * @param {Object} data.event - DOM event data (type, target, selector, $timestamp, $fullSelectorPath)
+ * @param {Object} data.event - DOM event data (type, target, selector, $timestamp, $fullSelectorPath) - TODO typedef
  * @param {Command} data.command - Command generated from the event
  * @param {RecorderApp} data.recorderInstance - The current RecorderApp instance
  * @return {Boolean} Return false to prevent recording this event
+ */
+
+/**
+ * @callback OnChangeCallback
+ * @param {Object} data
+ * @param {Object} data.event - TODO typedef
+ * @param {RecorderApp} data.recorderInstance
  */
 
 /**
@@ -50,6 +57,8 @@ exports = module.exports = RecorderServer;
  *
  * @property {FilterCallback} [captureFilter]
  * @property {FilterCallback} [pressKeyFilter] - Special capture filter, only called for pressKey. <b>Default: capture Enter, Esc only</b>.
+ *
+ * @property {OnChangeCallback} [onChangeEvent]
  *
  * @property {Array<Object>} [onSelectorBecameVisible]
  * @property {String} [onSelectorBecameVisible[].selector] - CSS selector

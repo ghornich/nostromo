@@ -175,6 +175,7 @@
     |Name|Type|Description|
     |---|---|---|
     | type | `String` | 'uploadFileAndAssign' |
+    | selector | `String` | unique selector of the file input node |
     | fileData | `Object` |  |
     | fileData.base64 | `String` | base64 encoded file |
     | fileData.name | `String` |  |
