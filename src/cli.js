@@ -9,6 +9,7 @@ const defaults = require('lodash.defaults');
 const args = require('minimist')(process.argv.slice(2));
 const BrowserSpawners = require('../modules/browser-spawners');
 const Loggr = require('../modules/loggr');
+const branchConf = require('../branch.conf.json');
 
 /*
 args:
@@ -98,7 +99,38 @@ const DEFAULT_DIFF_CFG_FILE = 'nostromo.diff.conf.js';
             console.error(err);
         }
     }
+    else if (args.update) {
+        console.log(`Updating Nostromo (branch: ${branchConf.branch})...`);
+
+        const cp = require('child_process');
+        const rimraf = require('rimraf');
+        const fs = require('fs');
+
+        try {
+            fs.unlinkSync('package-lock.json');
+        }
+        catch (error) {
+            // ignore
+        }
+
+        rimraf('node_modules', function (err) {
+            if (err) {
+                console.error(err);
+                process.exit(1);
+            }
+
+            cp.exec(`npm i ${branchConf.gitUrl}`, function (err) {
+                if (err) {
+                    console.log('FAILURE');
+                    console.error(err);
+                }
+                else {
+                    console.log('SUCCESS');
+                }
+            })
+        });
+    }
     else {
-        console.log('Missing task type (run, diff, rec)');
+        console.log('Missing task type (run, diff, rec, update)');
     }
 }());
