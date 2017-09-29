@@ -100,6 +100,7 @@ BrowserPuppeteer.prototype._onHttpRequest = async function (req, resp) {
 };
 
 // TODO separate connectionTimeout, visibilityTimeout, screenshotInterval
+// better naming (e.g. waitForPuppetVisible)
 
 /**
  * @param {Object} [options]
@@ -237,9 +238,15 @@ BrowserPuppeteer.prototype._onWsError = function (code) {
 };
 
 BrowserPuppeteer.prototype._onWsClose = function (code) {
-    this._wsConn = null;
     this._log.debug('_onWsClose');
     this._log.trace(`_onWsClose code: ${code}`);
+    this._wsConn = null;
+
+    if (this._currentMessageHandler.resolve) {
+        this._currentMessageHandler.resolve();
+
+        this._currentMessageHandler.resolve = this._currentMessageHandler.reject = this._currentMessageHandler.message = null;
+    }
 };
 
 BrowserPuppeteer.prototype.discardClients = function () {
@@ -253,7 +260,7 @@ BrowserPuppeteer.prototype.discardClients = function () {
 
 BrowserPuppeteer.prototype.sendMessage = async function (data) {
     if (!this._wsConn) {
-        if (this._opts.deferredMessaging) {
+        if (this._conf.deferredMessaging) {
             await this.waitForPuppet({
                 ensureVisible: true,
             });

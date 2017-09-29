@@ -256,6 +256,7 @@ function Testrunner(conf) {
 
     this._browserPuppeteer = new BrowserPuppeteer({
         logger: this._log.fork('BrowserPuppeteer'),
+        deferredMessaging: true,
     });
 
     this._assertCount = 0;
