@@ -10,6 +10,9 @@ const JSONF = require(MODULES_PATH + 'jsonf');
 const WS = require('ws');
 const Loggr = require(MODULES_PATH + 'loggr');
 const MESSAGES = require('../messages');
+const screenshotMarkerImg = require('../screenshot-marker');
+const screenshotjs = require(MODULES_PATH + 'screenshot-js');
+const bufferImageSearch = require(MODULES_PATH + 'buffer-image-search');
 
 exports = module.exports = BrowserPuppeteer;
 
@@ -29,6 +32,9 @@ const DEFAULT_WAITFORPUPPET_TIMEOUT = BrowserPuppeteer.DEFAULT_WAITFORPUPPET_TIM
  * @typedef {object} BrowserPuppeteerConfig
  * @property {Number} [port = 47225] port to communicate with browser/BrowserPuppet
  * @property {Loggr} [logger] custom Loggr instance
+ * @property {Boolean} [deferredMessaging = false] - await for browser connection in sendMessage instead of throwing an error
+ * @property {Number} [deferredMessagingTimeout = 10000]
+ * 
  */
 
 /**
@@ -93,10 +99,14 @@ BrowserPuppeteer.prototype._onHttpRequest = async function (req, resp) {
     }
 };
 
+// TODO separate connectionTimeout, visibilityTimeout, screenshotInterval
+// better naming (e.g. waitForPuppetVisible)
+
 /**
  * @param {Object} [options]
  * @param {Object} [options.pollInterval={@link DEFAULT_WAITFORPUPPET_POLL_INTERVAL}]
  * @param {Object} [options.timeout={@link DEFAULT_WAITFORPUPPET_TIMEOUT}]
+ * @param {Object} [ensureVisible = false] - ensure browser is visible with screenshot markers
  * @return {Promise}
  */
 BrowserPuppeteer.prototype.waitForPuppet = async function (options) {
@@ -137,6 +147,37 @@ BrowserPuppeteer.prototype.waitForPuppet = async function (options) {
         };
 
         checker();
+    })
+    .then(async () => {
+        if (_opts.ensureVisible) {
+            this._log.info('Ensuring browser is visible...');
+
+            await this.showScreenshotMarker();
+
+            const timeout = 10000;
+            const startTime = Date.now();
+
+            while (true) {
+                const screenshot = await screenshotjs();
+                const markerPositions = bufferImageSearch(screenshot, screenshotMarkerImg);
+                if (markerPositions.length === 0) {
+                    this._log.debug('Browser not yet visible');
+                }
+                else if (markerPositions.length === 2) {
+                    this._log.info('Browser is visible');
+                    break;
+                }
+                else {
+                    this._log.debug(`Screenshot marker count invalid (count: ${markerPositions.length})`);
+                }
+
+                if (Date.now() - startTime > timeout) {
+                    throw new Error('ensureVisible timeout')
+                }
+
+                await Promise.delay(3000);
+            }
+        }
     });
 };
 
@@ -199,6 +240,13 @@ BrowserPuppeteer.prototype._onWsError = function (code) {
 BrowserPuppeteer.prototype._onWsClose = function (code) {
     this._log.debug('_onWsClose');
     this._log.trace(`_onWsClose code: ${code}`);
+    this._wsConn = null;
+
+    if (this._currentMessageHandler.resolve) {
+        this._currentMessageHandler.resolve();
+
+        this._currentMessageHandler.resolve = this._currentMessageHandler.reject = this._currentMessageHandler.message = null;
+    }
 };
 
 BrowserPuppeteer.prototype.discardClients = function () {
@@ -212,8 +260,16 @@ BrowserPuppeteer.prototype.discardClients = function () {
 
 BrowserPuppeteer.prototype.sendMessage = async function (data) {
     if (!this._wsConn) {
-        throw new Error('Puppet not connected');
+        if (this._conf.deferredMessaging) {
+            await this.waitForPuppet({
+                ensureVisible: true,
+            });
+        }
+        else {
+            throw new Error('Puppet not connected');
+        }
     }
+
     if (this._currentMessageHandler.resolve) {
         const dataString = util.inspect(data);
         const currentMessageString = util.inspect(this._currentMessageHandler.message);

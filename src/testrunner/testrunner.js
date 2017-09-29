@@ -256,6 +256,7 @@ function Testrunner(conf) {
 
     this._browserPuppeteer = new BrowserPuppeteer({
         logger: this._log.fork('BrowserPuppeteer'),
+        deferredMessaging: true,
     });
 
     this._assertCount = 0;
@@ -563,30 +564,9 @@ Testrunner.prototype._getCurrentTestModuleReferenceErrorDir = function () {
 };
 
 Testrunner.prototype._waitUntilBrowserReady = async function () {
-    await this._browserPuppeteer.waitForPuppet();
-    await this._browserPuppeteer.showScreenshotMarker();
-    return this._ensureBrowserIsVisible();
-};
-
-// TODO timeout, interval as args
-Testrunner.prototype._ensureBrowserIsVisible = async function () {
-    this._log.info('Ensuring browser is visible...');
-
-    while (true) {
-        const screenshot = await screenshotjs();
-        const markerPositions = bufferImageSearch(screenshot, cropMarkerImg);
-        if (markerPositions.length === 0) {
-            this._log.debug('Browser not yet visible');
-        }
-        else if (markerPositions.length === 2) {
-            this._log.info('Browser is visible');
-            break;
-        }
-        else {
-            this._log.debug(`Screenshot marker count invalid (count: ${markerPositions.length})`);
-        }
-        await Promise.delay(3000);
-    }
+    return this._browserPuppeteer.waitForPuppet({
+        ensureVisible: true,
+    });
 };
 
 Testrunner.prototype._wrapFunctionWithSideEffects = function (fn, cmdType) {
