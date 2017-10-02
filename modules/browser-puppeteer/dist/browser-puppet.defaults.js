@@ -16,14 +16,10 @@ exports = module.exports = function (fileData) {
 (function () {
     var BrowserPuppet = require('../src/puppet/browser-puppet.js');
 
-    if (window.browserPuppet) {
-        // eslint-disable-next-line no-console
-        console.warn('BrowserPuppet was loaded multiple times');
-        return;
-    }
-
-    window.browserPuppet = new BrowserPuppet();
-    window.browserPuppet.start();
+    window.addEventListener('load', function () {
+        window.browserPuppet = new BrowserPuppet();
+        window.browserPuppet.start();
+    });
 }());
 
 },{"../src/puppet/browser-puppet.js":6}],3:[function(require,module,exports){
