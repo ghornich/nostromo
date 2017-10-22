@@ -8,6 +8,7 @@ const Loggr = require('../loggr');
 const http = require('http');
 const WS = require('ws');
 const truncateString = require('lodash.truncate');
+const treeKill = require('tree-kill');
 
 const TEMP_DELETE_RETRIES = BrowserSpawnerBase.TEMP_DELETE_RETRIES = 3;
 const TEMP_DELETE_TIMEOUT = BrowserSpawnerBase.TEMP_DELETE_TIMEOUT = 1000;
@@ -126,14 +127,12 @@ BrowserSpawnerBase.prototype._sendWsMessage = function (msgArg) {
     this._wsConn.send(msg);
 };
 
-/**
- * 
- * @throws {Error}
- */
 BrowserSpawnerBase.prototype.stop = async function () {
     if (this._process) {
-        this._process.kill();
-        await new Promise(res => this._process.on('exit', res));
+        await new Promise((resolve, reject) => {
+            treeKill(this._process.pid, err => err ? reject(err) : resolve());
+        });
+
         await new Promise(res => this._httpServer.close(res));
         this._wsConn = null;
         this._process = null;
