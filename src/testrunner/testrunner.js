@@ -91,7 +91,7 @@ exports = module.exports = Testrunner;
  */
 
 /**
- * @callback AfterLastCommandCallback
+ * @callback DirectAPICallback
  * @param {TestAssertAPIDirect} t
  */
 
@@ -106,7 +106,7 @@ exports = module.exports = Testrunner;
  * @property {Function} [afterTest]
  * @property {BeforeAfterCommandCallback} [beforeCommand]
  * @property {BeforeAfterCommandCallback} [afterCommand]
- * @property {AfterLastCommandCallback} [afterLastCommand]
+ * @property {DirectAPICallback} [afterLastCommand]
  */
 
 /**
@@ -123,7 +123,7 @@ exports = module.exports = Testrunner;
  * @property {Function} [defaultAfterTest]
  * @property {BeforeAfterCommandCallback} [defaultBeforeCommand]
  * @property {BeforeAfterCommandCallback} [defaultAfterCommand]
- * @property {AfterLastCommandCallback} [defaultAfterLastCommand]
+ * @property {DirectAPICallback} [defaultAfterLastCommand]
  * @property {Array<BrowserSpawner>} browsers - see example run config file
  * @property {Array<Suite>} suites
  */
@@ -152,6 +152,8 @@ function Testrunner(conf) {
 
         defaultBeforeCommand: null,
         defaultAfterCommand: null,
+
+        defaultAfterLastCommand: null,
 
         defaultAppUrl: null,
 
@@ -444,13 +446,9 @@ Testrunner.prototype._stopServers = function () {
     this._browserPuppeteer.stop();
 };
 
-Testrunner.prototype._runTestFile = async function (testFilePath, data) {
+Testrunner.prototype._runTestFile = async function (testFilePath, { browser, suite }) {
     const conf = this._conf;
     this._log.trace('_runTestFile');
-
-    // const isLastTestfile = data.isLastTestfile;
-    const browser = data.browser;
-    const suite = data.suite;
 
     this._currentTestfilePath = testFilePath;
     const absPath = pathlib.resolve(testFilePath);
@@ -497,7 +495,8 @@ Testrunner.prototype._runTestFile = async function (testFilePath, data) {
             this._log.debug('completed beforeTest');
         }
 
-        browser.open(suite.appUrl);
+        // TODO throw error if no appUrl was found
+        browser.open(suite.appUrl || conf.defaultAppUrl || '');
 
         await this._waitUntilBrowserReady();
 
