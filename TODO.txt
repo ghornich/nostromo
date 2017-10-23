@@ -1,7 +1,6 @@
 precommit hooks (lint, doc)
 generate docs from docblock
 create referenceErrors folder on-demand
-test per-test and per-run bailout
 testrunner: keepalive flag: stop execution and browser on first error (exit/continue on request)
 testrunner: handle ctrl+c gracefully (exit browser, stop servers, etc)
 replace all string command names with const definitions
@@ -10,7 +9,6 @@ mutation observer autotest: show dialog & focus on it
 document capturedEvent with $fullSelectorPath, $timestamp, etc
 nth: use rfr in tests
 change test ports (recorderApp, puppeteer)
-find browser path automatically
 throw a big fat error if browser executable wasn't found
 assert downloaded files?
 vector-based assertion?
@@ -18,14 +16,17 @@ vector-based assertion?
 update examples
     - (default) before/after assert
 
+update tests
+    - afterLastCommand
+    - before/after assert
+    - per-test and per-run bailout
+
 testrunner should survive browser restarts
 configurable assert keys
+customizable assert
 fully handle all change events (checkbox, file)
 
 recorder debug view: last click (?) full selector path, unique path
-CLI updater
-
-update example confs
 
 BUGS:
 SBV error if selector is visible when starting page (fixed?)
