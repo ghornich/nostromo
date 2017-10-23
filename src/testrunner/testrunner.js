@@ -107,6 +107,8 @@ exports = module.exports = Testrunner;
  * @property {BeforeAfterCommandCallback} [beforeCommand]
  * @property {BeforeAfterCommandCallback} [afterCommand]
  * @property {DirectAPICallback} [afterLastCommand]
+ * @property {DirectAPICallback} [beforeAssert]
+ * @property {DirectAPICallback} [afterAssert]
  */
 
 /**
@@ -124,6 +126,8 @@ exports = module.exports = Testrunner;
  * @property {BeforeAfterCommandCallback} [defaultBeforeCommand]
  * @property {BeforeAfterCommandCallback} [defaultAfterCommand]
  * @property {DirectAPICallback} [defaultAfterLastCommand]
+ * @property {DirectAPICallback} [defaultBeforeAssert]
+ * @property {DirectAPICallback} [defaultAfterAssert]
  * @property {Array<BrowserSpawner>} browsers - see example run config file
  * @property {Array<Suite>} suites
  */
@@ -154,6 +158,9 @@ function Testrunner(conf) {
         defaultAfterCommand: null,
 
         defaultAfterLastCommand: null,
+
+        defaultBeforeAssert: null,
+        defaultAfterAssert: null,
 
         defaultAppUrl: null,
 
@@ -186,6 +193,9 @@ function Testrunner(conf) {
 
     this._currentBeforeCommand = null;
     this._currentAfterCommand = null;
+
+    this._currentBeforeAssert = null;
+    this._currentAfterAssert = null;
 
     this._tapWriter = new TapWriter({
         outStream: this._conf.outStream,
@@ -477,6 +487,9 @@ Testrunner.prototype._runTestFile = async function (testFilePath, { browser, sui
 
     this._currentBeforeCommand = suite.beforeCommand || conf.defaultBeforeCommand || noop;
     this._currentAfterCommand = suite.afterCommand || conf.defaultAfterCommand || noop;
+
+    this._currentBeforeAssert = suite.beforeAssert || conf.defaultBeforeAssert || noop;
+    this._currentAfterAssert = suite.afterAssert || conf.defaultAfterAssert || noop;
 
     const currentBeforeTest = suite.beforeTest || conf.defaultBeforeTest;
     const currentAfterTest = suite.afterTest || conf.defaultAfterTest;
@@ -836,60 +849,65 @@ Testrunner.prototype._assert = async function () {
     const refImgPath = pathlib.resolve(refImgDir, refImgName);
     const refImgPathRelative = pathlib.relative(pathlib.resolve(REF_SCREENSHOT_BASE_DIR), refImgPath);
 
-    await mkdirpAsync(refImgDir);
-    await mkdirpAsync(failedImgDir);
+    try {
+        await this._currentBeforeAssert(this.directAPI);
+        await mkdirpAsync(refImgDir);
+        await mkdirpAsync(failedImgDir);
 
-    return screenshotjs({ cropMarker: cropMarkerImg })
-    .then(img => {
-        try {
-            fs.statSync(refImgPath);
-            const refImg = PNG.sync.read(fs.readFileSync(refImgPath));
-            const imgDiffResult = bufferImageDiff(img, refImg, { pixelThreshold: PIXEL_THRESHOLD, imageThreshold: IMG_THRESHOLD });
+        await screenshotjs({ cropMarker: cropMarkerImg })
+        .then(img => {
+            try {
+                fs.statSync(refImgPath);
+                const refImg = PNG.sync.read(fs.readFileSync(refImgPath));
+                const imgDiffResult = bufferImageDiff(img, refImg, { pixelThreshold: PIXEL_THRESHOLD, imageThreshold: IMG_THRESHOLD });
 
-            if (imgDiffResult.same) {
-                // TODO customizable message
-                this._tapWriter.ok(`screenshot assert (${toPercent(imgDiffResult.difference)}): ${refImgPathRelative}`);
+                if (imgDiffResult.same) {
+                    // TODO customizable message
+                    this._tapWriter.ok(`screenshot assert (${toPercent(imgDiffResult.difference)}): ${refImgPathRelative}`);
+                }
+                else {
+                    // TODO save image for later comparison
+                    // TODO customizable message
+                    this._tapWriter.notOk(`screenshot assert (${toPercent(imgDiffResult.difference)}): ${refImgPathRelative}`);
+
+                    const failedImgName = `${ssCount}.png`;
+                    const failedImgPath = pathlib.resolve(failedImgDir, failedImgName);
+                    const failedImgPathRelative = pathlib.relative(pathlib.resolve(ERRORS_SCREENSHOT_BASE_DIR), failedImgPath);
+
+                    const failedPng = new PNG(img);
+                    failedPng.data = img.data;
+                    const failedImgBin = PNG.sync.write(failedPng);
+
+                    fs.writeFileSync(failedImgPath, failedImgBin);
+
+                    this._log.info(`failed screenshot added: ${failedImgPathRelative}`);
+                }
             }
-            else {
-                // TODO save image for later comparison
-                // TODO customizable message
-                this._tapWriter.notOk(`screenshot assert (${toPercent(imgDiffResult.difference)}): ${refImgPathRelative}`);
+            catch (e) {
+                if (e.code === 'ENOENT') {
+                    const png = new PNG(img);
+                    png.data = img.data;
+                    const pngFileBin = PNG.sync.write(png);
 
-                const failedImgName = `${ssCount}.png`;
-                const failedImgPath = pathlib.resolve(failedImgDir, failedImgName);
-                const failedImgPathRelative = pathlib.relative(pathlib.resolve(ERRORS_SCREENSHOT_BASE_DIR), failedImgPath);
+                    fs.writeFileSync(refImgPath, pngFileBin);
 
-                const failedPng = new PNG(img);
-                failedPng.data = img.data;
-                const failedImgBin = PNG.sync.write(failedPng);
-
-                fs.writeFileSync(failedImgPath, failedImgBin);
-
-                this._log.info(`failed screenshot added: ${failedImgPathRelative}`);
+                    this._log.info(`new reference image added: ${refImgPathRelative}`);
+                }
+                else {
+                    throw e;
+                }
             }
-        }
-        catch (e) {
-            if (e.code === 'ENOENT') {
-                const png = new PNG(img);
-                png.data = img.data;
-                const pngFileBin = PNG.sync.write(png);
+        });
 
-                fs.writeFileSync(refImgPath, pngFileBin);
-
-                this._log.info(`new reference image added: ${refImgPathRelative}`);
-            }
-            else {
-                throw e;
-            }
-        }
-    })
-    .catch(e => {
+        await this._currentAfterAssert(this.directAPI);
+    }
+    catch (e) {
         // TODO customizable message
         this._tapWriter.notOk(`screenshot assert: ${refImgName}, ${e}`);
-    })
-    .finally(() => {
+    }
+    finally {
         this._assertCount++;
-    });
+    }
 };
 
 Testrunner.prototype._uploadFileAndAssignDirect = async function (data) {
