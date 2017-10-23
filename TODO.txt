@@ -15,6 +15,9 @@ throw a big fat error if browser executable wasn't found
 assert downloaded files?
 vector-based assertion?
 
+update examples
+    - (default) before/after assert
+
 testrunner should survive browser restarts
 configurable assert keys
 fully handle all change events (checkbox, file)
