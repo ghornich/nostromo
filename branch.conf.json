@@ -1,4 +1,4 @@
 {
-	"branch": "preview",
-	"gitUrl": "git://github.com/ghornich/nostromo.git#preview"
+	"branch": "master",
+	"gitUrl": "git://github.com/ghornich/nostromo.git#master"
 }
