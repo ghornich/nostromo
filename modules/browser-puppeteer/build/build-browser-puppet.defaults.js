@@ -1,8 +1,17 @@
 (function () {
     var BrowserPuppet = require('../src/puppet/browser-puppet.js');
+    var DOM_COMPLETE_STATE = 'complete';
 
-    window.addEventListener('load', function () {
-        window.browserPuppet = new BrowserPuppet();
+    window.browserPuppet = new BrowserPuppet();
+
+    function startPuppet() {
         window.browserPuppet.start();
-    });
+    }
+
+    if (document.readyState === DOM_COMPLETE_STATE) {
+        startPuppet();
+    }
+    else {
+        window.addEventListener('load', startPuppet);
+    }
 }());

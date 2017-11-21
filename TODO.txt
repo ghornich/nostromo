@@ -13,6 +13,8 @@ throw a big fat error if browser executable wasn't found
 assert downloaded files?
 vector-based assertion?
 
+branch conf broken!
+
 update examples
     - (default) before/after assert
 
