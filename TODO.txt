@@ -11,9 +11,7 @@ nth: use rfr in tests
 change test ports (recorderApp, puppeteer)
 throw a big fat error if browser executable wasn't found
 assert downloaded files?
-vector-based assertion?
-
-branch conf broken!
+nostromo fails if a testfile contains multiple test() definitions?
 
 update examples
     - (default) before/after assert

@@ -65,7 +65,16 @@ exports = module.exports = function (config) {
                 },
 
                 afterCommand: async function (t) {
-                }
+                },
+
+                afterLastCommand: async function (t) {
+                },
+
+                beforeAssert: async function (t) {
+                },
+
+                afterAssert: async function (t) {
+                },
             }
             // ...
         ]
