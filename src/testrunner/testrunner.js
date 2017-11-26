@@ -22,6 +22,7 @@ const rimrafAsync = Promise.promisify(require('rimraf'));
 
 
 // TODO standard tape API (sync), rename current equal() to valueEquals()
+// TODO convert to es6 class
 
 const CONF_SCHEMA = {
     type: 'object',
@@ -72,11 +73,6 @@ const ERRORS = {
     BAILOUT: 3,
 };
 
-const PPM = 1 / 1000000;
-
-const PIXEL_THRESHOLD = 3 / 100;
-const IMG_THRESHOLD = 20 * PPM;
-
 exports = module.exports = Testrunner;
 
 /**
@@ -112,6 +108,13 @@ exports = module.exports = Testrunner;
  */
 
 /**
+ * @typedef {Object} AsserterConf
+ * @property {Number} [colorThreshold = 3] - maximum percent difference between average pixel color channel values, calculated as: |a-b| / 255 * 100
+ * @property {Number} [imageThreshold = 20] - maximum ppm difference between images' pixel count, calculated as: changedPixels / allPixels * 1e6
+ * 
+ */
+
+/**
  * @typedef {Object} TestrunnerConfig
  * @property {Number} [testPort = 47225]
  * @property {Number|String} [logLevel] - See Logger.LEVELS
@@ -129,6 +132,7 @@ exports = module.exports = Testrunner;
  * @property {DirectAPICallback} [defaultBeforeAssert]
  * @property {DirectAPICallback} [defaultAfterAssert]
  * @property {Array<BrowserSpawner>} browsers - see example run config file
+ * @property {AsserterConf} [asserterConf] - options for the built-in, screenshot-based asserter
  * @property {Array<Suite>} suites
  */
 
@@ -171,7 +175,13 @@ function Testrunner(conf) {
         outStream: process.stdout,
     };
 
+    const defaultAsserterConf={
+        colorThreshold:3,
+        imageThreshold:20
+    }
+
     this._conf = Object.assign(defaultConf, conf);
+    this._conf.asserterConf = Object.assign({}, defaultAsserterConf, conf.asserterConf)
 
     this._log = new Loggr({
         logLevel: this._conf.logLevel,
@@ -180,7 +190,6 @@ function Testrunner(conf) {
         indent: '  ',
         outStream: this._conf.outStream,
     });
-
 
     // check for configs not in defaultConf
     const confKeys = Object.keys(conf);
@@ -272,8 +281,10 @@ function Testrunner(conf) {
     });
 
     this._assertCount = 0;
+    // TODO mark as relative path (relative to what?!)
     this._currentTestfilePath = null;
     this._currentBrowserName = null;
+    this._currentTestIndex = null;
 
     this._log.trace('instance created');
 
@@ -497,7 +508,9 @@ Testrunner.prototype._runTestFile = async function (testFilePath, { browser, sui
     // TODO test
     const currentAfterLastCommand = suite.afterLastCommand || conf.defaultAfterLastCommand || noop;
 
-    for (const testData of testDatas) {
+    for (const [testDataIdx, testData] of testDatas.entries()) {
+        this._currentTestIndex = testDataIdx;
+
         this._log.debug(`running test: ${testData.name}`);
 
         this._tapWriter.diagnostic(testData.name);
@@ -553,26 +566,6 @@ Testrunner.prototype._runTestFile = async function (testFilePath, { browser, sui
             }
         }
     }
-};
-
-Testrunner.prototype._getCurrentBrowserReferenceScreenshotDir = function () {
-    return pathlib.resolve(REF_SCREENSHOT_BASE_DIR, this._currentBrowserName);
-};
-
-Testrunner.prototype._getCurrentTestModuleReferenceScreenshotDir = function () {
-    const testfilePathSlug = slugifyPath(this._currentTestfilePath);
-
-    return pathlib.resolve(this._getCurrentBrowserReferenceScreenshotDir(), testfilePathSlug);
-};
-
-Testrunner.prototype._getCurrentBrowserReferenceErrorDir = function () {
-    return pathlib.resolve(ERRORS_SCREENSHOT_BASE_DIR, this._currentBrowserName);
-};
-
-Testrunner.prototype._getCurrentTestModuleReferenceErrorDir = function () {
-    const testfilePathSlug = slugifyPath(this._currentTestfilePath);
-
-    return pathlib.resolve(this._getCurrentBrowserReferenceErrorDir(), testfilePathSlug);
 };
 
 Testrunner.prototype._waitUntilBrowserReady = async function () {
@@ -842,12 +835,23 @@ Testrunner.prototype._handleCommandError = function (err) {
 
 // TODO remove sync codes
 Testrunner.prototype._assert = async function () {
-    const ssCount = this._assertCount;
-    const refImgDir = this._getCurrentTestModuleReferenceScreenshotDir();
-    const failedImgDir = this._getCurrentTestModuleReferenceErrorDir();
-    const refImgName = `${ssCount}.png`;
+    // <Browser name>/<Relative test file path without extension>[/<Alphabetic test index in file>]
+    // i.e. "Chrome/installer/automatic install", "Chrome/installer/automatic install/b"
+    let testId = joinPaths(
+        this._currentBrowserName,
+        this._currentTestfilePath.replace(/\.js$/, '') + `_(${String.fromCharCode(this._currentTestIndex + 97)})`
+    );
+
+    const testIdSlug = slugifyPath(testId)
+
+    const refImgDir = pathlib.resolve(REF_SCREENSHOT_BASE_DIR, testIdSlug)
+    const failedImgDir = pathlib.resolve(ERRORS_SCREENSHOT_BASE_DIR, testIdSlug)
+
+    const refImgName = `${this._assertCount}.png`;
     const refImgPath = pathlib.resolve(refImgDir, refImgName);
     const refImgPathRelative = pathlib.relative(pathlib.resolve(REF_SCREENSHOT_BASE_DIR), refImgPath);
+
+    console.log('testId:', testId, 'slug:', testIdSlug)
 
     try {
         await this._currentBeforeAssert(this.directAPI);
@@ -859,18 +863,21 @@ Testrunner.prototype._assert = async function () {
             try {
                 fs.statSync(refImgPath);
                 const refImg = PNG.sync.read(fs.readFileSync(refImgPath));
-                const imgDiffResult = bufferImageDiff(img, refImg, { pixelThreshold: PIXEL_THRESHOLD, imageThreshold: IMG_THRESHOLD });
+                const imgDiffResult = bufferImageDiff(img, refImg, {
+                    colorThreshold: this._conf.asserterConf.colorThreshold,
+                    imageThreshold: this._conf.asserterConf.imageThreshold
+                });
 
                 if (imgDiffResult.same) {
                     // TODO customizable message
-                    this._tapWriter.ok(`screenshot assert (${toPercent(imgDiffResult.difference)}): ${refImgPathRelative}`);
+                    this._tapWriter.ok(`screenshot assert (${imgDiffResult.difference}ppm): ${refImgPathRelative}`);
                 }
                 else {
                     // TODO save image for later comparison
                     // TODO customizable message
-                    this._tapWriter.notOk(`screenshot assert (${toPercent(imgDiffResult.difference)}): ${refImgPathRelative}`);
+                    this._tapWriter.notOk(`screenshot assert (${imgDiffResult.difference}ppm): ${refImgPathRelative}`);
 
-                    const failedImgName = `${ssCount}.png`;
+                    const failedImgName = `${this._assertCount}.png`;
                     const failedImgPath = pathlib.resolve(failedImgDir, failedImgName);
                     const failedImgPathRelative = pathlib.relative(pathlib.resolve(ERRORS_SCREENSHOT_BASE_DIR), failedImgPath);
 
@@ -891,7 +898,9 @@ Testrunner.prototype._assert = async function () {
 
                     fs.writeFileSync(refImgPath, pngFileBin);
 
-                    this._log.info(`new reference image added: ${refImgPathRelative}`);
+                    this._tapWriter.ok(`new reference image added: ${refImgPathRelative}`);
+
+                    // this._log.info(`new reference image added: ${refImgPathRelative}`);
                 }
                 else {
                     throw e;
@@ -942,7 +951,7 @@ function createError(type, msg) {
 }
 
 function slugifyPath(s) {
-    return s.replace(/[/\\]+/g, '___').replace(/[^a-z0-9_-]/ig, '_');
+    return s.replace(/[^\\\/a-z0-9()._-]/gi, '_');
 }
 
 function ellipsis(s, l) {
@@ -984,4 +993,8 @@ function formatDuration(val) {
 
     return `${h}h ${m}m ${s}s`;
 
+}
+
+function joinPaths(...paths){
+    return paths.map(p=>p.replace(/(^\/+)|(\/+$)/g, '')).join('/')
 }
