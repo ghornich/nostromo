@@ -851,8 +851,6 @@ Testrunner.prototype._assert = async function () {
     const refImgPath = pathlib.resolve(refImgDir, refImgName);
     const refImgPathRelative = pathlib.relative(pathlib.resolve(REF_SCREENSHOT_BASE_DIR), refImgPath);
 
-    console.log('testId:', testId, 'slug:', testIdSlug)
-
     try {
         await this._currentBeforeAssert(this.directAPI);
         await mkdirpAsync(refImgDir);
