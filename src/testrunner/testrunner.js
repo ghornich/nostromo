@@ -281,10 +281,7 @@ function Testrunner(conf) {
     });
 
     this._assertCount = 0;
-    // TODO mark as relative path (relative to what?!)
-    this._currentTestfilePath = null;
-    this._currentBrowserName = null;
-    this._currentTestIndex = null;
+    this._currentBrowser = null;
 
     this._log.trace('instance created');
 
@@ -314,16 +311,18 @@ Testrunner.prototype.run = async function () {
 
         try {
             for (const browser of conf.browsers) {
-                this._currentBrowserName = browser.name;
+                this._currentBrowser = browser;
 
-                this._tapWriter.comment(`Starting browser: ${browser.name}`);
+                this._log.info(`Starting browser: ${browser.name}`);
 
                 await browser.start();
 
                 try {
 
-                    for (const suite of conf.suites) {
-                        this._tapWriter.comment(`Starting suite: ${suite.name || DEFAULT_SUITE_NAME}`);
+                    for (let suite of conf.suites) {
+                        suite.name = suite.name || DEFAULT_SUITE_NAME;
+
+                        this._log.info(`Starting suite: "${suite.name}"`);
 
                         const beforeSuite = conf.defaultBeforeSuite || suite.beforeSuite;
 
@@ -335,25 +334,22 @@ Testrunner.prototype.run = async function () {
 
                         this._log.trace('suite testFiles: ' + suite.testFiles.join(', '));
 
-                        const testFilePaths = await multiGlobAsync(suite.testFiles);
+                        const tests = await this._parseTestFiles(await multiGlobAsync(suite.testFiles))
 
-                        if (testFilePaths.length === 0) {
-                            throw new Error('No testfiles found');
+                        if (tests.length === 0) {
+                            throw new Error(`No tests found in the suite "${suite.name}"`);
                         }
-
 
                         let maybeTestError = null;
 
                         try {
 
-                            for (const [pathIdx, testFilePath] of testFilePaths.entries()) {
+                            for (const test of tests) {
                                 this._assertCount = 0;
 
-                                const isLastTestfile = pathIdx === testFilePaths.length - 1;
+                                this._currentTest = test
 
-                                await this._runTestFile(testFilePath, {
-                                    browser,
-                                    isLastTestfile,
+                                await this._runTest(test, {
                                     suite,
                                 });
                             }
@@ -463,17 +459,19 @@ Testrunner.prototype._stopServers = function () {
     this._browserPuppeteer.stop();
 };
 
-Testrunner.prototype._runTestFile = async function (testFilePath, { browser, suite }) {
-    const conf = this._conf;
-    this._log.trace('_runTestFile');
+/**
+ * @typedef {Object} Test
+ * @property {String} id
+ * @property {String} name
+ * @property {Function} testFn
+ */
 
-    this._currentTestfilePath = testFilePath;
-    const absPath = pathlib.resolve(testFilePath);
-    this._log.debug(`Requiring testFile "${testFilePath}"`);
-
-    const testFileFn = require(absPath);
-
-    const testDatas = [];
+/**
+ * @param {Array<String>} testFilePaths
+ * @return {Array<Test>}
+ */
+Testrunner.prototype._parseTestFiles = async function(testFilePaths){
+    let tests=[]
 
     function testRegistrar(arg0, arg1) {
         let name, testFn;
@@ -487,10 +485,33 @@ Testrunner.prototype._runTestFile = async function (testFilePath, { browser, sui
             testFn = arg1;
         }
 
-        testDatas.push({ name: name, testFn: testFn });
+        let id = getIdFromName(name)
+        const idCount = tests.filter(t=>t.id===id).length
+
+        if (idCount>0){
+            id+=`_(${idCount+1})`
+        }
+
+        tests.push({
+            id: id,
+            name: name,
+            testFn: testFn
+        });
     }
 
-    testFileFn(testRegistrar, this);
+    for (const path of testFilePaths){
+        const absPath = pathlib.resolve(path)
+
+        require(absPath)(testRegistrar, this)
+    }
+
+    return tests
+}
+
+Testrunner.prototype._runTest = async function (test, { suite }) {
+    const conf = this._conf;
+
+    this._log.trace('_runTest');
 
     this._currentBeforeCommand = suite.beforeCommand || conf.defaultBeforeCommand || noop;
     this._currentAfterCommand = suite.afterCommand || conf.defaultAfterCommand || noop;
@@ -504,62 +525,58 @@ Testrunner.prototype._runTestFile = async function (testFilePath, { browser, sui
     // TODO test
     const currentAfterLastCommand = suite.afterLastCommand || conf.defaultAfterLastCommand || noop;
 
-    for (const [testDataIdx, testData] of testDatas.entries()) {
-        this._currentTestIndex = testDataIdx;
+    this._log.debug(`running test: ${test.name}`);
 
-        this._log.debug(`running test: ${testData.name}`);
+    this._tapWriter.diagnostic(test.name);
 
-        this._tapWriter.diagnostic(testData.name);
+    if (currentBeforeTest) {
+        this._log.debug('running beforeTest');
+        await currentBeforeTest(this.directAPI);
+        this._log.debug('completed beforeTest');
+    }
 
-        if (currentBeforeTest) {
-            this._log.debug('running beforeTest');
-            await currentBeforeTest(this.directAPI);
-            this._log.debug('completed beforeTest');
+    // TODO throw error if no appUrl was found
+    this._currentBrowser.open(suite.appUrl || conf.defaultAppUrl || '');
+
+    await this._waitUntilBrowserReady();
+
+    let maybeTestError = null;
+
+    try {
+        const maybeTestPromise = test.testFn(this.tAPI);
+
+        if (typeof maybeTestPromise !== 'object' || typeof maybeTestPromise.then !== 'function') {
+            throw new Error(`test function didn't return a promise (name: ${test.name})`);
         }
 
-        // TODO throw error if no appUrl was found
-        browser.open(suite.appUrl || conf.defaultAppUrl || '');
+        await maybeTestPromise;
 
-        await this._waitUntilBrowserReady();
+        this._log.debug('running afterLastCommand');
+        await currentAfterLastCommand(this.directAPI);
+        this._log.debug('completed afterLastCommand');
+    }
+    catch (err) {
+        process.exitCode = 1;
+        maybeTestError = err;
+    }
 
-        let maybeTestError = null;
+    await this._browserPuppeteer.clearPersistentData();
+    await this._browserPuppeteer.terminatePuppet();
 
-        try {
-            const maybeTestPromise = testData.testFn(this.tAPI);
+    if (currentAfterTest) {
+        this._log.debug('running afterTest');
+        await currentAfterTest(this.directAPI);
+        this._log.debug('completed afterTest');
+    }
 
-            if (typeof maybeTestPromise !== 'object' || typeof maybeTestPromise.then !== 'function') {
-                throw new Error(`test function didn't return a promise (name: ${testData.name})`);
-            }
-
-            await maybeTestPromise;
-
-            this._log.debug('running afterLastCommand');
-            await currentAfterLastCommand(this.directAPI);
-            this._log.debug('completed afterLastCommand');
+    if (maybeTestError) {
+        if (maybeTestError.type === ERRORS.TEST_BAILOUT) {
+            // ignore error
+            this._log.warn(`test bailout: halting test "${testData.name}" due to error`);
+            this._log.warn(maybeTestError.stack || maybeTestError.toString());
         }
-        catch (err) {
-            process.exitCode = 1;
-            maybeTestError = err;
-        }
-
-        await this._browserPuppeteer.clearPersistentData();
-        await this._browserPuppeteer.terminatePuppet();
-
-        if (currentAfterTest) {
-            this._log.debug('running afterTest');
-            await currentAfterTest(this.directAPI);
-            this._log.debug('completed afterTest');
-        }
-
-        if (maybeTestError) {
-            if (maybeTestError.type === ERRORS.TEST_BAILOUT) {
-                // ignore error
-                this._log.warn(`test bailout: halting test "${testData.name}" due to error`);
-                this._log.warn(maybeTestError.stack || maybeTestError.toString());
-            }
-            else {
-                throw maybeTestError;
-            }
+        else {
+            throw maybeTestError;
         }
     }
 };
@@ -831,17 +848,8 @@ Testrunner.prototype._handleCommandError = function (err) {
 
 // TODO remove sync codes
 Testrunner.prototype._assert = async function () {
-    // <Browser name>/<Relative test file path without extension>[/<Alphabetic test index in file>]
-    // i.e. "Chrome/installer/automatic install", "Chrome/installer/automatic install/b"
-    let testId = joinPaths(
-        this._currentBrowserName,
-        this._currentTestfilePath.replace(/\.js$/, '') + `_(${String.fromCharCode(this._currentTestIndex + 97)})`
-    );
-
-    const testIdSlug = slugifyPath(testId)
-
-    const refImgDir = pathlib.resolve(REF_SCREENSHOT_BASE_DIR, testIdSlug)
-    const failedImgDir = pathlib.resolve(ERRORS_SCREENSHOT_BASE_DIR, testIdSlug)
+    const refImgDir = pathlib.resolve(REF_SCREENSHOT_BASE_DIR, this._currentTest.id)
+    const failedImgDir = pathlib.resolve(ERRORS_SCREENSHOT_BASE_DIR, this._currentTest.id)
 
     const refImgName = `${this._assertCount}.png`;
     const refImgPath = pathlib.resolve(refImgDir, refImgName);
@@ -862,14 +870,13 @@ Testrunner.prototype._assert = async function () {
                     imageThreshold: this._conf.asserterConf.imageThreshold
                 });
 
+                var formattedImgDiffPPM = String(imgDiffResult.difference).replace(/\.(\d)\d+/, '.$1')
+
                 if (imgDiffResult.same) {
-                    // TODO customizable message
-                    this._tapWriter.ok(`screenshot assert (${imgDiffResult.difference}ppm): ${refImgPathRelative}`);
+                    this._tapWriter.ok(`screenshot assert (${formattedImgDiffPPM} ppm): ${refImgPathRelative}`);
                 }
                 else {
-                    // TODO save image for later comparison
-                    // TODO customizable message
-                    this._tapWriter.notOk(`screenshot assert (${imgDiffResult.difference}ppm): ${refImgPathRelative}`);
+                    this._tapWriter.notOk(`screenshot assert (${formattedImgDiffPPM} ppm): ${refImgPathRelative}`);
 
                     const failedImgName = `${this._assertCount}.png`;
                     const failedImgPath = pathlib.resolve(failedImgDir, failedImgName);
@@ -989,4 +996,8 @@ function formatDuration(val) {
 
 function joinPaths(...paths){
     return paths.map(p=>p.replace(/(^\/+)|(\/+$)/g, '')).join('/')
+}
+
+function getIdFromName(name){
+    return name.replace(/[^a-z0-9()._-]/gi, '_')
 }
