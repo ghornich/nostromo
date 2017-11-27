@@ -912,6 +912,7 @@ Testrunner.prototype._assert = async function () {
     catch (e) {
         // TODO customizable message
         this._tapWriter.notOk(`screenshot assert: ${refImgName}, ${e}`);
+        process.exitCode = 1;
     }
     finally {
         this._assertCount++;
