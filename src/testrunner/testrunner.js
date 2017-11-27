@@ -185,7 +185,7 @@ function Testrunner(conf) {
 
     this._log = new Loggr({
         logLevel: this._conf.logLevel,
-        showTime: true,
+        showTime: false,
         namespace: 'Testrunner',
         indent: '  ',
         outStream: this._conf.outStream,
@@ -291,7 +291,6 @@ function Testrunner(conf) {
     this._runStartTime = null;
 }
 
-
 util.inherits(Testrunner, EventEmitter);
 
 Testrunner.prototype.run = async function () {
@@ -306,7 +305,6 @@ Testrunner.prototype.run = async function () {
     this._log.debug('running...');
 
     return Promise.resolve()
-
     .then(() => rimrafAsync(ERRORS_SCREENSHOT_BASE_DIR))
 
     .then(() => this._startServers())
@@ -321,8 +319,6 @@ Testrunner.prototype.run = async function () {
                 this._tapWriter.comment(`Starting browser: ${browser.name}`);
 
                 await browser.start();
-
-
 
                 try {
 
@@ -432,7 +428,7 @@ Testrunner.prototype.run = async function () {
     })
     .catch(error => {
         process.exitCode = 1;
-        this._log.info(`ERROR: ${error.toString()}`);
+        this._log.error(`ERROR: ${error.toString()}`);
     });
 };
 
@@ -717,7 +713,7 @@ Testrunner.prototype._waitForVisibleDirect = async function (selector, opts = {}
 };
 
 Testrunner.prototype._waitWhileVisibleDirect = async function (selector, opts = {}) {
-    this._log.info(`waitWhileVisible: ${ellipsis(selector, ELLIPSIS_LIMIT)}`);
+    this._log.debug(`waitWhileVisible: ${ellipsis(selector, ELLIPSIS_LIMIT)}`);
 
     return this._browserPuppeteer.execCommand({
         type: 'waitWhileVisible',
@@ -766,7 +762,7 @@ Testrunner.prototype._focusDirect = async function (selector, rawDescription) {
 };
 
 Testrunner.prototype._scrollDirect = async function (selector, scrollTop) {
-    this._log.info(`scroll: ${selector}`);
+    this._log.debug(`scroll: ${selector}`);
 
     return this._browserPuppeteer.execCommand({
         type: 'scroll',
@@ -781,7 +777,7 @@ Testrunner.prototype._scrollDirect = async function (selector, scrollTop) {
 };
 
 Testrunner.prototype._compositeDirect = async function (commands) {
-    this._log.info(`composite: ${commands.map(cmd => cmd.type).join(', ')}`);
+    this._log.debug(`composite: ${commands.map(cmd => cmd.type).join(', ')}`);
 
     return this._browserPuppeteer.execCommand({
         type: 'composite',
@@ -795,7 +791,7 @@ Testrunner.prototype._compositeDirect = async function (commands) {
 };
 
 Testrunner.prototype._mouseoverDirect = async function (selector) {
-    this._log.info(`mouseover: ${selector}`);
+    this._log.debug(`mouseover: ${selector}`);
 
     return this._browserPuppeteer.execCommand({
         type: 'mouseover',
@@ -809,13 +805,13 @@ Testrunner.prototype._mouseoverDirect = async function (selector) {
 };
 
 Testrunner.prototype._execFunctionDirect = async function (fn, ...args) {
-    this._log.info('execFunction');
+    this._log.debug('execFunction');
 
     return this._browserPuppeteer.execFunction(fn, args);
 };
 
 Testrunner.prototype._delay = async function (ms, description) {
-    this._log.info(`delay ${ms}`);
+    this._log.debug(`delay ${ms}`);
     return Promise.delay(ms);
 };
 
@@ -897,8 +893,6 @@ Testrunner.prototype._assert = async function () {
                     fs.writeFileSync(refImgPath, pngFileBin);
 
                     this._tapWriter.ok(`new reference image added: ${refImgPathRelative}`);
-
-                    // this._log.info(`new reference image added: ${refImgPathRelative}`);
                 }
                 else {
                     throw e;
