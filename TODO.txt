@@ -1,6 +1,5 @@
 precommit hooks (lint, doc)
 generate docs from docblock
-create referenceErrors folder on-demand
 testrunner: keepalive flag: stop execution and browser on first error (exit/continue on request)
 testrunner: handle ctrl+c gracefully (exit browser, stop servers, etc)
 replace all string command names with const definitions
@@ -11,7 +10,6 @@ nth: use rfr in tests
 change test ports (recorderApp, puppeteer)
 throw a big fat error if browser executable wasn't found
 assert downloaded files?
-nostromo fails if a testfile contains multiple test() definitions?
 
 update examples
     - (default) before/after assert
@@ -31,6 +29,8 @@ recorder debug view: last click (?) full selector path, unique path
 default* callbacks: not really necessary? e.g.
     function defaultBeforeXY()...
     'beforeXY: defaultBeforeXY' everywhere
+
+ability to define global default timeouts (waitFor/WhileVisible, etc) in run.conf
 
 BUGS:
 SBV error if selector is visible when starting page (fixed?)

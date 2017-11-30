@@ -83,7 +83,7 @@ exports = module.exports = {
  * @property {String} type - 'waitForVisible'
  * @property {String} selector
  * @property {Number} [pollInterval = 500]
- * @property {Number} [timeout = 10000]
+ * @property {Number} [timeout = 20000]
  */
 
 /**
@@ -92,7 +92,7 @@ exports = module.exports = {
  * @property {String} selector
  * @property {Number} [pollInterval = 500]
  * @property {Number} [initialDelay = 500]
- * @property {Number} [timeout = 10000]
+ * @property {Number} [timeout = 20000]
  */
 
 /**
@@ -354,7 +354,7 @@ BrowserPuppetCommands.prototype.waitForVisible = function (cmd) {
 
     return Promise.try(function () {
         var pollInterval = _defaultNum(cmd.pollInterval, 500);
-        var timeout = _defaultNum(cmd.timeout, 10000);
+        var timeout = _defaultNum(cmd.timeout, 20000);
 
         var isTimedOut = false;
 
@@ -401,7 +401,7 @@ BrowserPuppetCommands.prototype.waitWhileVisible = function (cmd) {
     return Promise.try(function () {
         var pollInterval = _defaultNum(cmd.pollInterval, 500);
         var initialDelay = _defaultNum(cmd.initialDelay, 500);
-        var timeout = _defaultNum(cmd.timeout, 10000);
+        var timeout = _defaultNum(cmd.timeout, 20000);
 
         var isTimedOut = false;
 

@@ -49,7 +49,7 @@ exports = module.exports = {
  * @property {String} type - 'waitForVisible'
  * @property {String} selector
  * @property {Number} [pollInterval = 500]
- * @property {Number} [timeout = 10000]
+ * @property {Number} [timeout = 20000]
  */
 
 /**
@@ -58,7 +58,7 @@ exports = module.exports = {
  * @property {String} selector
  * @property {Number} [pollInterval = 500]
  * @property {Number} [initialDelay = 500]
- * @property {Number} [timeout = 10000]
+ * @property {Number} [timeout = 20000]
  */
 
 /**

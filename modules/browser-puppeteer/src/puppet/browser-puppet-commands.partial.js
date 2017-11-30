@@ -59,7 +59,7 @@ BrowserPuppetCommands.prototype.waitForVisible = function (cmd) {
 
     return Promise.try(function () {
         var pollInterval = _defaultNum(cmd.pollInterval, 500);
-        var timeout = _defaultNum(cmd.timeout, 10000);
+        var timeout = _defaultNum(cmd.timeout, 20000);
 
         var isTimedOut = false;
 
@@ -106,7 +106,7 @@ BrowserPuppetCommands.prototype.waitWhileVisible = function (cmd) {
     return Promise.try(function () {
         var pollInterval = _defaultNum(cmd.pollInterval, 500);
         var initialDelay = _defaultNum(cmd.initialDelay, 500);
-        var timeout = _defaultNum(cmd.timeout, 10000);
+        var timeout = _defaultNum(cmd.timeout, 20000);
 
         var isTimedOut = false;
 
