@@ -185,7 +185,7 @@ function Testrunner(conf) {
 
     this._log = new Loggr({
         logLevel: this._conf.logLevel,
-        showTime: false,
+        showTime: true,
         namespace: 'Testrunner',
         indent: '  ',
         outStream: this._conf.outStream,
@@ -850,6 +850,7 @@ Testrunner.prototype._handleCommandError = function (err) {
 Testrunner.prototype._assert = async function () {
     const refImgDir = pathlib.resolve(REF_SCREENSHOT_BASE_DIR, this._currentTest.id)
     const failedImgDir = pathlib.resolve(ERRORS_SCREENSHOT_BASE_DIR, this._currentTest.id)
+    const failedImgDirExists = null;
 
     const refImgName = `${this._assertCount}.png`;
     const refImgPath = pathlib.resolve(refImgDir, refImgName);
@@ -858,54 +859,57 @@ Testrunner.prototype._assert = async function () {
     try {
         await this._currentBeforeAssert(this.directAPI);
         await mkdirpAsync(refImgDir);
-        await mkdirpAsync(failedImgDir);
 
-        await screenshotjs({ cropMarker: cropMarkerImg })
-        .then(img => {
-            try {
-                fs.statSync(refImgPath);
-                const refImg = PNG.sync.read(fs.readFileSync(refImgPath));
-                const imgDiffResult = bufferImageDiff(img, refImg, {
-                    colorThreshold: this._conf.asserterConf.colorThreshold,
-                    imageThreshold: this._conf.asserterConf.imageThreshold
-                });
+        const img = await screenshotjs({ cropMarker: cropMarkerImg });
 
-                var formattedImgDiffPPM = String(imgDiffResult.difference).replace(/\.(\d)\d+/, '.$1')
+        try {
+            fs.statSync(refImgPath);
+            const refImg = PNG.sync.read(fs.readFileSync(refImgPath));
+            const imgDiffResult = bufferImageDiff(img, refImg, {
+                colorThreshold: this._conf.asserterConf.colorThreshold,
+                imageThreshold: this._conf.asserterConf.imageThreshold
+            });
 
-                if (imgDiffResult.same) {
-                    this._tapWriter.ok(`screenshot assert (${formattedImgDiffPPM} ppm): ${refImgPathRelative}`);
-                }
-                else {
-                    this._tapWriter.notOk(`screenshot assert (${formattedImgDiffPPM} ppm): ${refImgPathRelative}`);
+            var formattedImgDiffPPM = String(imgDiffResult.difference).replace(/\.(\d)\d+/, '.$1')
 
-                    const failedImgName = `${this._assertCount}.png`;
-                    const failedImgPath = pathlib.resolve(failedImgDir, failedImgName);
-                    const failedImgPathRelative = pathlib.relative(pathlib.resolve(ERRORS_SCREENSHOT_BASE_DIR), failedImgPath);
-
-                    const failedPng = new PNG(img);
-                    failedPng.data = img.data;
-                    const failedImgBin = PNG.sync.write(failedPng);
-
-                    fs.writeFileSync(failedImgPath, failedImgBin);
-
-                    this._log.info(`failed screenshot added: ${failedImgPathRelative}`);
-                }
+            if (imgDiffResult.same) {
+                this._tapWriter.ok(`screenshot assert (${formattedImgDiffPPM} ppm): ${refImgPathRelative}`);
             }
-            catch (e) {
-                if (e.code === 'ENOENT') {
-                    const png = new PNG(img);
-                    png.data = img.data;
-                    const pngFileBin = PNG.sync.write(png);
-
-                    fs.writeFileSync(refImgPath, pngFileBin);
-
-                    this._tapWriter.ok(`new reference image added: ${refImgPathRelative}`);
+            else {
+                if (!failedImgDirExists) {
+                    await mkdirpAsync(failedImgDir);
+                    failedImgDirExists = true;
                 }
-                else {
-                    throw e;
-                }
+
+                this._tapWriter.notOk(`screenshot assert (${formattedImgDiffPPM} ppm): ${refImgPathRelative}`);
+
+                const failedImgName = `${this._assertCount}.png`;
+                const failedImgPath = pathlib.resolve(failedImgDir, failedImgName);
+                const failedImgPathRelative = pathlib.relative(pathlib.resolve(ERRORS_SCREENSHOT_BASE_DIR), failedImgPath);
+
+                const failedPng = new PNG(img);
+                failedPng.data = img.data;
+                const failedImgBin = PNG.sync.write(failedPng);
+
+                fs.writeFileSync(failedImgPath, failedImgBin);
+
+                this._log.info(`failed screenshot added: ${failedImgPathRelative}`);
             }
-        });
+        }
+        catch (e) {
+            if (e.code === 'ENOENT') {
+                const png = new PNG(img);
+                png.data = img.data;
+                const pngFileBin = PNG.sync.write(png);
+
+                fs.writeFileSync(refImgPath, pngFileBin);
+
+                this._tapWriter.ok(`new reference image added: ${refImgPathRelative}`);
+            }
+            else {
+                throw e;
+            }
+        }
 
         await this._currentAfterAssert(this.directAPI);
     }
