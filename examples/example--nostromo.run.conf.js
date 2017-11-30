@@ -7,27 +7,7 @@ exports = module.exports = function (config) {
         testBailout: true,
         bailout: false,
 
-        defaultAppUrl: 'http://url-to-my-app.com',
-
         referenceScreenshotDir: 'referenceScreenshots',
-
-        defaultBeforeSuite: async function () {
-        },
-
-        defaultAfterSuite: async function () {
-        },
-
-        defaultBeforeTest: async function (t) {
-        },
-
-        defaultAfterTest: async function (t) {
-        },
-
-        defaultBeforeCommand: async function (t) {
-        },
-
-        defaultAfterCommand: async function (t) {
-        },
 
         browsers: [
             new config.browsers.Chrome({

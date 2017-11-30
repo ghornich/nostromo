@@ -9,10 +9,11 @@ document capturedEvent with $fullSelectorPath, $timestamp, etc
 nth: use rfr in tests
 change test ports (recorderApp, puppeteer)
 throw a big fat error if browser executable wasn't found
-assert downloaded files?
+ability to compare downloaded files to a filesystem file?
 
 update examples
-    - (default) before/after assert
+    - before/after assert
+    - etc
 
 update tests
     - afterLastCommand
@@ -21,16 +22,15 @@ update tests
 
 testrunner should survive browser restarts
 configurable assert keys
-customizable assert
+customizable asserter
 fully handle all change events (checkbox, file)
 
 recorder debug view: last click (?) full selector path, unique path
 
-default* callbacks: not really necessary? e.g.
-    function defaultBeforeXY()...
-    'beforeXY: defaultBeforeXY' everywhere
-
 ability to define global default timeouts (waitFor/WhileVisible, etc) in run.conf
+
+explanation to each callback fn (e.g. beforeTest: runs before the appUrl is opened)
+    - flowchart?
 
 BUGS:
 SBV error if selector is visible when starting page (fixed?)

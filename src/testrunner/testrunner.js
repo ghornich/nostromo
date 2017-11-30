@@ -66,6 +66,7 @@ const DEFAULT_SUITE_NAME = '(Unnamed suite)';
 const REF_SCREENSHOT_BASE_DIR = 'referenceScreenshots';
 const ERRORS_SCREENSHOT_BASE_DIR = 'referenceErrors';
 
+// TODO use es6 class to inherit Error
 const ERRORS = {
     TIMEOUT: 0,
     NOT_EQUAL: 1,
@@ -118,19 +119,9 @@ exports = module.exports = Testrunner;
  * @typedef {Object} TestrunnerConfig
  * @property {Number} [testPort = 47225]
  * @property {Number|String} [logLevel] - See Logger.LEVELS
- * @property {String} [defaultAppUrl]
  * @property {Boolean} [testBailout = true] - Bailout from a single test if an assert fails
  * @property {Boolean} [bailout = false] - Bailout from the entire test program if an assert fails
  * @property {String} [referenceScreenshotDir = 'referenceScreenshots']
- * @property {Function} [defaultBeforeSuite]
- * @property {Function} [defaultAfterSuite]
- * @property {Function} [defaultBeforeTest]
- * @property {Function} [defaultAfterTest]
- * @property {BeforeAfterCommandCallback} [defaultBeforeCommand]
- * @property {BeforeAfterCommandCallback} [defaultAfterCommand]
- * @property {DirectAPICallback} [defaultAfterLastCommand]
- * @property {DirectAPICallback} [defaultBeforeAssert]
- * @property {DirectAPICallback} [defaultAfterAssert]
  * @property {Array<BrowserSpawner>} browsers - see example run config file
  * @property {AsserterConf} [asserterConf] - options for the built-in, screenshot-based asserter
  * @property {Array<Suite>} suites
@@ -146,32 +137,11 @@ function Testrunner(conf) {
     const defaultConf = {
         testPort: DEFAULT_TEST_PORT,
         logLevel: Loggr.LEVELS.INFO,
-
         testBailout: true,
         bailout: false,
-
         referenceScreenshotDir: REF_SCREENSHOT_BASE_DIR,
-
-        defaultBeforeTest: null,
-        defaultAfterTest: null,
-
-        defaultBeforeSuite: null,
-        defaultAfterSuite: null,
-
-        defaultBeforeCommand: null,
-        defaultAfterCommand: null,
-
-        defaultAfterLastCommand: null,
-
-        defaultBeforeAssert: null,
-        defaultAfterAssert: null,
-
-        defaultAppUrl: null,
-
         browsers: [],
-
         suites: [],
-
         outStream: process.stdout,
     };
 
@@ -318,17 +288,14 @@ Testrunner.prototype.run = async function () {
                 await browser.start();
 
                 try {
-
                     for (let suite of conf.suites) {
                         suite.name = suite.name || DEFAULT_SUITE_NAME;
 
                         this._log.info(`Starting suite: "${suite.name}"`);
 
-                        const beforeSuite = conf.defaultBeforeSuite || suite.beforeSuite;
-
-                        if (beforeSuite) {
+                        if (suite.beforeSuite) {
                             this._log.debug('running beforeSuite');
-                            await beforeSuite();
+                            await suite.beforeSuite();
                             this._log.debug('completed beforeSuite');
                         }
 
@@ -359,24 +326,17 @@ Testrunner.prototype.run = async function () {
                             maybeTestError = err;
                         }
 
-
-                        const afterSuite = conf.defaultAfterSuite || suite.afterSuite;
-
-                        if (afterSuite) {
+                        if (suite.afterSuite) {
                             this._log.debug('running afterSuite');
-                            await afterSuite();
+                            await suite.afterSuite();
                             this._log.debug('completed afterSuite');
                         }
-
 
                         if (maybeTestError) {
                             throw maybeTestError;
                         }
 
                     }
-
-
-
                 }
                 catch (err) {
                     process.exitCode = 1;
@@ -508,35 +468,31 @@ Testrunner.prototype._parseTestFiles = async function(testFilePaths){
     return tests
 }
 
+// TODO use _currentSuite?
 Testrunner.prototype._runTest = async function (test, { suite }) {
     const conf = this._conf;
 
     this._log.trace('_runTest');
 
-    this._currentBeforeCommand = suite.beforeCommand || conf.defaultBeforeCommand || noop;
-    this._currentAfterCommand = suite.afterCommand || conf.defaultAfterCommand || noop;
+    // TODO these 4 can be defined in the suite loop
+    this._currentBeforeCommand = suite.beforeCommand || noop;
+    this._currentAfterCommand = suite.afterCommand || noop;
 
-    this._currentBeforeAssert = suite.beforeAssert || conf.defaultBeforeAssert || noop;
-    this._currentAfterAssert = suite.afterAssert || conf.defaultAfterAssert || noop;
-
-    const currentBeforeTest = suite.beforeTest || conf.defaultBeforeTest;
-    const currentAfterTest = suite.afterTest || conf.defaultAfterTest;
-
-    // TODO test
-    const currentAfterLastCommand = suite.afterLastCommand || conf.defaultAfterLastCommand || noop;
+    this._currentBeforeAssert = suite.beforeAssert || noop;
+    this._currentAfterAssert = suite.afterAssert || noop;
 
     this._log.debug(`running test: ${test.name}`);
 
     this._tapWriter.diagnostic(test.name);
 
-    if (currentBeforeTest) {
+    if (suite.beforeTest) {
         this._log.debug('running beforeTest');
-        await currentBeforeTest(this.directAPI);
+        await suite.beforeTest(this.directAPI);
         this._log.debug('completed beforeTest');
     }
 
-    // TODO throw error if no appUrl was found
-    this._currentBrowser.open(suite.appUrl || conf.defaultAppUrl || '');
+    // TODO throw error if no appUrl was found (assert when parsing the testfile)
+    this._currentBrowser.open(suite.appUrl);
 
     await this._waitUntilBrowserReady();
 
@@ -551,9 +507,12 @@ Testrunner.prototype._runTest = async function (test, { suite }) {
 
         await maybeTestPromise;
 
-        this._log.debug('running afterLastCommand');
-        await currentAfterLastCommand(this.directAPI);
-        this._log.debug('completed afterLastCommand');
+        if (suite.afterLastCommand) {
+            this._log.debug('running afterLastCommand');
+            // TODO test afterLastCommand
+            await suite.afterLastCommand(this.directAPI);
+            this._log.debug('completed afterLastCommand');
+        }
     }
     catch (err) {
         process.exitCode = 1;
@@ -563,9 +522,9 @@ Testrunner.prototype._runTest = async function (test, { suite }) {
     await this._browserPuppeteer.clearPersistentData();
     await this._browserPuppeteer.terminatePuppet();
 
-    if (currentAfterTest) {
+    if (suite.afterTest) {
         this._log.debug('running afterTest');
-        await currentAfterTest(this.directAPI);
+        await suite.afterTest(this.directAPI);
         this._log.debug('completed afterTest');
     }
 
