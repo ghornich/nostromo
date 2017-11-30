@@ -572,7 +572,7 @@ Testrunner.prototype._runTest = async function (test, { suite }) {
     if (maybeTestError) {
         if (maybeTestError.type === ERRORS.TEST_BAILOUT) {
             // ignore error
-            this._log.warn(`test bailout: halting test "${testData.name}" due to error`);
+            this._log.warn(`test bailout: halting test "${test.name}" due to error`);
             this._log.warn(maybeTestError.stack || maybeTestError.toString());
         }
         else {
@@ -911,7 +911,7 @@ Testrunner.prototype._assert = async function () {
     }
     catch (e) {
         // TODO customizable message
-        this._tapWriter.notOk(`screenshot assert: ${refImgName}, ${e}`);
+        this._tapWriter.notOk(`screenshot assert: ${refImgName}, ${e.message}`);
         process.exitCode = 1;
     }
     finally {
