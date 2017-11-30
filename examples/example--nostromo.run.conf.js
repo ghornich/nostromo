@@ -41,6 +41,9 @@ exports = module.exports = function (config) {
                 afterTest: async function (t) {
                 },
 
+                beforeFirstCommand: async function (t) {
+                },
+
                 beforeCommand: async function (t) {
                 },
 

@@ -492,6 +492,7 @@ Testrunner.prototype._runTest = async function (test, { suite }) {
     }
 
     // TODO throw error if no appUrl was found (assert when parsing the testfile)
+    // TODO await this?
     this._currentBrowser.open(suite.appUrl);
 
     await this._waitUntilBrowserReady();
@@ -499,6 +500,13 @@ Testrunner.prototype._runTest = async function (test, { suite }) {
     let maybeTestError = null;
 
     try {
+        if (suite.beforeFirstCommand) {
+            this._log.debug('running beforeFirstCommand');
+            // TODO test beforeFirstCommand
+            await suite.beforeFirstCommand(this.directAPI);
+            this._log.debug('completed beforeFirstCommand');
+        }
+
         const maybeTestPromise = test.testFn(this.tAPI);
 
         if (typeof maybeTestPromise !== 'object' || typeof maybeTestPromise.then !== 'function') {
@@ -521,6 +529,8 @@ Testrunner.prototype._runTest = async function (test, { suite }) {
 
     await this._browserPuppeteer.clearPersistentData();
     await this._browserPuppeteer.terminatePuppet();
+    // TODO await this?
+    this._currentBrowser.open('');
 
     if (suite.afterTest) {
         this._log.debug('running afterTest');
