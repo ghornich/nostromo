@@ -3,20 +3,19 @@ const Promise = require('bluebird');
 Promise.config({ longStackTraces: true });
 const Loggr = require(MODULES_PATH + 'loggr');
 const isEqual = require('lodash.isequal');
-const Schema = require('schema-inspector');
+// const Schema = require('schema-inspector');
 const fs = Promise.promisifyAll(require('fs'));
 const pathlib = require('path');
 const util = require('util');
 const TapWriter = require(MODULES_PATH + 'tap-writer');
 const EventEmitter = require('events').EventEmitter;
 const BrowserPuppeteer = require(MODULES_PATH + 'browser-puppeteer').BrowserPuppeteer;
-const MESSAGES = require(MODULES_PATH + 'browser-puppeteer').MESSAGES;
+// const MESSAGES = require(MODULES_PATH + 'browser-puppeteer').MESSAGES;
 const cropMarkerImg = require(MODULES_PATH + 'browser-puppeteer').SCREENSHOT_MARKER;
 const screenshotjs = require(MODULES_PATH + 'screenshot-js');
 const mkdirpAsync = Promise.promisify(require('mkdirp'));
 const PNG = require('pngjs').PNG;
 const globAsync = Promise.promisify(require('glob'));
-const bufferImageSearch = require(MODULES_PATH + 'buffer-image-search');
 const bufferImageDiff = require(MODULES_PATH + 'buffer-image-diff');
 const rimrafAsync = Promise.promisify(require('rimraf'));
 
@@ -112,7 +111,7 @@ exports = module.exports = Testrunner;
  * @typedef {Object} AsserterConf
  * @property {Number} [colorThreshold = 3] - maximum percent difference between average pixel color channel values, calculated as: |a-b| / 255 * 100
  * @property {Number} [imageThreshold = 20] - maximum ppm difference between images' pixel count, calculated as: changedPixels / allPixels * 1e6
- * 
+ *
  */
 
 /**
@@ -145,13 +144,13 @@ function Testrunner(conf) {
         outStream: process.stdout,
     };
 
-    const defaultAsserterConf={
-        colorThreshold:3,
-        imageThreshold:20
-    }
+    const defaultAsserterConf = {
+        colorThreshold: 3,
+        imageThreshold: 20,
+    };
 
     this._conf = Object.assign(defaultConf, conf);
-    this._conf.asserterConf = Object.assign({}, defaultAsserterConf, conf.asserterConf)
+    this._conf.asserterConf = Object.assign({}, defaultAsserterConf, conf.asserterConf);
 
     this._log = new Loggr({
         logLevel: this._conf.logLevel,
@@ -288,7 +287,7 @@ Testrunner.prototype.run = async function () {
                 await browser.start();
 
                 try {
-                    for (let suite of conf.suites) {
+                    for (const suite of conf.suites) {
                         suite.name = suite.name || DEFAULT_SUITE_NAME;
 
                         this._log.info(`Starting suite: "${suite.name}"`);
@@ -301,7 +300,7 @@ Testrunner.prototype.run = async function () {
 
                         this._log.trace('suite testFiles: ' + suite.testFiles.join(', '));
 
-                        const tests = await this._parseTestFiles(await multiGlobAsync(suite.testFiles))
+                        const tests = await this._parseTestFiles(await multiGlobAsync(suite.testFiles));
 
                         if (tests.length === 0) {
                             throw new Error(`No tests found in the suite "${suite.name}"`);
@@ -314,7 +313,7 @@ Testrunner.prototype.run = async function () {
                             for (const test of tests) {
                                 this._assertCount = 0;
 
-                                this._currentTest = test
+                                this._currentTest = test;
 
                                 await this._runTest(test, {
                                     suite,
@@ -430,8 +429,8 @@ Testrunner.prototype._stopServers = function () {
  * @param {Array<String>} testFilePaths
  * @return {Array<Test>}
  */
-Testrunner.prototype._parseTestFiles = async function(testFilePaths){
-    let tests=[]
+Testrunner.prototype._parseTestFiles = async function (testFilePaths) {
+    const tests = [];
 
     function testRegistrar(arg0, arg1) {
         let name, testFn;
@@ -445,33 +444,31 @@ Testrunner.prototype._parseTestFiles = async function(testFilePaths){
             testFn = arg1;
         }
 
-        let id = getIdFromName(name)
-        const idCount = tests.filter(t=>t.id===id).length
+        let id = getIdFromName(name);
+        const idCount = tests.filter(t => t.id === id).length;
 
-        if (idCount>0){
-            id+=`_(${idCount+1})`
+        if (idCount > 0) {
+            id += `_(${idCount + 1})`;
         }
 
         tests.push({
             id: id,
             name: name,
-            testFn: testFn
+            testFn: testFn,
         });
     }
 
-    for (const path of testFilePaths){
-        const absPath = pathlib.resolve(path)
+    for (const path of testFilePaths) {
+        const absPath = pathlib.resolve(path);
 
-        require(absPath)(testRegistrar, this)
+        require(absPath)(testRegistrar, this);
     }
 
-    return tests
-}
+    return tests;
+};
 
 // TODO use _currentSuite?
 Testrunner.prototype._runTest = async function (test, { suite }) {
-    const conf = this._conf;
-
     this._log.trace('_runTest');
 
     // TODO these 4 can be defined in the suite loop
@@ -577,7 +574,7 @@ Testrunner.prototype._execCommandWithAPI = async function (cmd, api) {
         case 'click': return api.click(cmd.selector);
         case 'waitForVisible': return api.waitForVisible(cmd.selector, { pollInterval: cmd.pollInterval, timeout: cmd.timeout });
         case 'waitWhileVisible': return api.waitWhileVisible(cmd.selector, {
-            pollInterval: cmd.pollInterval, timeout: cmd.timeout, initialDelay: cmd.initialDelay
+            pollInterval: cmd.pollInterval, timeout: cmd.timeout, initialDelay: cmd.initialDelay,
         });
         case 'focus': return api.focus(cmd.selector);
         case 'assert': return api.assert();
@@ -817,9 +814,9 @@ Testrunner.prototype._handleCommandError = function (err) {
 
 // TODO remove sync codes
 Testrunner.prototype._assert = async function () {
-    const refImgDir = pathlib.resolve(REF_SCREENSHOT_BASE_DIR, this._currentTest.id)
-    const failedImgDir = pathlib.resolve(ERRORS_SCREENSHOT_BASE_DIR, this._currentTest.id)
-    const failedImgDirExists = null;
+    const refImgDir = pathlib.resolve(REF_SCREENSHOT_BASE_DIR, this._currentTest.id);
+    const failedImgDir = pathlib.resolve(ERRORS_SCREENSHOT_BASE_DIR, this._currentTest.id);
+    let failedImgDirExists = null;
 
     const refImgName = `${this._assertCount}.png`;
     const refImgPath = pathlib.resolve(refImgDir, refImgName);
@@ -836,10 +833,10 @@ Testrunner.prototype._assert = async function () {
             const refImg = PNG.sync.read(fs.readFileSync(refImgPath));
             const imgDiffResult = bufferImageDiff(img, refImg, {
                 colorThreshold: this._conf.asserterConf.colorThreshold,
-                imageThreshold: this._conf.asserterConf.imageThreshold
+                imageThreshold: this._conf.asserterConf.imageThreshold,
             });
 
-            var formattedImgDiffPPM = String(imgDiffResult.difference).replace(/\.(\d)\d+/, '.$1')
+            const formattedImgDiffPPM = String(imgDiffResult.difference).replace(/\.(\d)\d+/, '.$1');
 
             if (imgDiffResult.same) {
                 this._tapWriter.ok(`screenshot assert (${formattedImgDiffPPM} ppm): ${refImgPathRelative}`);
@@ -923,10 +920,6 @@ function createError(type, msg) {
     const e = new Error(msg); e.type = type; return e;
 }
 
-function slugifyPath(s) {
-    return s.replace(/[^\\\/a-z0-9()._-]/gi, '_');
-}
-
 function ellipsis(s, l) {
     if (s.length <= l) {
         return s;
@@ -943,10 +936,6 @@ function multiGlobAsync(globs) {
         });
     })
     .then(() => paths);
-}
-
-function toPercent(v, decimals = 4) {
-    return (v * 100).toFixed(decimals);
 }
 
 function formatDuration(val) {
@@ -968,10 +957,6 @@ function formatDuration(val) {
 
 }
 
-function joinPaths(...paths){
-    return paths.map(p=>p.replace(/(^\/+)|(\/+$)/g, '')).join('/')
-}
-
-function getIdFromName(name){
-    return name.replace(/[^a-z0-9()._-]/gi, '_')
+function getIdFromName(name) {
+    return name.replace(/[^a-z0-9()._-]/gi, '_');
 }
