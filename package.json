@@ -1,6 +1,6 @@
 {
   "name": "nostromo",
-  "version": "0.0.0-v2_unstable",
+  "version": "0.0.0-v2-unstable",
   "description": "",
   "main": "src/cli.js",
   "scripts": {
