@@ -16,6 +16,10 @@ function imageDiff(a, b, options) {
     assert(opts.colorThreshold !== undefined, 'colorThreshold is missing');
     assert(opts.imageThreshold !== undefined, 'imageThreshold is missing');
 
+    if (opts.equivalenceThreshold === undefined) {
+        opts.equivalenceThreshold = 4
+    }
+
     // TODO what if images are different size?
     if (a.width !== b.width || a.height !== b.height) {
         throw new DifferentSizeError('width or height are different');
@@ -30,7 +34,12 @@ function imageDiff(a, b, options) {
     for (let i = 0; i < a.data.length / 4; i += 4) {
         const px1Avg = (a.data[i] + a.data[i + 1] + a.data[i + 2]) / 3
         const px2Avg = (b.data[i] + b.data[i + 1] + b.data[i + 2]) / 3
-        const colorDiffPercent=Math.abs(px1Avg-px2Avg)/255*100
+        const colorDiff=Math.abs(px1Avg-px2Avg)
+        const colorDiffPercent=colorDiff/255*100
+
+        if (colorDiff <= opts.equivalenceThreshold) {
+            continue
+        }
 
         if (colorDiffPercent > opts.colorThreshold) {
             diffPxCount++;
