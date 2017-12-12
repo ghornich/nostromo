@@ -383,7 +383,7 @@ Testrunner.prototype.run = async function () {
     })
     .catch(error => {
         process.exitCode = 1;
-        this._log.error(`ERROR: ${error.toString()}`);
+        this._log.fatal(err.stack || err.toString());
     });
 };
 
