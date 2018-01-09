@@ -860,6 +860,8 @@ Testrunner.prototype._assert = async function () {
                 fs.writeFileSync(failedImgPath, failedImgBin);
 
                 this._log.info(`failed screenshot added: ${failedImgPathRelative}`);
+
+                throw new Error('screenshot assert failed');
             }
         }
         catch (e) {
@@ -876,8 +878,6 @@ Testrunner.prototype._assert = async function () {
                 throw e;
             }
         }
-
-        await this._currentAfterAssert(this.directAPI);
     }
     catch (e) {
         // TODO customizable message
@@ -885,6 +885,8 @@ Testrunner.prototype._assert = async function () {
         process.exitCode = 1;
     }
     finally {
+        // TODO handle possible errors from afterAssert
+        await this._currentAfterAssert(this.directAPI);
         this._assertCount++;
     }
 };
