@@ -30,6 +30,7 @@ BrowserSpawnerChrome.prototype._startBrowser = async function (spawnerControlUrl
         '--disable-background-timer-throttling',
         '--disable-renderer-backgrounding',
         '--disable-device-discovery-notifications',
+        '--incognito',
 
         // TODO?
         // '--headless',
