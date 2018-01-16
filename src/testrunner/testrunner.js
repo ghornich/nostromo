@@ -831,11 +831,7 @@ Testrunner.prototype._assert = async function () {
         try {
             fs.statSync(refImgPath);
             const refImg = PNG.sync.read(fs.readFileSync(refImgPath));
-            const imgDiffResult = bufferImageDiff(img, refImg, {
-                colorThreshold: this._conf.asserterConf.colorThreshold,
-                imageThreshold: this._conf.asserterConf.imageThreshold,
-            });
-
+            const imgDiffResult = bufferImageDiff(img, refImg, this._conf.asserterConf);
             const formattedImgDiffPPM = String(imgDiffResult.difference).replace(/\.(\d)\d+/, '.$1');
 
             if (imgDiffResult.same) {
