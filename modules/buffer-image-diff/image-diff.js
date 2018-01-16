@@ -11,6 +11,23 @@ class DifferentSizeError extends Error {
 // Image: {width, height, data:Buffer of pixel rgba's}
 // a, b: Image
 // return {same:Boolean, difference:Number}
+
+/**
+ * @typedef {Object} ImageDiffResult
+ * @property {Boolean} same
+ * @property {Number} difference
+ */
+
+/**
+ * @param {Image} a
+ * @param {Image} b
+ * @param {Object} options
+ * @param {Number} options.colorThreshold
+ * @param {Number} options.imageThreshold
+ * @param {Number} [options.equivalenceThreshold = 4]
+ * @param {Number} [options.grayscaleThreshold = 0] - Ignore grayscale differences. Zero disables this threshold
+ * @return {ImageDiffResult}
+ */
 function imageDiff(a, b, options) {
     const opts = options || {};
     assert(opts.colorThreshold !== undefined, 'colorThreshold is missing');
@@ -18,6 +35,10 @@ function imageDiff(a, b, options) {
 
     if (opts.equivalenceThreshold === undefined) {
         opts.equivalenceThreshold = 4
+    }
+
+    if (opts.grayscaleThreshold === undefined) {
+        opts.grayscaleThreshold = 0
     }
 
     // TODO what if images are different size?
@@ -39,6 +60,17 @@ function imageDiff(a, b, options) {
 
         if (colorDiff <= opts.equivalenceThreshold) {
             continue
+        }
+
+        if (opts.grayscaleThreshold > 0) {
+            const rDiff = Math.abs(a.data[i] - b.data[i])
+            const gDiff = Math.abs(a.data[i + 1] - b.data[i + 1])
+            const bDiff = Math.abs(a.data[i + 2] - b.data[i + 2])
+            const diffIsGrayscale = rDiff === gDiff && gDiff === bDiff;
+
+            if (diffIsGrayscale && rDiff <= opts.grayscaleThreshold) {
+                continue
+            }
         }
 
         if (colorDiffPercent > opts.colorThreshold) {
