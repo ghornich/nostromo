@@ -74,6 +74,10 @@ BrowserSpawnerBase.prototype.start = async function () {
 
     this._wsServer.on('connection', this._onWsConnection.bind(this));
 
+    this._wsServer.on('error', err => {
+        this._log.error(err.stack || err.message);
+    });
+
     await new Promise(res => this._httpServer.listen(DEFAULT_SPAWNER_PORT, res));
 
     await this._startBrowser(resolvePath(__dirname, 'browser-spawner-context.html'));
@@ -128,7 +132,11 @@ BrowserSpawnerBase.prototype._sendWsMessage = function (msgArg) {
 };
 
 BrowserSpawnerBase.prototype.stop = async function () {
-    if (this._process) {
+    if (this._process && this._wsServer) {
+        await new Promise(resolve => {
+            this._wsServer.close(resolve);
+        });
+
         await new Promise((resolve, reject) => {
             treeKill(this._process.pid, err => err ? reject(err) : resolve());
         });
@@ -138,7 +146,7 @@ BrowserSpawnerBase.prototype.stop = async function () {
         this._process = null;
     }
     else {
-        throw new Error('Process is not running');
+        throw new Error('Process or WS Server not running');
     }
 };
 
