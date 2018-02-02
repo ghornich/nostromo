@@ -34,3 +34,5 @@ explanation to each callback fn (e.g. beforeTest: runs before the appUrl is open
 
 BUGS:
 SBV error if selector is visible when starting page (fixed?)
+
+single nostromo installation should rec/run multiple branches, e.g. define folders in conf.js, etc.
