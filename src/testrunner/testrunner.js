@@ -108,10 +108,10 @@ exports = module.exports = Testrunner;
  */
 
 /**
+ * TODO outdated?
  * @typedef {Object} AsserterConf
  * @property {Number} [colorThreshold = 3] - maximum percent difference between average pixel color channel values, calculated as: |a-b| / 255 * 100
  * @property {Number} [imageThreshold = 20] - maximum ppm difference between images' pixel count, calculated as: changedPixels / allPixels * 1e6
- *
  */
 
 /**
@@ -247,6 +247,18 @@ function Testrunner(conf) {
     this._browserPuppeteer = new BrowserPuppeteer({
         logger: this._log.fork('BrowserPuppeteer'),
         deferredMessaging: true,
+    });
+
+    this._consolePipeLog = new Loggr({
+        logLevel: this._conf.logLevel,
+        showTime: true,
+        namespace: 'ConsolePipe',
+        indent: '  ',
+        outStream: this._conf.outStream,
+    });
+
+    this._browserPuppeteer.on(MESSAGES.CONSOLE_PIPE, consolePipeMessage => {
+        this._consolePipeLog.debug(consolePipeMessage.messageType + ': ' + consolePipeMessage.message);
     });
 
     this._assertCount = 0;

@@ -69,6 +69,7 @@ objectAssign(BrowserPuppet.prototype, BrowserPuppetCommands.prototype);
 BrowserPuppet.prototype.start = function () {
     this._startWs();
     this._attachCaptureEventListeners();
+    this._attachConsolePipe();
 };
 
 BrowserPuppet.prototype._startWs = function () {
@@ -215,6 +216,46 @@ BrowserPuppet.prototype._attachCaptureEventListeners = function () {
     document.addEventListener('change', this._onChangeCapture.bind(this), true);
 
     window.addEventListener('blur', this._onWindowBlur.bind(this));
+};
+
+BrowserPuppet.prototype._attachConsolePipe = function () {
+    var oldLog = console.log;
+    var oldInfo = console.info;
+    var oldWarn = console.warn;
+    var oldError = console.error;
+
+    function sendConsoleMessage(messageType, args) {
+        var message = Array.prototype.map.call(args, function (arg) {
+            return String(arg);
+        })
+        .join(' ');
+
+        this._sendMessage({
+            type: MESSAGES.CONSOLE_PIPE,
+            messageType: messageType,
+            message: message
+        });
+    }
+
+    console.log = function () {
+        oldLog.apply(console, arguments);
+        sendConsoleMessage('log', arguments);
+    };
+
+    console.info = function () {
+        oldInfo.apply(console, arguments);
+        sendConsoleMessage('info', arguments);
+    };
+
+    console.warn = function () {
+        oldWarn.apply(console, arguments);
+        sendConsoleMessage('warn', arguments);
+    };
+
+    console.error = function () {
+        oldError.apply(console, arguments);
+        sendConsoleMessage('error', arguments);
+    };
 };
 
 BrowserPuppet.prototype._attachMouseoverCaptureEventListener = function () {
