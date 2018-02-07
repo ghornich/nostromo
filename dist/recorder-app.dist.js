@@ -139,6 +139,7 @@ exports.UPSTREAM = {
     ACK: 'ack',
     NAK: 'nak',
     INSERT_ASSERTION: 'insert-assertion',
+    CONSOLE_PIPE: 'console-pipe',
 };
 
 /**
@@ -207,6 +208,13 @@ exports.DOWNSTREAM = {
 /**
  * @typedef {UpstreamControlMessage} InsertAssertionMessage
  * @property {String} type - 'insert-assertion'
+ */
+
+/**
+ * @typedef {UpstreamControlMessage} ConsolePipeMessage
+ * @property {String} type - 'console-pipe'
+ * @property {String} messageType - 'info', 'log', 'warn', 'error'
+ * @property {String} message
  */
 
 /**
