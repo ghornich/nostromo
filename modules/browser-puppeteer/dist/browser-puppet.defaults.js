@@ -805,6 +805,7 @@ BrowserPuppet.prototype._attachCaptureEventListeners = function () {
 };
 
 BrowserPuppet.prototype._attachConsolePipe = function () {
+    var self = this;
     var oldLog = console.log;
     var oldInfo = console.info;
     var oldWarn = console.warn;
@@ -816,7 +817,7 @@ BrowserPuppet.prototype._attachConsolePipe = function () {
         })
         .join(' ');
 
-        this._sendMessage({
+        self._sendMessage({
             type: MESSAGES.CONSOLE_PIPE,
             messageType: messageType,
             message: message
