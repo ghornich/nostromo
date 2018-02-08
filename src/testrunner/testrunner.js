@@ -257,7 +257,7 @@ function Testrunner(conf) {
         outStream: this._conf.outStream,
     });
 
-    this._browserPuppeteer.on(MESSAGES.CONSOLE_PIPE, consolePipeMessage => {
+    this._browserPuppeteer.on(MESSAGES.UPSTREAM.CONSOLE_PIPE, consolePipeMessage => {
         this._consolePipeLog.debug(consolePipeMessage.messageType + ': ' + consolePipeMessage.message);
     });
 

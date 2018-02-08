@@ -822,7 +822,7 @@ BrowserPuppet.prototype._attachConsolePipe = function () {
         .join(' ');
 
         self._sendMessage({
-            type: MESSAGES.CONSOLE_PIPE,
+            type: MESSAGES.UPSTREAM.CONSOLE_PIPE,
             messageType: messageType,
             message: message
         });
