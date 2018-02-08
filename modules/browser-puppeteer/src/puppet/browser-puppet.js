@@ -225,7 +225,11 @@ BrowserPuppet.prototype._attachConsolePipe = function () {
     var oldWarn = console.warn;
     var oldError = console.error;
 
-    function sendConsoleMessage(messageType, args) {
+    function sendConsoleMessageIfConnected(messageType, args) {
+        if (!self._wsConn.isConnected()) {
+            return;
+        }
+
         var message = Array.prototype.map.call(args, function (arg) {
             return String(arg);
         })
@@ -240,22 +244,22 @@ BrowserPuppet.prototype._attachConsolePipe = function () {
 
     console.log = function () {
         oldLog.apply(console, arguments);
-        sendConsoleMessage('log', arguments);
+        sendConsoleMessageIfConnected('log', arguments);
     };
 
     console.info = function () {
         oldInfo.apply(console, arguments);
-        sendConsoleMessage('info', arguments);
+        sendConsoleMessageIfConnected('info', arguments);
     };
 
     console.warn = function () {
         oldWarn.apply(console, arguments);
-        sendConsoleMessage('warn', arguments);
+        sendConsoleMessageIfConnected('warn', arguments);
     };
 
     console.error = function () {
         oldError.apply(console, arguments);
-        sendConsoleMessage('error', arguments);
+        sendConsoleMessageIfConnected('error', arguments);
     };
 };
 

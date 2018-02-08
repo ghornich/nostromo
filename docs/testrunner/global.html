@@ -102,29 +102,36 @@
 
         
                 
+<h4 class="name" id="AsserterConf">AsserterConf</h4>
+
+
+
+
+<div class="description">
+    TODO outdated?
+</div>
+
+
+
+    <h5>Type:</h5>
+    <ul>
+        <li>
+            
+<span class="param-type">Object</span>
+
+
+        </li>
+    </ul>
+
+
+
+
+
+    <h5 class="subsection-title">Properties:</h5>
 
     
 
-    
-    <h4 class="name" id="AfterLastCommandCallback"><span class="type-signature"></span>AfterLastCommandCallback<span class="signature">(t)</span><span class="type-signature"></span></h4>
-    
-
-    
-
-
-
-
-
-
-
-
-
-
-
-    <h5>Parameters:</h5>
-    
-
-<table class="params">
+<table class="props">
     <thead>
     <tr>
         
@@ -134,7 +141,11 @@
         <th>Type</th>
 
         
+        <th>Attributes</th>
+        
 
+        
+        <th>Default</th>
         
 
         <th class="last">Description</th>
@@ -146,30 +157,79 @@
 
         <tr>
             
-                <td class="name"><code>t</code></td>
+                <td class="name"><code>colorThreshold</code></td>
             
 
             <td class="type">
             
                 
-<span class="param-type"><a href="global.html#TestAssertAPIDirect">TestAssertAPIDirect</a></span>
+<span class="param-type">Number</span>
 
 
             
             </td>
 
             
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
 
+                
+                </td>
             
 
-            <td class="description last"></td>
+            
+                <td class="default">
+                
+                    3
+                
+                </td>
+            
+
+            <td class="description last">maximum percent difference between average pixel color channel values, calculated as: |a-b| / 255 * 100</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>imageThreshold</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Number</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                    20
+                
+                </td>
+            
+
+            <td class="description last">maximum ppm difference between images' pixel count, calculated as: changedPixels / allPixels * 1e6</td>
         </tr>
 
     
     </tbody>
 </table>
-
-
 
 
 
@@ -203,7 +263,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="testrunner.js.html">testrunner.js</a>, <a href="testrunner.js.html#line93">line 93</a>
+        <a href="testrunner.js.html">testrunner.js</a>, <a href="testrunner.js.html#line110">line 110</a>
     </li></ul></dd>
     
 
@@ -213,18 +273,6 @@
 
     
 </dl>
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -357,7 +405,138 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="testrunner.js.html">testrunner.js</a>, <a href="testrunner.js.html#line87">line 87</a>
+        <a href="testrunner.js.html">testrunner.js</a>, <a href="testrunner.js.html#line83">line 83</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+            
+                
+
+    
+
+    
+    <h4 class="name" id="DirectAPICallback"><span class="type-signature"></span>DirectAPICallback<span class="signature">(t)</span><span class="type-signature"></span></h4>
+    
+
+    
+
+
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>t</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type"><a href="global.html#TestAssertAPIDirect">TestAssertAPIDirect</a></span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="testrunner.js.html">testrunner.js</a>, <a href="testrunner.js.html#line89">line 89</a>
     </li></ul></dd>
     
 
@@ -715,7 +894,69 @@
             <td class="type">
             
                 
-<span class="param-type"><a href="global.html#AfterLastCommandCallback">AfterLastCommandCallback</a></span>
+<span class="param-type"><a href="global.html#DirectAPICallback">DirectAPICallback</a></span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+                </td>
+            
+
+            
+
+            <td class="description last"></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>beforeAssert</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type"><a href="global.html#DirectAPICallback">DirectAPICallback</a></span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+                </td>
+            
+
+            
+
+            <td class="description last"></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>afterAssert</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type"><a href="global.html#DirectAPICallback">DirectAPICallback</a></span>
 
 
             
@@ -772,7 +1013,173 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="testrunner.js.html">testrunner.js</a>, <a href="testrunner.js.html#line98">line 98</a>
+        <a href="testrunner.js.html">testrunner.js</a>, <a href="testrunner.js.html#line94">line 94</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+            
+                
+<h4 class="name" id="Test">Test</h4>
+
+
+
+
+
+
+    <h5>Type:</h5>
+    <ul>
+        <li>
+            
+<span class="param-type">Object</span>
+
+
+        </li>
+    </ul>
+
+
+
+
+
+    <h5 class="subsection-title">Properties:</h5>
+
+    
+
+<table class="props">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>id</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>name</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>testFn</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">function</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="testrunner.js.html">testrunner.js</a>, <a href="testrunner.js.html#line433">line 433</a>
     </li></ul></dd>
     
 
@@ -844,7 +1251,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="testrunner.js.html">testrunner.js</a>, <a href="testrunner.js.html#line82">line 82</a>
+        <a href="testrunner.js.html">testrunner.js</a>, <a href="testrunner.js.html#line78">line 78</a>
     </li></ul></dd>
     
 
@@ -988,41 +1395,6 @@
 
         <tr>
             
-                <td class="name"><code>defaultAppUrl</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">String</span>
-
-
-            
-            </td>
-
-            
-                <td class="attributes">
-                
-                    &lt;optional><br>
-                
-
-                
-                </td>
-            
-
-            
-                <td class="default">
-                
-                </td>
-            
-
-            <td class="description last"></td>
-        </tr>
-
-    
-
-        <tr>
-            
                 <td class="name"><code>testBailout</code></td>
             
 
@@ -1134,251 +1506,6 @@
 
         <tr>
             
-                <td class="name"><code>defaultBeforeSuite</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">function</span>
-
-
-            
-            </td>
-
-            
-                <td class="attributes">
-                
-                    &lt;optional><br>
-                
-
-                
-                </td>
-            
-
-            
-                <td class="default">
-                
-                </td>
-            
-
-            <td class="description last"></td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>defaultAfterSuite</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">function</span>
-
-
-            
-            </td>
-
-            
-                <td class="attributes">
-                
-                    &lt;optional><br>
-                
-
-                
-                </td>
-            
-
-            
-                <td class="default">
-                
-                </td>
-            
-
-            <td class="description last"></td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>defaultBeforeTest</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">function</span>
-
-
-            
-            </td>
-
-            
-                <td class="attributes">
-                
-                    &lt;optional><br>
-                
-
-                
-                </td>
-            
-
-            
-                <td class="default">
-                
-                </td>
-            
-
-            <td class="description last"></td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>defaultAfterTest</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">function</span>
-
-
-            
-            </td>
-
-            
-                <td class="attributes">
-                
-                    &lt;optional><br>
-                
-
-                
-                </td>
-            
-
-            
-                <td class="default">
-                
-                </td>
-            
-
-            <td class="description last"></td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>defaultBeforeCommand</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type"><a href="global.html#BeforeAfterCommandCallback">BeforeAfterCommandCallback</a></span>
-
-
-            
-            </td>
-
-            
-                <td class="attributes">
-                
-                    &lt;optional><br>
-                
-
-                
-                </td>
-            
-
-            
-                <td class="default">
-                
-                </td>
-            
-
-            <td class="description last"></td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>defaultAfterCommand</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type"><a href="global.html#BeforeAfterCommandCallback">BeforeAfterCommandCallback</a></span>
-
-
-            
-            </td>
-
-            
-                <td class="attributes">
-                
-                    &lt;optional><br>
-                
-
-                
-                </td>
-            
-
-            
-                <td class="default">
-                
-                </td>
-            
-
-            <td class="description last"></td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>defaultAfterLastCommand</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type"><a href="global.html#AfterLastCommandCallback">AfterLastCommandCallback</a></span>
-
-
-            
-            </td>
-
-            
-                <td class="attributes">
-                
-                    &lt;optional><br>
-                
-
-                
-                </td>
-            
-
-            
-                <td class="default">
-                
-                </td>
-            
-
-            <td class="description last"></td>
-        </tr>
-
-    
-
-        <tr>
-            
                 <td class="name"><code>browsers</code></td>
             
 
@@ -1406,6 +1533,41 @@
             
 
             <td class="description last">see example run config file</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>asserterConf</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type"><a href="global.html#AsserterConf">AsserterConf</a></span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                </td>
+            
+
+            <td class="description last">options for the built-in, screenshot-based asserter</td>
         </tr>
 
     
@@ -1477,7 +1639,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="testrunner.js.html">testrunner.js</a>, <a href="testrunner.js.html#line112">line 112</a>
+        <a href="testrunner.js.html">testrunner.js</a>, <a href="testrunner.js.html#line117">line 117</a>
     </li></ul></dd>
     
 
@@ -1513,7 +1675,7 @@
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.5.5</a> on Tue Sep 26 2017 12:28:31 GMT+0200 (Central Europe Daylight Time)
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.5.5</a> on Thu Feb 08 2018 10:07:29 GMT+0100 (Central Europe Standard Time)
 </footer>
 
 <script> prettyPrint(); </script>

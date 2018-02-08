@@ -27,6 +27,13 @@
     | event.selector | `String` |  |
     | event.$fullSelectorPath | `String` |  |
     | event.target | `Object` |  |
+- __ConsolePipeMessage__ - _UpstreamControlMessage_
+
+    |Name|Type|Description|
+    |---|---|---|
+    | type | `String` | 'console-pipe' |
+    | messageType | `String` | 'info', 'log', 'warn', 'error' |
+    | message | `String` |  |
 - __InsertAssertionMessage__ - _UpstreamControlMessage_
 
     |Name|Type|Description|
