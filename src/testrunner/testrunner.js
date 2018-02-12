@@ -120,6 +120,7 @@ exports = module.exports = Testrunner;
  * @property {Number|String} [logLevel] - See Logger.LEVELS
  * @property {Boolean} [testBailout = true] - Bailout from a single test if an assert fails
  * @property {Boolean} [bailout = false] - Bailout from the entire test program if an assert fails
+ * @property {Number} [browserReadyTimeout = 10000] browser timeout in ms
  * @property {String} [referenceScreenshotDir = 'referenceScreenshots']
  * @property {Array<BrowserSpawner>} browsers - see example run config file
  * @property {AsserterConf} [asserterConf] - options for the built-in, screenshot-based asserter
@@ -138,6 +139,7 @@ function Testrunner(conf) {
         logLevel: Loggr.LEVELS.INFO,
         testBailout: true,
         bailout: false,
+        browserReadyTimeout: 10000,
         referenceScreenshotDir: REF_SCREENSHOT_BASE_DIR,
         browsers: [],
         suites: [],
@@ -562,6 +564,7 @@ Testrunner.prototype._runTest = async function (test, { suite }) {
 Testrunner.prototype._waitUntilBrowserReady = async function () {
     return this._browserPuppeteer.waitForPuppet({
         ensureVisible: true,
+        timeout: this._conf.browserReadyTimeout,
     });
 };
 
