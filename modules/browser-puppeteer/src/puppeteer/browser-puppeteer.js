@@ -154,7 +154,6 @@ BrowserPuppeteer.prototype.waitForPuppet = async function (options) {
 
             await this.showScreenshotMarker();
 
-            const timeout = 10000;
             const startTime = Date.now();
 
             while (true) {
@@ -171,7 +170,7 @@ BrowserPuppeteer.prototype.waitForPuppet = async function (options) {
                     this._log.debug(`Screenshot marker count invalid (count: ${markerPositions.length})`);
                 }
 
-                if (Date.now() - startTime > timeout) {
+                if (Date.now() - startTime > _opts.timeout) {
                     throw new Error('ensureVisible timeout')
                 }
 
