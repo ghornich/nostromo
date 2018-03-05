@@ -52,7 +52,7 @@ function imageDiff(a, b, options) {
 
     let diffPxCount = 0;
 
-    for (let i = 0; i < a.data.length / 4; i += 4) {
+    for (let i = 0; i < a.data.length; i += 4) {
         const px1Avg = (a.data[i] + a.data[i + 1] + a.data[i + 2]) / 3
         const px2Avg = (b.data[i] + b.data[i + 1] + b.data[i + 2]) / 3
         const colorDiff=Math.abs(px1Avg-px2Avg)
