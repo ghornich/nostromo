@@ -117,6 +117,7 @@ exports = module.exports = Testrunner;
  * @property {Boolean} [testBailout = true] - Bailout from a single test if an assert fails
  * @property {Boolean} [bailout = false] - Bailout from the entire test program if an assert fails
  * @property {String} [referenceScreenshotDir = 'referenceScreenshots']
+ * @property {Boolean} [ensureBrowserVisible = true]
  * @property {Function} [defaultBeforeSuite]
  * @property {Function} [defaultAfterSuite]
  * @property {Function} [defaultBeforeTest]
@@ -143,6 +144,7 @@ function Testrunner(conf) {
         bailout: false,
 
         referenceScreenshotDir: REF_SCREENSHOT_BASE_DIR,
+        ensureBrowserVisible: true,
 
         defaultBeforeTest: null,
         defaultAfterTest: null,
@@ -565,7 +567,7 @@ Testrunner.prototype._getCurrentTestModuleReferenceErrorDir = function () {
 
 Testrunner.prototype._waitUntilBrowserReady = async function () {
     return this._browserPuppeteer.waitForPuppet({
-        ensureVisible: true,
+        ensureVisible: this._conf.ensureBrowserVisible,
     });
 };
 

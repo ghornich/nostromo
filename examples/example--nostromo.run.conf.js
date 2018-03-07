@@ -11,6 +11,8 @@ exports = module.exports = function (config) {
 
         referenceScreenshotDir: 'referenceScreenshots',
 
+        ensureBrowserVisible: true,
+
         defaultBeforeSuite: async function () {
         },
 
