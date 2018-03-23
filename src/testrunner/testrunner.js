@@ -125,6 +125,7 @@ exports = module.exports = Testrunner;
  * @property {Array<BrowserSpawner>} browsers - see example run config file
  * @property {AsserterConf} [asserterConf] - options for the built-in, screenshot-based asserter
  * @property {Array<Suite>} suites
+ * @property {String} [testFilter] - regular expression string
  */
 
 /**
@@ -143,6 +144,7 @@ function Testrunner(conf) {
         referenceScreenshotDir: REF_SCREENSHOT_BASE_DIR,
         browsers: [],
         suites: [],
+        testFilter: null,
         outStream: process.stdout,
     };
 
@@ -323,8 +325,15 @@ Testrunner.prototype.run = async function () {
                         let maybeTestError = null;
 
                         try {
-
                             for (const test of tests) {
+                                if (conf.testFilter !== null) {
+                                    const filterRegex = new RegExp(conf.testFilter, 'i');
+
+                                    if (filterRegex.test(test.name)) {
+                                        this._log.info(`Skipping test: ${ test.name }`);
+                                    }
+                                }
+
                                 this._assertCount = 0;
 
                                 this._currentTest = test;
