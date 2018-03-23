@@ -331,6 +331,7 @@ Testrunner.prototype.run = async function () {
 
                                     if (!filterRegex.test(test.name)) {
                                         this._log.info(`Skipping test: ${ test.name }`);
+                                        continue;
                                     }
                                 }
 
