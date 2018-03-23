@@ -329,7 +329,7 @@ Testrunner.prototype.run = async function () {
                                 if (conf.testFilter !== null) {
                                     const filterRegex = new RegExp(conf.testFilter, 'i');
 
-                                    if (filterRegex.test(test.name)) {
+                                    if (!filterRegex.test(test.name)) {
                                         this._log.info(`Skipping test: ${ test.name }`);
                                     }
                                 }
