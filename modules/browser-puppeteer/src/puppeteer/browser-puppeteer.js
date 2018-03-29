@@ -207,7 +207,12 @@ BrowserPuppeteer.prototype._onWsMessage = function (rawData) {
     const data = JSONF.parse(rawData);
     const _cmh = this._currentMessageHandler;
 
-    this._log.trace(`_onWsMessage: ${rawData}`);
+    const MAX_TRACE_RAW_LENGTH=300;
+    const trimmedRawData = rawData.length > MAX_TRACE_RAW_LENGTH
+        ? rawData.substr(0, MAX_TRACE_RAW_LENGTH) + ' [...]'
+        : rawData;
+
+    this._log.trace(`_onWsMessage: ${trimmedRawData}`);
 
     if (data.type === MESSAGES.UPSTREAM.ACK) {
         _cmh.resolve(data.result);
