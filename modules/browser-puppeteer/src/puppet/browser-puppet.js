@@ -220,8 +220,8 @@ BrowserPuppet.prototype._attachCaptureEventListeners = function () {
 
 BrowserPuppet.prototype._attachConsolePipe = function () {
     var self = this;
-    var oldLog = console.log;
-    var oldInfo = console.info;
+    // var oldLog = console.log;
+    // var oldInfo = console.info;
     var oldWarn = console.warn;
     var oldError = console.error;
 
@@ -242,15 +242,15 @@ BrowserPuppet.prototype._attachConsolePipe = function () {
         });
     }
 
-    console.log = function () {
-        oldLog.apply(console, arguments);
-        sendConsoleMessageIfConnected('log', arguments);
-    };
+    // console.log = function () {
+    //     oldLog.apply(console, arguments);
+    //     sendConsoleMessageIfConnected('log', arguments);
+    // };
 
-    console.info = function () {
-        oldInfo.apply(console, arguments);
-        sendConsoleMessageIfConnected('info', arguments);
-    };
+    // console.info = function () {
+    //     oldInfo.apply(console, arguments);
+    //     sendConsoleMessageIfConnected('info', arguments);
+    // };
 
     console.warn = function () {
         oldWarn.apply(console, arguments);
