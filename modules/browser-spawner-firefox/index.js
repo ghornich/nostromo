@@ -66,20 +66,35 @@ BrowserSpawnerFirefox.prototype._startBrowser = async function (spawnerControlUr
 
     const xulstorePath = resolvePath(this._opts.tempDir, 'xulstore.json');
 
-    return mkdirpAsync(this._opts.tempDir)
-    .then(() => fs.writeFileAsync(prefsPath, PREF_DEFAULT))
-    .then(() => fs.writeFileAsync(xulstorePath, JSON.stringify(xulstoreObj)))
-    .then(() => {
-        this._process = spawn(this._opts.path, ['-profile', this._opts.tempDir, '-no-remote', spawnerControlUrl]);
+    await mkdirpAsync(this._opts.tempDir)
+    await fs.writeFileAsync(prefsPath, PREF_DEFAULT)
+    await fs.writeFileAsync(xulstorePath, JSON.stringify(xulstoreObj))
 
-        this._process.on('error', err => {
-            this.emit('error', err);
-        });
+    let selectedPath = this._opts.path;
 
-        this._process.on('close', () => {
-            this.emit('close');
-            this._deleteTempDir();
-        });
+    if (Array.isArray(selectedPath)) {
+        for (let path of this._opts.path) {
+            try {
+                await fs.statAsync(path);
+                selectedPath = path;
+            }
+            catch (error) {
+                // ignore
+            }
+        }
+    }
+
+    this._log.info(`using path "${selectedPath}"`)
+
+    this._process = spawn(selectedPath, ['-profile', this._opts.tempDir, '-no-remote', spawnerControlUrl]);
+
+    this._process.on('error', err => {
+        this.emit('error', err);
+    });
+
+    this._process.on('close', () => {
+        this.emit('close');
+        this._deleteTempDir();
     });
 };
 
