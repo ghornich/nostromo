@@ -18,7 +18,7 @@ const PNG = require('pngjs').PNG;
 const globAsync = Promise.promisify(require('glob'));
 const bufferImageDiff = require(MODULES_PATH + 'buffer-image-diff');
 const rimrafAsync = Promise.promisify(require('rimraf'));
-
+const promiseWhile = require(MODULES_PATH + 'promise-while')(Promise);
 
 // TODO standard tape API (sync), rename current equal() to valueEquals()
 // TODO convert to es6 class
@@ -513,10 +513,32 @@ Testrunner.prototype._runTest = async function (test, { suite }) {
     }
 
     // TODO throw error if no appUrl was found (assert when parsing the testfile)
+
+    // retry logic for appUrl open
     // TODO await this?
     this._currentBrowser.open(suite.appUrl);
 
-    await this._waitUntilBrowserReady();
+    while (true) {
+        try {
+            await this._waitUntilBrowserReady();
+            break;
+        }
+        catch (error) {
+            this._log.error('_runTest error: ' + error.message)
+            if (error instanceof BrowserPuppeteer.EnsureVisibleTimeoutError) {
+                // TODO await this?
+                this._currentBrowser.open('');
+                // TODO hack delay
+                await Promise.delay(2000);
+                this._browserPuppeteer.discardClients();
+                // TODO await this?
+                this._currentBrowser.open(suite.appUrl);
+            }
+            else {
+                throw error;
+            }
+        }
+    }
 
     let maybeTestError = null;
 
