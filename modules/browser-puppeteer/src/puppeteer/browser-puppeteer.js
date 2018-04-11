@@ -258,12 +258,14 @@ BrowserPuppeteer.prototype._onWsClose = function (code) {
     if (this._currentMessageHandler.resolve) {
         this._currentMessageHandler.resolve();
 
-        this._currentMessageHandler.resolve = this._currentMessageHandler.reject = this._currentMessageHandler.message = null;
+        this._clearCurrentMessageHandler();
     }
 };
 
 BrowserPuppeteer.prototype.discardClients = function () {
     this._wsConn = null;
+    this._clearCurrentMessageHandler();
+
     if (this._wsServer) {
         this._wsServer.clients.forEach(function (client) {
             client.terminate();
@@ -361,4 +363,8 @@ BrowserPuppeteer.prototype.hideScreenshotMarker = function () {
 
 BrowserPuppeteer.prototype.stop = async function () {
     return new Promise(resolve => this._httpServer.close(resolve));
+};
+
+BrowserPuppeteer.prototype._clearCurrentMessageHandler = function () {
+    this._currentMessageHandler.resolve = this._currentMessageHandler.reject = this._currentMessageHandler.message = null;
 };
