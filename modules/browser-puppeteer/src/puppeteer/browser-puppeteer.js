@@ -28,6 +28,8 @@ const DEFAULT_WAITFORPUPPET_POLL_INTERVAL = BrowserPuppeteer.DEFAULT_WAITFORPUPP
  */
 const DEFAULT_WAITFORPUPPET_TIMEOUT = BrowserPuppeteer.DEFAULT_WAITFORPUPPET_TIMEOUT = 10000;
 
+class EnsureVisibleTimeoutError extends Error {}
+
 /**
  * @typedef {object} BrowserPuppeteerConfig
  * @property {Number} [port = 47225] port to communicate with browser/BrowserPuppet
@@ -66,6 +68,7 @@ function BrowserPuppeteer(config) {
 
 util.inherits(BrowserPuppeteer, EventEmitter);
 
+BrowserPuppeteer.EnsureVisibleTimeoutError = EnsureVisibleTimeoutError;
 
 BrowserPuppeteer.prototype.start = function () {
     this._log.trace('starting');
@@ -152,7 +155,13 @@ BrowserPuppeteer.prototype.waitForPuppet = async function (options) {
         if (_opts.ensureVisible) {
             this._log.info('Ensuring browser is visible...');
 
-            await this.showScreenshotMarker();
+            await Promise.race([
+                this.showScreenshotMarker(),
+                (async () => {
+                    await Promise.delay(5000);
+                    throw new EnsureVisibleTimeoutError('no response for showScreenshotMarker, timed out')
+                })()
+            ])
 
             const startTime = Date.now();
 
@@ -249,12 +258,14 @@ BrowserPuppeteer.prototype._onWsClose = function (code) {
     if (this._currentMessageHandler.resolve) {
         this._currentMessageHandler.resolve();
 
-        this._currentMessageHandler.resolve = this._currentMessageHandler.reject = this._currentMessageHandler.message = null;
+        this._clearCurrentMessageHandler();
     }
 };
 
 BrowserPuppeteer.prototype.discardClients = function () {
     this._wsConn = null;
+    this._clearCurrentMessageHandler();
+
     if (this._wsServer) {
         this._wsServer.clients.forEach(function (client) {
             client.terminate();
@@ -352,4 +363,8 @@ BrowserPuppeteer.prototype.hideScreenshotMarker = function () {
 
 BrowserPuppeteer.prototype.stop = async function () {
     return new Promise(resolve => this._httpServer.close(resolve));
+};
+
+BrowserPuppeteer.prototype._clearCurrentMessageHandler = function () {
+    this._currentMessageHandler.resolve = this._currentMessageHandler.reject = this._currentMessageHandler.message = null;
 };

@@ -14,7 +14,10 @@ module.exports = function (config) {
             }),
             new config.browsers.Firefox({
                 name: 'Firefox',
-                path: 'C:/Program Files/Mozilla Firefox/firefox.exe',
+                path: [
+                    'C:/Program Files/Mozilla Firefox/firefox.exe',
+                    'C:/Program Files (x86)/Mozilla Firefox/firefox.exe',
+                ],
                 bounds: { size: { width: 1024, height: 750 }, position: { x: 5, y: 5 } },
             }),
         ],
