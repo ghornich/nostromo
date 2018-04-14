@@ -528,7 +528,7 @@ Testrunner.prototype._runTest = async function (test, { suite }) {
             this._log.debug('completed beforeFirstCommand');
         }
 
-        const maybeTestPromise = test.testFn(this.tAPI);
+        const maybeTestPromise = test.testFn(this.tAPI, { directAPI: this.directAPI });
 
         if (typeof maybeTestPromise !== 'object' || typeof maybeTestPromise.then !== 'function') {
             throw new Error(`test function didn't return a promise (name: ${test.name})`);
