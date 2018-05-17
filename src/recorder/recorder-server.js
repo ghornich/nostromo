@@ -2,8 +2,6 @@
 
 const MODULES_PATH = '../../modules/';
 const Promise = require('bluebird');
-const BrowserPuppeteer = require(MODULES_PATH + 'browser-puppeteer').BrowserPuppeteer;
-const MESSAGES = require(MODULES_PATH + 'browser-puppeteer').MESSAGES;
 const WS = require('ws');
 const http = require('http');
 const fs = Promise.promisifyAll(require('fs'));
@@ -12,13 +10,7 @@ const pathlib = require('path');
 const Loggr = require(MODULES_PATH + 'loggr');
 const defaults = require('lodash.defaults');
 
-/**
- * @memberOf RecorderServer
- * @type {Number}
- * @static
- * @constant
- */
-const DEFAULT_RECORDER_APP_PORT = RecorderServer.DEFAULT_RECORDER_APP_PORT = 7700;
+const puppeteer = require('puppeteer');
 
 exports = module.exports = RecorderServer;
 
@@ -52,7 +44,6 @@ exports = module.exports = RecorderServer;
 
 /**
  * @typedef {Object} RecorderOptions
- * @property {Number} [recorderAppPort = {@link RecorderServer.DEFAULT_RECORDER_APP_PORT}]
  * @property {Number} [logLevel] - See Loggr.LEVELS
  *
  * @property {FilterCallback} [captureFilter]
@@ -69,7 +60,6 @@ exports = module.exports = RecorderServer;
  *
  * @property {Array<String>} [mouseoverSelectors] - Detect mouseover events only for these selectors
  *
- * @property {Array<String>} [ignoredClasses] - DEPRECATED (use uniqueSelectorOptions) Ignored classnames
  * @property {UniqueSelectorOptions} [uniqueSelectorOptions]
  *
  * @property {Array<String>|null} [compositeEvents = ['click', 'focus']] - subsequent events of specified types will be combined into a single composite event
@@ -78,7 +68,11 @@ exports = module.exports = RecorderServer;
  *
  * @property {Array<Object>} [_mockMessages] - for testing only, do not use
  * @property {Boolean} [_preEnableRecording] - for testing only, do not use
+ *
+ * @property {String} recordedAppUrl
  */
+
+// TODO rename to NostromoRecorder?
 
 /**
  * @class
@@ -86,11 +80,8 @@ exports = module.exports = RecorderServer;
  */
 function RecorderServer(conf) {
     this._conf = defaults({}, conf, {
-        recorderAppPort: DEFAULT_RECORDER_APP_PORT,
         onSelectorBecameVisible: [],
         mouseoverSelectors: [],
-        // deprecated
-        ignoredClasses: [],
         uniqueSelectorOptions: null,
         compositeEvents: ['click', 'focus'],
         compositeEventsThreshold: 200,
@@ -113,16 +104,23 @@ function RecorderServer(conf) {
         logLevel: this._conf.logLevel,
     });
 
-    this._puppeteer = new BrowserPuppeteer({
-        logger: this._log.fork('BrowserPuppeteer'),
-    });
+    this._recorderUIBrowser=null
+    this._recordedAppBrowser=null
 
     this._proxyMessage = this._proxyMessage.bind(this);
 }
 
-// TODO better promise chain
-
 RecorderServer.prototype.start = async function () {
+    this._recorderUIBrowser=await puppeteer.launch({
+        headless:false,
+        
+    })
+};
+
+RecorderServer.prototype.stopX = async function () {
+};
+
+RecorderServer.prototype.startX = async function () {
     this._wsServer.on('connection', () => this._log.info('recorder app connected'));
 
     this._recorderAppServer.listen(this._conf.recorderAppPort);
@@ -154,13 +152,6 @@ RecorderServer.prototype.start = async function () {
                 });
             }
 
-            if (this._conf.ignoredClasses.length > 0) {
-                await this._puppeteer.sendMessage({
-                    type: MESSAGES.DOWNSTREAM.SET_IGNORED_CLASSES,
-                    classes: this._conf.ignoredClasses,
-                });
-            }
-
             if (this._conf.uniqueSelectorOptions) {
                 await this._puppeteer.sendMessage({
                     type: MESSAGES.DOWNSTREAM.SET_UNIQUE_SELECTOR_OPTIONS,
@@ -174,7 +165,7 @@ RecorderServer.prototype.start = async function () {
     });
 };
 
-RecorderServer.prototype.stop = async function () {
+RecorderServer.prototype.stopX = async function () {
     await this._puppeteer.stop()
     await new Promise(resolve=>this._recorderAppServer.close(resolve));
 };
