@@ -5,7 +5,6 @@ var $ = require('jquery'); $.noConflict();
 var MESSAGES = require('../messages');
 var JSONF = require('../../../../modules/jsonf');
 var UniqueSelector = require('../../../../modules/get-unique-selector');
-var SS_MARKER_IMG = require('../screenshot-marker').base64;
 var debounce = require('lodash.debounce');
 var Ws4ever = require('../../../../modules/ws4ever');
 var defaults = require('lodash.defaults');
@@ -52,16 +51,6 @@ function BrowserPuppet(opts) {
         // TODO logLevel
         logLevel: Loggr.LEVELS.ALL,
     });
-
-    this._ssMarkerTopLeft = document.createElement('div');
-    this._ssMarkerTopLeft.className = 'browser-puppet--screenshot-marker--top-left';
-    this._ssMarkerTopLeft.setAttribute('style', 'position:absolute;top:0;left:0;width:4px;height:4px;z-index:16777000;');
-    this._ssMarkerTopLeft.style.background = 'url(' + SS_MARKER_IMG + ')';
-
-    this._ssMarkerBottomRight = document.createElement('div');
-    this._ssMarkerBottomRight.className = 'browser-puppet--screenshot-marker--bottom-right';
-    this._ssMarkerBottomRight.setAttribute('style', 'position:absolute;bottom:0;right:0;width:4px;height:4px;z-index:16777000;');
-    this._ssMarkerBottomRight.style.background = 'url(' + SS_MARKER_IMG + ')';
 }
 
 objectAssign(BrowserPuppet.prototype, BrowserPuppetCommands.prototype);
@@ -140,11 +129,6 @@ BrowserPuppet.prototype._onMessage = function (rawData) {
 
             case MESSAGES.DOWNSTREAM.SET_SELECTOR_BECAME_VISIBLE_DATA:
                 return self.setOnSelectorBecameVisibleSelectors(data.selectors);
-
-            case MESSAGES.DOWNSTREAM.SHOW_SCREENSHOT_MARKER:
-                return self.setScreenshotMarkerState(true);
-            case MESSAGES.DOWNSTREAM.HIDE_SCREENSHOT_MARKER:
-                return self.setScreenshotMarkerState(false);
 
             case MESSAGES.DOWNSTREAM.SET_TRANSMIT_EVENTS:
                 return self.setTransmitEvents(data.value);
@@ -592,17 +576,6 @@ function deleteAllCookies() {
 BrowserPuppet.prototype.clearPersistentData = function () {
     deleteAllCookies();
     window.localStorage.clear();
-};
-
-BrowserPuppet.prototype.setScreenshotMarkerState = function (state) {
-    if (state) {
-        document.body.appendChild(this._ssMarkerTopLeft);
-        document.body.appendChild(this._ssMarkerBottomRight);
-    }
-    else {
-        document.body.removeChild(this._ssMarkerTopLeft);
-        document.body.removeChild(this._ssMarkerBottomRight);
-    }
 };
 
 function getTargetNodeDTO(target) {

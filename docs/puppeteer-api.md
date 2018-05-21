@@ -73,11 +73,6 @@
     | type | `String` | 'exec-function' |
     | fn | `function` | to stringify this, use fn.toString(). Currently accepts ES5 function literals only (function () {...}) |
     | args | `Array<Any>` | values passed to `fn` |
-- __HideScreenshotMarkerMessage__ - _DownstreamControlMessage_
-
-    |Name|Type|Description|
-    |---|---|---|
-    | type | `String` | 'hide-screenshot-marker' |
 - __SetIgnoredClassesMessage__ - _DownstreamControlMessage_
 
     |Name|Type|Description|
@@ -108,11 +103,6 @@
     |---|---|---|
     | type | `String` | 'set-unique-selector-options' |
     | options | `UniqueSelectorOptions` |  |
-- __ShowScreenshotMarkerMessage__ - _DownstreamControlMessage_
-
-    |Name|Type|Description|
-    |---|---|---|
-    | type | `String` | 'show-screenshot-marker' |
 - __TerminatePuppetMessage__ - _DownstreamControlMessage_
 
     |Name|Type|Description|

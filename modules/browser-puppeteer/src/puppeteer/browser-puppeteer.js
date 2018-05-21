@@ -155,14 +155,6 @@ BrowserPuppeteer.prototype.waitForPuppet = async function (options) {
         if (_opts.ensureVisible) {
             this._log.info('Ensuring browser is visible...');
 
-            await Promise.race([
-                this.showScreenshotMarker(),
-                (async () => {
-                    await Promise.delay(5000);
-                    throw new EnsureVisibleTimeoutError('no response for showScreenshotMarker, timed out')
-                })()
-            ])
-
             const startTime = Date.now();
 
             while (true) {
@@ -351,14 +343,6 @@ BrowserPuppeteer.prototype.terminatePuppet = async function () {
     this._wsConn = null;
 
     return result;
-};
-
-BrowserPuppeteer.prototype.showScreenshotMarker = function () {
-    return this.sendMessage({ type: MESSAGES.DOWNSTREAM.SHOW_SCREENSHOT_MARKER });
-};
-
-BrowserPuppeteer.prototype.hideScreenshotMarker = function () {
-    return this.sendMessage({ type: MESSAGES.DOWNSTREAM.HIDE_SCREENSHOT_MARKER });
 };
 
 BrowserPuppeteer.prototype.stop = async function () {

@@ -22,8 +22,6 @@ exports.DOWNSTREAM = {
     // { type, ??? }
     EXEC_FUNCTION: 'exec-function',
     SET_SELECTOR_BECAME_VISIBLE_DATA: 'set-selector-became-visible-data',
-    SHOW_SCREENSHOT_MARKER: 'show-screenshot-marker',
-    HIDE_SCREENSHOT_MARKER: 'hide-screenshot-marker',
     SET_TRANSMIT_EVENTS: 'set-transmit-events',
     TERMINATE_PUPPET: 'terminate-puppet',
     CLEAR_PERSISTENT_DATA: 'clear-persistent-data',
@@ -105,16 +103,6 @@ exports.DOWNSTREAM = {
  * @typedef {DownstreamControlMessage} SetSelectorBecameVisibleDataMessage
  * @property {String} type - 'set-selector-became-visible-data'
  * @property {Array<String>} selectors
- */
-
-/**
- * @typedef {DownstreamControlMessage} ShowScreenshotMarkerMessage
- * @property {String} type - 'show-screenshot-marker'
- */
-
-/**
- * @typedef {DownstreamControlMessage} HideScreenshotMarkerMessage
- * @property {String} type - 'hide-screenshot-marker'
  */
 
 /**
