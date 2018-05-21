@@ -61,9 +61,8 @@ const ELLIPSIS_LIMIT = 60;
 
 const DEFAULT_SUITE_NAME = '(Unnamed suite)';
 
-// TODO customizable dir for different screen resolution tests
-const REF_SCREENSHOT_BASE_DIR = 'referenceScreenshots';
-const ERRORS_SCREENSHOT_BASE_DIR = 'referenceErrors';
+const DEFAULT_REF_SCREENSHOTS_DIR = 'reference-screenshots';
+const DEFAULT_REF_ERRORS_DIR = 'reference-errors';
 
 // TODO use es6 class to inherit Error
 const ERRORS = {
@@ -121,7 +120,8 @@ exports = module.exports = Testrunner;
  * @property {Boolean} [testBailout = true] - Bailout from a single test if an assert fails
  * @property {Boolean} [bailout = false] - Bailout from the entire test program if an assert fails
  * @property {Number} [browserReadyTimeout = 10000] browser timeout in ms
- * @property {String} [referenceScreenshotsDir = 'referenceScreenshots']
+ * @property {String} [referenceScreenshotsDir = DEFAULT_REF_SCREENSHOTS_DIR]
+ * @property {String} [referenceErrorsDir = DEFAULT_REF_ERRORS_DIR]
  * @property {Array<BrowserSpawner>} browsers - see example run config file
  * @property {AsserterConf} [asserterConf] - options for the built-in, screenshot-based asserter
  * @property {Array<Suite>} suites
@@ -141,7 +141,8 @@ function Testrunner(conf) {
         testBailout: true,
         bailout: false,
         browserReadyTimeout: 10000,
-        referenceScreenshotsDir: REF_SCREENSHOT_BASE_DIR,
+        referenceScreenshotsDir: DEFAULT_REF_SCREENSHOTS_DIR,
+        referenceErrorsDir: DEFAULT_REF_ERRORS_DIR,
         browsers: [],
         suites: [],
         testFilter: null,
@@ -287,7 +288,7 @@ Testrunner.prototype.run = async function () {
     this._log.debug('running...');
 
     return Promise.resolve()
-    .then(() => rimrafAsync(ERRORS_SCREENSHOT_BASE_DIR))
+    .then(() => rimrafAsync(this._conf.referenceErrorsDir))
 
     .then(() => this._startServers())
 
@@ -862,7 +863,7 @@ Testrunner.prototype._handleCommandError = function (err) {
 // TODO remove sync codes
 Testrunner.prototype._assert = async function () {
     const refImgDir = pathlib.resolve(this._conf.referenceScreenshotsDir, this._currentBrowser.name.toLowerCase(), this._currentTest.id);
-    const failedImgDir = pathlib.resolve(ERRORS_SCREENSHOT_BASE_DIR, this._currentBrowser.name.toLowerCase(), this._currentTest.id);
+    const failedImgDir = pathlib.resolve(this._conf.referenceErrorsDir, this._currentBrowser.name.toLowerCase(), this._currentTest.id);
     let failedImgDirExists = null;
 
     const refImgName = `${this._assertCount}.png`;
@@ -894,7 +895,7 @@ Testrunner.prototype._assert = async function () {
 
                 const failedImgName = `${this._assertCount}.png`;
                 const failedImgPath = pathlib.resolve(failedImgDir, failedImgName);
-                const failedImgPathRelative = pathlib.relative(pathlib.resolve(ERRORS_SCREENSHOT_BASE_DIR), failedImgPath);
+                const failedImgPathRelative = pathlib.relative(pathlib.resolve(this._conf.referenceErrorsDir), failedImgPath);
 
                 const failedPng = new PNG(img);
                 failedPng.data = img.data;

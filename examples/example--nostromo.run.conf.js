@@ -7,7 +7,8 @@ exports = module.exports = function (config) {
         testBailout: true,
         bailout: false,
 
-        referenceScreenshotDir: 'referenceScreenshots',
+        referenceScreenshotsDir: 'reference-screenshots',
+        referenceErrorsDir: 'reference-errors',
 
         browsers: [
             new config.browsers.Chrome({
