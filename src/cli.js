@@ -29,12 +29,6 @@ const DEFAULT_DIFF_CFG_FILE = 'nostromo.diff.conf.js';
         let baseConf = {};
 
         try {
-            var recordedUrl=args['recorded-url'] || args.url
-            if (!recordedUrl){
-                throw new Error('Missing --recorded-url (or alias: --url)')
-            }
-
-
             await fs.statAsync(configPath);
             const absConfigPath = pathlib.resolve(configPath);
             process.chdir(pathlib.dirname(absConfigPath));
@@ -56,7 +50,7 @@ const DEFAULT_DIFF_CFG_FILE = 'nostromo.diff.conf.js';
         }
 
         const conf = defaults({}, baseConf, {
-            recordedUrl: recordedUrl,
+            recorderAppPort: 7700,
             logLevel: Loggr.LEVELS.OFF,
         });
 
@@ -64,17 +58,6 @@ const DEFAULT_DIFF_CFG_FILE = 'nostromo.diff.conf.js';
         const recServer = new RecorderServer(conf);
 
         recServer.start();
-
-        let sigintCount=0
-
-        process.on('SIGINT', function () {
-            if (sigintCount===5){
-                process.exit(1)
-            }
-            sigintCount++
-            console.log('Stopping...')
-            recServer.stop()
-        })
     }
     else if (args.diff) {
         const configPath = args.config || args.c || DEFAULT_DIFF_CFG_FILE;
