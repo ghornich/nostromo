@@ -8,7 +8,6 @@ var UniqueSelector = require('../../../../modules/get-unique-selector');
 var debounce = require('lodash.debounce');
 var Ws4ever = require('../../../../modules/ws4ever');
 var defaults = require('lodash.defaults');
-var objectAssign = require('object-assign');
 var BrowserPuppetCommands = require('./browser-puppet-commands.partial');
 var Loggr = require('../../../../modules/loggr');
 var SelectorObserver = require('../../../../modules/selector-observer');
@@ -46,6 +45,8 @@ function BrowserPuppet(opts) {
     this._mouseoverSelector = null;
     this._activeElementBeforeWindowBlur = null;
 
+    this._puppetId = Math.floor(Math.random() * 10e12);
+
     this._log = new Loggr({
         namespace: 'BrowserPuppet',
         // TODO logLevel
@@ -53,7 +54,7 @@ function BrowserPuppet(opts) {
     });
 }
 
-objectAssign(BrowserPuppet.prototype, BrowserPuppetCommands.prototype);
+Object.assign(BrowserPuppet.prototype, BrowserPuppetCommands.prototype);
 
 BrowserPuppet.prototype.start = function () {
     this._startWs();
@@ -64,7 +65,8 @@ BrowserPuppet.prototype.start = function () {
 BrowserPuppet.prototype._startWs = function () {
     var self = this;
 
-    self._wsConn = new Ws4ever(self._opts.serverUrl);
+    // TODO use url lib instead of concat
+    self._wsConn = new Ws4ever(self._opts.serverUrl + '?puppet-id=' + this._puppetId);
     self._wsConn.onmessage = function (e) {
         self._onMessage(e.data);
     };

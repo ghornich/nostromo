@@ -1,6 +1,6 @@
 {
   "name": "nostromo",
-  "version": "0.0.0-v2-unstable",
+  "version": "3.0.0",
   "description": "",
   "main": "src/cli.js",
   "scripts": {
@@ -34,7 +34,6 @@
     "minimist": "^1.2.0",
     "mithril": "^1.1.1",
     "mkdirp": "^0.5.1",
-    "object-assign": "^4.1.1",
     "pngjs": "^3.2.0",
     "rimraf": "^2.6.1",
     "schema-inspector": "^1.6.8",

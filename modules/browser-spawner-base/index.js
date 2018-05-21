@@ -9,13 +9,19 @@ const http = require('http');
 const WS = require('ws');
 const truncateString = require('lodash.truncate');
 const treeKill = require('tree-kill');
+const delay = require('../delay');
+const screenshotMarkerImg = require('./screenshot-marker');
+const screenshotjs = require('../screenshot-js');
+const bufferImageSearch = require('../buffer-image-search');
 
 const TEMP_DELETE_RETRIES = BrowserSpawnerBase.TEMP_DELETE_RETRIES = 3;
 const TEMP_DELETE_TIMEOUT = BrowserSpawnerBase.TEMP_DELETE_TIMEOUT = 1000;
 
 const DEFAULT_SPAWNER_PORT = 24556;
+const DEFAULT_VISIBILITY_TIMEOUT_MS = 60000;
+const VISIBILITY_POLL_INTERVAL_MS = 3000;
 
-exports = module.exports = BrowserSpawnerBase;
+class BrowserVisibilityTimeoutError extends Error {};
 
 /**
  * @typedef {BrowserSpawnerOptions}
@@ -84,18 +90,51 @@ BrowserSpawnerBase.prototype.start = async function () {
         width: this._opts.width,
         height: this._opts.height,
     });
-    await new Promise(r => setTimeout(r, 500));
+    await delay(500);
 };
 
+// TODO isBrowserVisible, etc. methods here
+
+// TODO timeout?
 BrowserSpawnerBase.prototype._waitForConnection = async function () {
     while (this._wsConn === null) {
-        await new Promise(res => setTimeout(res, 500));
+        await delay(500);
     }
 };
 
 BrowserSpawnerBase.prototype._onWsConnection = function (conn) {
     this._wsConn = conn;
 };
+
+BrowserSpawnerBase.prototype.isBrowserVisible = async function () {
+    const screenshot = await screenshotjs();
+    const markerPositions = bufferImageSearch(screenshot, screenshotMarkerImg);
+    const isVisible = markerPositions.length === 2;
+
+    if (markerPositions.length !== 0 && markerPositions.length !== 2) {
+        this._log.warn(`isBrowserVisible: invalid marker position count: ${markerPositions.length}`);
+    }
+
+    this._log.debug(`isBrowserVisible: ${isVisible}`);
+
+    return isVisible;
+};
+
+BrowserSpawnerBase.prototype.assertBrowserVisible = async function (timeout = DEFAULT_VISIBILITY_TIMEOUT_MS) {
+    const startTime = Date.now();
+
+    while (true) {
+        if (startTime + timeout < Date.now()) {
+            throw new BrowserVisibilityTimeoutError(`BrowserSpawnerBase.assertBrowserVisible: timeout after ${timeout}ms`);
+        }
+
+        if (this.isBrowserVisible()) {
+            return;
+        }
+
+        await delay(VISIBILITY_POLL_INTERVAL_MS);
+    }
+}
 
 /**
  * @abstract
@@ -106,7 +145,7 @@ BrowserSpawnerBase.prototype._startBrowser = async function () {
     throw new Error('BrowserSpawnerBase::_startBrowser: not implemented');
 };
 
-BrowserSpawnerBase.prototype.open = function (url) {
+BrowserSpawnerBase.prototype.open = async function (url) {
     if (!this._wsConn) {
         throw new Error('BrowserSpawnerBase::open: not connected');
     }
@@ -123,6 +162,9 @@ BrowserSpawnerBase.prototype.open = function (url) {
     }
 
     this._sendWsMessage({ type: 'open', url: url });
+
+    // hack await
+    await new Promise(res => setTimeout(res, 500));
 };
 
 BrowserSpawnerBase.prototype._sendWsMessage = function (msgArg) {
@@ -196,3 +238,6 @@ BrowserSpawnerBase.prototype._deleteTempDir = function () {
         loop();
     });
 };
+
+exports = module.exports = BrowserSpawnerBase;
+BrowserSpawnerBase.BrowserVisibilityTimeoutError = BrowserVisibilityTimeoutError;

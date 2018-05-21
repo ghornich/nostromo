@@ -112,11 +112,6 @@ exports.DOWNSTREAM = {
  */
 
 /**
- * @typedef {DownstreamControlMessage} TerminatePuppetMessage
- * @property {String} type - 'terminate-puppet'
- */
-
-/**
  * @typedef {DownstreamControlMessage} ClearPersistentDataMessage
  * @property {String} type - 'clear-persistent-data'
  */

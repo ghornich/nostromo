@@ -11,14 +11,13 @@ const TapWriter = require(MODULES_PATH + 'tap-writer');
 const EventEmitter = require('events').EventEmitter;
 const BrowserPuppeteer = require(MODULES_PATH + 'browser-puppeteer').BrowserPuppeteer;
 const MESSAGES = require(MODULES_PATH + 'browser-puppeteer').MESSAGES;
-const cropMarkerImg = require(MODULES_PATH + 'browser-puppeteer').SCREENSHOT_MARKER;
+const screenshotMarkerImg = require(MODULES_PATH + 'browser-spawner-base/screenshot-marker');
 const screenshotjs = require(MODULES_PATH + 'screenshot-js');
 const mkdirpAsync = Promise.promisify(require('mkdirp'));
 const PNG = require('pngjs').PNG;
 const globAsync = Promise.promisify(require('glob'));
 const bufferImageDiff = require(MODULES_PATH + 'buffer-image-diff');
 const rimrafAsync = Promise.promisify(require('rimraf'));
-const promiseWhile = require(MODULES_PATH + 'promise-while')(Promise);
 
 // TODO standard tape API (sync), rename current equal() to valueEquals()
 // TODO convert to es6 class
@@ -340,6 +339,12 @@ Testrunner.prototype.run = async function () {
 
                                 this._currentTest = test;
 
+                                this._currentBeforeCommand = suite.beforeCommand || noop;
+                                this._currentAfterCommand = suite.afterCommand || noop;
+
+                                this._currentBeforeAssert = suite.beforeAssert || noop;
+                                this._currentAfterAssert = suite.afterAssert || noop;
+
                                 await this._runTest(test, {
                                     suite,
                                 });
@@ -376,7 +381,6 @@ Testrunner.prototype.run = async function () {
                 }
                 finally {
                     if (this._browserPuppeteer.isPuppetConnected()) {
-                        // await this._browserPuppeteer.terminatePuppet();
                         browser.open('');
                     }
 
@@ -408,7 +412,7 @@ Testrunner.prototype.run = async function () {
     })
     .catch(error => {
         process.exitCode = 1;
-        this._log.fatal(err.stack || err.toString());
+        this._log.fatal(error.stack || error.toString());
     });
 };
 
@@ -494,15 +498,6 @@ Testrunner.prototype._parseTestFiles = async function (testFilePaths) {
 
 // TODO use _currentSuite?
 Testrunner.prototype._runTest = async function (test, { suite }) {
-    this._log.trace('_runTest');
-
-    // TODO these 4 can be defined in the suite loop
-    this._currentBeforeCommand = suite.beforeCommand || noop;
-    this._currentAfterCommand = suite.afterCommand || noop;
-
-    this._currentBeforeAssert = suite.beforeAssert || noop;
-    this._currentAfterAssert = suite.afterAssert || noop;
-
     this._log.debug(`running test: ${test.name}`);
 
     this._tapWriter.diagnostic(test.name);
@@ -515,31 +510,9 @@ Testrunner.prototype._runTest = async function (test, { suite }) {
 
     // TODO throw error if no appUrl was found (assert when parsing the testfile)
 
-    // retry logic for appUrl open
-    // TODO await this?
-    this._currentBrowser.open(suite.appUrl);
-
-    while (true) {
-        try {
-            await this._waitUntilBrowserReady();
-            break;
-        }
-        catch (error) {
-            this._log.error('_runTest error: ' + error.message)
-            if (error instanceof BrowserPuppeteer.EnsureVisibleTimeoutError) {
-                // TODO await this?
-                this._currentBrowser.open('');
-                // TODO hack delay
-                await Promise.delay(2000);
-                this._browserPuppeteer.discardClients();
-                // TODO await this?
-                this._currentBrowser.open(suite.appUrl);
-            }
-            else {
-                throw error;
-            }
-        }
-    }
+    await this._currentBrowser.assertBrowserVisible();
+    await this._currentBrowser.open(suite.appUrl);
+    await this._browserPuppeteer.waitForConnection();
 
     let maybeTestError = null;
 
@@ -572,9 +545,8 @@ Testrunner.prototype._runTest = async function (test, { suite }) {
     }
 
     await this._browserPuppeteer.clearPersistentData();
-    await this._browserPuppeteer.terminatePuppet();
-    // TODO await this?
-    this._currentBrowser.open('');
+
+    await this._currentBrowser.open('');
 
     if (suite.afterTest) {
         this._log.debug('running afterTest');
@@ -874,7 +846,7 @@ Testrunner.prototype._assert = async function () {
         await this._currentBeforeAssert(this.directAPI);
         await mkdirpAsync(refImgDir);
 
-        const img = await screenshotjs({ cropMarker: cropMarkerImg });
+        const img = await screenshotjs({ cropMarker: screenshotMarkerImg });
 
         try {
             fs.statSync(refImgPath);

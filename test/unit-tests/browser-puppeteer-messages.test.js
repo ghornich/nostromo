@@ -56,10 +56,9 @@ test('browser puppeteer messages', async t => {
     try {
         await puppeteer.start();
         await browser.start();
-
-        browser.open(testHtmlURL);
-
-        await puppeteer.waitForPuppet();
+        await browser.open(testHtmlURL);
+        await browser.assertBrowserVisible();
+        await puppeteer.waitForConnection();
 
         // DOWNSTREAM
 
@@ -138,19 +137,6 @@ test('browser puppeteer messages', async t => {
 
         t.equal(transmitEventsValue, false, 'SetTransmitEventsMessage OFF test');
 
-        // TerminatePuppetMessage
-
-        await puppeteer.terminatePuppet();
-
-        t.equal(puppeteer._wsConn, null, 'terminatePuppet wsConn is null');
-
-        await Promise.delay(3000);
-
-        t.equal(puppeteer._wsConn, null, 'terminatePuppet wsConn is still null (puppet didn\'t reconnect)');
-
-        browser.open(testHtmlURL);
-        await puppeteer.waitForPuppet();
-
         // ClearPersistentDataMessage
 
         await assertPersistentDataEmpty();
@@ -212,9 +198,8 @@ test('browser puppeteer messages', async t => {
             t.ok(false, 'SetMouseoverSelectorsMessage ' + error.message);
         }
 
-        await puppeteer.terminatePuppet();
-        browser.open(testHtmlURL);
-        await puppeteer.waitForPuppet();
+        await browser.open(testHtmlURL);
+        await puppeteer.waitForConnection();
 
         // SetIgnoredClassesMessage
 
@@ -287,7 +272,9 @@ test('browser puppeteer messages', async t => {
 
 
 
-        // InsertAssertionMessage    
+        // InsertAssertionMessage
+
+        // TODO check for reconnection bugs
     }
     catch (error) {
         t.fail(error.message);
