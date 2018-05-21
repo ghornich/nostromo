@@ -31,25 +31,11 @@ BrowserSpawnerChrome.prototype._startBrowser = async function (spawnerControlUrl
         '--disable-renderer-backgrounding',
         '--disable-device-discovery-notifications',
         '--incognito',
+        '--start-maximized',
 
-        // TODO?
         // '--headless',
         // '--disable-gpu',
     ];
-
-    if (this._opts.bounds) {
-        const size = this._opts.bounds.size;
-        const position = this._opts.bounds.position;
-
-        params.push(`--window-size=${size.width},${size.height}`);
-
-        if (position) {
-            params.push(`--window-position=${position.x},${position.y}`);
-        }
-    }
-    else {
-        params.push('--start-maximized');
-    }
 
     params.push(spawnerControlUrl);
 

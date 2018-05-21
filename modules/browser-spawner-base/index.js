@@ -18,31 +18,26 @@ const DEFAULT_SPAWNER_PORT = 24556;
 exports = module.exports = BrowserSpawnerBase;
 
 /**
- * @typedef {Bounds}
- *
- * @property {Object} size - width and height properties as numbers
- * @property {Object} [position] - x and y properties as numbers. Defaults to 0, 0
- */
-
-/**
  * @typedef {BrowserSpawnerOptions}
  *
  * @property {String} name - Display name for this browser
  * @property {String} path - Path to browser executable
  * @property {String} [tempDir] - Temporary profile dir path. Defaults to a random directory in cwd
- * @property {Bounds} [bounds] - Browser size and position. Defaults to fullscreen
+ * @property {Number} width - Recorded app viewport width
+ * @property {Number} height - Recorded app viewport height
  * @property {Object} [logger] - Custom Loggr instance
  */
 
 /**
  * 
- * @param {BrowserSpawnerOptions} options - 
+ * @param {BrowserSpawnerOptions} options
  */
 function BrowserSpawnerBase(options) {
     EventEmitter.call(this);
 
     this._opts = options || {};
-    this._opts.bounds = this._opts.bounds || null;
+    this._opts.width = this._opts.width;
+    this._opts.height = this._opts.height;
     this._opts.tempDir = resolvePath(this._opts.tempDir || this._getDefaultTempDir());
     this._log = options.logger || new Loggr({
         namespace: `BrowserSpawner ${this._opts.name}`,
@@ -82,6 +77,14 @@ BrowserSpawnerBase.prototype.start = async function () {
 
     await this._startBrowser(resolvePath(__dirname, 'browser-spawner-context.html'));
     await this._waitForConnection();
+
+    // TODO await this with events?
+    this._sendWsMessage({
+        type: 'set-iframe-size',
+        width: this._opts.width,
+        height: this._opts.height,
+    });
+    await new Promise(r => setTimeout(r, 500));
 };
 
 BrowserSpawnerBase.prototype._waitForConnection = async function () {

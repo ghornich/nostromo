@@ -15,7 +15,8 @@ test('browser puppeteer messages', async t => {
     const browser = new Chrome({
         name: 'Chrome',
         path: 'C:/Program Files (x86)/Google/Chrome/Application/chrome.exe',
-        bounds: { size: { width: 1024, height: 750 }, position: { x: 5, y: 5 } },
+        width: 1024,
+        height: 750,
     });
 
     const puppeteer = new BrowserPuppeteer({
@@ -34,14 +35,6 @@ test('browser puppeteer messages', async t => {
     });
 
     httpServer.listen(HTTP_PORT);
-
-
-    async function getScreenshotMarkerState() {
-        return puppeteer.execFunction(function () {
-            return document.querySelector('.browser-puppet--screenshot-marker--top-left') !== null &&
-                document.querySelector('.browser-puppet--screenshot-marker--bottom-right') !== null;
-        });
-    }
 
     async function getCookies() {
         return puppeteer.execFunction(function () {
@@ -94,18 +87,7 @@ test('browser puppeteer messages', async t => {
         t.equal(execFunctionResult, 2270, 'execFunction test');
 
         // SetSelectorBecameVisibleDataMessage
-
         // see UPSTREAM SelectorBecameVisibleMessage
-
-        // ShowScreenshotMarkerMessage
-
-        await puppeteer.showScreenshotMarker();
-        t.equal(await getScreenshotMarkerState(), true, 'screenshot markers are visible');
-
-        // HideScreenshotMarkerMessage
-
-        await puppeteer.hideScreenshotMarker();
-        t.equal(await getScreenshotMarkerState(), false, 'screenshot markers are hidden');
 
         // SetTransmitEventsMessage ON
 

@@ -41,26 +41,9 @@ BrowserSpawnerFirefox.prototype._startBrowser = async function (spawnerControlUr
 
     const prefsPath = resolvePath(this._opts.tempDir, 'prefs.js');
 
-    let xulMainWindow = null;
-
-    if (this._opts.bounds) {
-        xulMainWindow = {
-            width: this._opts.bounds.size.width,
-            height: this._opts.bounds.size.height,
-        };
-
-        if (this._opts.bounds.position) {
-            xulMainWindow.screenX = this._opts.bounds.position.x;
-            xulMainWindow.screenY = this._opts.bounds.position.y;
-        }
-    }
-    else {
-        xulMainWindow = { sizemode: 'maximized' };
-    }
-
     const xulstoreObj = {
         'chrome://browser/content/browser.xul': {
-            'main-window': xulMainWindow,
+            'main-window': { sizemode: 'maximized' },
         },
     };
 

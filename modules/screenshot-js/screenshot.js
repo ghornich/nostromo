@@ -10,6 +10,7 @@ const execAsync = Promise.promisify(cp.exec);
 const unlinkAsync = Promise.promisify(fs.unlink);
 
 // TODO crop is not a responsibility of this module
+// TODO asyncify
 
 /**
  * @typedef {Object} Image
@@ -77,10 +78,10 @@ module.exports = Promise.method(function (rawOpts) {
             }
 
             const cropDimensions = {
-                x: markerPositions[0].x,
-                y: markerPositions[0].y,
-                width: markerPositions[1].x - markerPositions[0].x + marker.width,
-                height: markerPositions[1].y - markerPositions[0].y + marker.height,
+                x: markerPositions[0].x + marker.width,
+                y: markerPositions[0].y + marker.height,
+                width: markerPositions[1].x - markerPositions[0].x - marker.width,
+                height: markerPositions[1].y - markerPositions[0].y - marker.height,
             };
 
             return bufferImageCrop(img, cropDimensions);

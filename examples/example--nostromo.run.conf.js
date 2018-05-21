@@ -13,12 +13,13 @@ exports = module.exports = function (config) {
             new config.browsers.Chrome({
                 name: 'Chrome',
                 path: 'C:/Program Files (x86)/Google/Chrome/Application/chrome.exe',
-                bounds: { size: { width: 1024, height: 750 }, position: { x: 5, y: 5 } },
+                width: 1024,
+                height: 750
             }),
             new config.browsers.Firefox({
                 name: 'Firefox',
                 path: 'C:/Program Files (x86)/Mozilla Firefox/firefox.exe'
-                // no bounds means fullscreen
+                // no width/height: stretch to maximum size
             })
             // ...
         ],
