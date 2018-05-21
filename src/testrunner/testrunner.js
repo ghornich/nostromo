@@ -3,11 +3,16 @@ const Promise = require('bluebird');
 Promise.config({ longStackTraces: true });
 const Loggr = require(MODULES_PATH + 'loggr');
 const isEqual = require('lodash.isequal');
+// const Schema = require('schema-inspector');
 const fs = Promise.promisifyAll(require('fs'));
 const pathlib = require('path');
 const util = require('util');
 const TapWriter = require(MODULES_PATH + 'tap-writer');
 const EventEmitter = require('events').EventEmitter;
+const BrowserPuppeteer = require(MODULES_PATH + 'browser-puppeteer').BrowserPuppeteer;
+const MESSAGES = require(MODULES_PATH + 'browser-puppeteer').MESSAGES;
+const cropMarkerImg = require(MODULES_PATH + 'browser-puppeteer').SCREENSHOT_MARKER;
+const screenshotjs = require(MODULES_PATH + 'screenshot-js');
 const mkdirpAsync = Promise.promisify(require('mkdirp'));
 const PNG = require('pngjs').PNG;
 const globAsync = Promise.promisify(require('glob'));
@@ -116,7 +121,7 @@ exports = module.exports = Testrunner;
  * @property {Boolean} [testBailout = true] - Bailout from a single test if an assert fails
  * @property {Boolean} [bailout = false] - Bailout from the entire test program if an assert fails
  * @property {Number} [browserReadyTimeout = 10000] browser timeout in ms
- * @property {String} [referenceScreenshotDir = 'referenceScreenshots']
+ * @property {String} [referenceScreenshotsDir = 'referenceScreenshots']
  * @property {Array<BrowserSpawner>} browsers - see example run config file
  * @property {AsserterConf} [asserterConf] - options for the built-in, screenshot-based asserter
  * @property {Array<Suite>} suites
@@ -136,7 +141,7 @@ function Testrunner(conf) {
         testBailout: true,
         bailout: false,
         browserReadyTimeout: 10000,
-        referenceScreenshotDir: REF_SCREENSHOT_BASE_DIR,
+        referenceScreenshotsDir: REF_SCREENSHOT_BASE_DIR,
         browsers: [],
         suites: [],
         testFilter: null,
@@ -256,7 +261,9 @@ function Testrunner(conf) {
         outStream: this._conf.outStream,
     });
 
-    // TODO console pipe
+    this._browserPuppeteer.on(MESSAGES.UPSTREAM.CONSOLE_PIPE, consolePipeMessage => {
+        this._consolePipeLog.debug(consolePipeMessage.messageType + ': ' + consolePipeMessage.message);
+    });
 
     this._assertCount = 0;
     this._currentBrowser = null;
@@ -854,13 +861,13 @@ Testrunner.prototype._handleCommandError = function (err) {
 
 // TODO remove sync codes
 Testrunner.prototype._assert = async function () {
-    const refImgDir = pathlib.resolve(REF_SCREENSHOT_BASE_DIR, this._currentTest.id);
-    const failedImgDir = pathlib.resolve(ERRORS_SCREENSHOT_BASE_DIR, this._currentTest.id);
+    const refImgDir = pathlib.resolve(this._conf.referenceScreenshotsDir, this._currentBrowser.name.toLowerCase(), this._currentTest.id);
+    const failedImgDir = pathlib.resolve(ERRORS_SCREENSHOT_BASE_DIR, this._currentBrowser.name.toLowerCase(), this._currentTest.id);
     let failedImgDirExists = null;
 
     const refImgName = `${this._assertCount}.png`;
     const refImgPath = pathlib.resolve(refImgDir, refImgName);
-    const refImgPathRelative = pathlib.relative(pathlib.resolve(REF_SCREENSHOT_BASE_DIR), refImgPath);
+    const refImgPathRelative = pathlib.relative(pathlib.resolve(this._conf.referenceScreenshotsDir), refImgPath);
 
     try {
         await this._currentBeforeAssert(this.directAPI);
@@ -916,8 +923,7 @@ Testrunner.prototype._assert = async function () {
         }
     }
     catch (e) {
-        // TODO customizable message
-        this._tapWriter.notOk(`screenshot assert: ${refImgName}, ${e.message}`);
+        this._log.error(e.message);
         process.exitCode = 1;
     }
     finally {
