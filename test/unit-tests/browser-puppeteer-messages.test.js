@@ -56,8 +56,8 @@ test('browser puppeteer messages', async t => {
     try {
         await puppeteer.start();
         await browser.start();
+        await browser.waitForBrowserVisible();
         await browser.open(testHtmlURL);
-        await browser.assertBrowserVisible();
         await puppeteer.waitForConnection();
 
         // DOWNSTREAM

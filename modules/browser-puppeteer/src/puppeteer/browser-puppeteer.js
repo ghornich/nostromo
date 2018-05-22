@@ -11,18 +11,6 @@ const WS = require('ws');
 const Loggr = require(MODULES_PATH + 'loggr');
 const MESSAGES = require('../messages');
 
-/**
- * @memberOf BrowserPuppeteer
- * @type {Number}
- */
-const DEFAULT_WAITFORPUPPET_POLL_INTERVAL = 1000;
-
-/**
- * @memberOf BrowserPuppeteer
- * @type {Number}
- */
-const DEFAULT_WAITFORPUPPET_TIMEOUT = 10000;
-
 const DEFAULT_WAIT_FOR_CONNECTION_TIMEOUT_MS = 60000;
 
 class PuppetNotConnectedError extends Error {}
@@ -148,7 +136,7 @@ BrowserPuppeteer.prototype._wsShouldHandleRequest = function (request) {
     }
 
     return true;
-}
+};
 
 BrowserPuppeteer.prototype._onWsConnection = function (wsConn, request) {
     this._log.trace('_onWsConnection');
@@ -165,7 +153,7 @@ BrowserPuppeteer.prototype._onWsConnection = function (wsConn, request) {
 BrowserPuppeteer.prototype._onWsMessage = function (rawData) {
     const data = JSONF.parse(rawData);
 
-    const MAX_TRACE_RAW_LENGTH=300;
+    const MAX_TRACE_RAW_LENGTH = 300;
     const trimmedRawData = rawData.length > MAX_TRACE_RAW_LENGTH
         ? rawData.substr(0, MAX_TRACE_RAW_LENGTH) + ' [...]'
         : rawData;
@@ -310,7 +298,7 @@ BrowserPuppeteer.prototype._clearCurrentMessage = function () {
     this._currentMessageHandler.resolve = null;
     this._currentMessageHandler.reject = null;
     this._currentMessageHandler.message = null;
-}
+};
 
 function getPuppetIdFromRequest(request) {
     const matches = request.url.match(/puppet-id=(\d+)/);

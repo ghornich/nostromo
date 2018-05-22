@@ -1,7 +1,7 @@
 'use strict';
 
 exports = module.exports = function (test) {
-    test('test-testrunner', async t => {
+    test('test-testapp', async t => {
         await t.click('#show-dialog');
         await t.assert();
         await t.setValue('#input', 'A');

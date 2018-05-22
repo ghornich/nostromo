@@ -27,7 +27,6 @@ test('BrowserPuppeteer: missing puppet id', async t => {
 
     const wsConn = new WebSocket(`ws://localhost:51480`);
     const error = await new Promise(resolve => wsConn.on('error', resolve));
-
     t.ok(/unexpected server response \(400\)/.test(error.message), 'wsConn error message');
 
     await puppeteer.stop();
@@ -42,7 +41,6 @@ test('BrowserPuppeteer: blacklisted puppet id', async t => {
 
     const wsConn = new WebSocket(`ws://localhost:51480?puppet-id=7317574082848`);
     const error = await new Promise(resolve => wsConn.on('error', resolve));
-
     t.ok(/unexpected server response \(400\)/.test(error.message), 'wsConn error message');
 
     await puppeteer.stop();
@@ -74,8 +72,8 @@ test('BrowserPuppeteer: already connected', async t => {
 
     const invalidConn = new WebSocket(`ws://localhost:51480?puppet-id=6674262315383`);
     const error = await new Promise(resolve => invalidConn.on('error', resolve));
-
     t.ok(/unexpected server response \(400\)/.test(error.message), 'invalidConn error');
+
     await puppeteer.stop();
     t.end();
 });
@@ -123,34 +121,20 @@ test('BrowserPuppeteer: deferred messaging', async t => {
     t.end();
 });
 
-test('BrowserPuppeteer: ', async t => {
+test('BrowserPuppeteer: terminateConnection', async t => {
+    const puppeteer = new BrowserPuppeteer({ port: 51480 });
+    puppeteer._log._conf.logLevel = LOGLEVEL;
+    await puppeteer.start();
 
+    let wsConn = new WebSocket(`ws://localhost:51480?puppet-id=1044188020788`);
+    await new Promise(resolve => wsConn.on('open', resolve));
+
+    puppeteer.terminateConnection();
+
+    wsConn = new WebSocket(`ws://localhost:51480?puppet-id=1044188020788`);
+    const error = await new Promise(resolve => wsConn.on('error', resolve));
+    t.ok(/unexpected server response \(400\)/.test(error.message), 'wsConn error message');
+
+    await puppeteer.stop();
     t.end();
 });
-
-test('BrowserPuppeteer: ', async t => {
-
-    t.end();
-});
-
-test('BrowserPuppeteer: ', async t => {
-
-    t.end();
-});
-
-test('BrowserPuppeteer: ', async t => {
-
-    t.end();
-});
-
-test('BrowserPuppeteer: ', async t => {
-
-    t.end();
-});
-
-test('BrowserPuppeteer: ', async t => {
-
-    t.end();
-});
-
-// TODO: terminateConn(), 

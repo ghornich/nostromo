@@ -6,6 +6,12 @@ module.exports = function (config) {
         testBailout: true,
         referenceScreenshotsDir: 'reference-screenshots',
 
+        imageDiffOptions: {
+            colorThreshold: 5,
+            imageThreshold: 10,
+            grayscaleThreshold: 5,
+        },
+
         browsers: [
             new config.browsers.Chrome({
                 name: 'Chrome',
@@ -36,9 +42,9 @@ module.exports = function (config) {
                 testFiles: ['browser-puppeteer/test.js'],
             },
             {
-                name: 'test-testrunner',
+                name: 'test-testapp',
                 appUrl: 'file:///' + pathlib.resolve(__dirname, 'testapp/index.html'),
-                testFiles: ['./test-testrunner.js'],
+                testFiles: ['./test-testapp.js'],
                 beforeCommand: function (t, command) {
                     if (command.type !== 'assert') {
                         return t.waitWhileVisible('.loading, #toast');

@@ -106,13 +106,6 @@ exports = module.exports = Testrunner;
  */
 
 /**
- * TODO outdated?
- * @typedef {Object} AsserterConf
- * @property {Number} [colorThreshold = 3] - maximum percent difference between average pixel color channel values, calculated as: |a-b| / 255 * 100
- * @property {Number} [imageThreshold = 20] - maximum ppm difference between images' pixel count, calculated as: changedPixels / allPixels * 1e6
- */
-
-/**
  * @typedef {Object} TestrunnerConfig
  * @property {Number} [testPort = 47225]
  * @property {Number|String} [logLevel] - See Logger.LEVELS
@@ -122,7 +115,7 @@ exports = module.exports = Testrunner;
  * @property {String} [referenceScreenshotsDir = DEFAULT_REF_SCREENSHOTS_DIR]
  * @property {String} [referenceErrorsDir = DEFAULT_REF_ERRORS_DIR]
  * @property {Array<BrowserSpawner>} browsers - see example run config file
- * @property {AsserterConf} [asserterConf] - options for the built-in, screenshot-based asserter
+ * @property {ImageDiffOptions} [imageDiffOptions] - options for the built-in, screenshot-based asserter
  * @property {Array<Suite>} suites
  * @property {String} [testFilter] - regular expression string
  */
@@ -148,13 +141,13 @@ function Testrunner(conf) {
         outStream: process.stdout,
     };
 
-    const defaultAsserterConf = {
+    const defaultImageDiffOptions = {
         colorThreshold: 3,
         imageThreshold: 20,
     };
 
     this._conf = Object.assign(defaultConf, conf);
-    this._conf.asserterConf = Object.assign({}, defaultAsserterConf, conf.asserterConf);
+    this._conf.imageDiffOptions = Object.assign({}, defaultImageDiffOptions, conf.imageDiffOptions);
 
     this._log = new Loggr({
         logLevel: this._conf.logLevel,
@@ -201,8 +194,6 @@ function Testrunner(conf) {
     if (!__isArray(this._conf.browsers)) {
         this._conf.browsers = [this._conf.browsers];
     }
-
-    this._httpServer = null;
 
     // '_execFn,equal,click,setValue,waitForVisible,waitWhileVisible'.split(',').forEach(fnn=>{
     //     this[fnn]=this[fnn].bind(this)
@@ -283,137 +274,117 @@ Testrunner.prototype.run = async function () {
     }
 
     this._runStartTime = Date.now();
-
     this._log.debug('running...');
+    await rimrafAsync(this._conf.referenceErrorsDir);
+    await this._browserPuppeteer.start();
+    this._tapWriter.version();
 
-    return Promise.resolve()
-    .then(() => rimrafAsync(this._conf.referenceErrorsDir))
+    try {
+        for (const browser of conf.browsers) {
+            this._currentBrowser = browser;
 
-    .then(() => this._startServers())
+            this._log.info(`Starting browser: ${browser.name}`);
 
-    .then(async () => {
-        this._tapWriter.version();
+            await browser.start();
 
-        try {
-            for (const browser of conf.browsers) {
-                this._currentBrowser = browser;
+            try {
+                for (const suite of conf.suites) {
+                    suite.name = suite.name || DEFAULT_SUITE_NAME;
 
-                this._log.info(`Starting browser: ${browser.name}`);
+                    this._log.info(`Starting suite: "${suite.name}"`);
 
-                await browser.start();
+                    if (suite.beforeSuite) {
+                        this._log.debug('running beforeSuite');
+                        await suite.beforeSuite();
+                        this._log.debug('completed beforeSuite');
+                    }
 
-                try {
-                    for (const suite of conf.suites) {
-                        suite.name = suite.name || DEFAULT_SUITE_NAME;
+                    this._log.trace('suite testFiles: ' + suite.testFiles.join(', '));
 
-                        this._log.info(`Starting suite: "${suite.name}"`);
+                    const tests = await this._parseTestFiles(await multiGlobAsync(suite.testFiles));
 
-                        if (suite.beforeSuite) {
-                            this._log.debug('running beforeSuite');
-                            await suite.beforeSuite();
-                            this._log.debug('completed beforeSuite');
-                        }
+                    if (tests.length === 0) {
+                        throw new Error(`No tests found in the suite "${suite.name}"`);
+                    }
 
-                        this._log.trace('suite testFiles: ' + suite.testFiles.join(', '));
+                    let maybeTestError = null;
 
-                        const tests = await this._parseTestFiles(await multiGlobAsync(suite.testFiles));
+                    try {
+                        for (const test of tests) {
+                            if (conf.testFilter !== null) {
+                                const filterRegex = new RegExp(conf.testFilter, 'i');
 
-                        if (tests.length === 0) {
-                            throw new Error(`No tests found in the suite "${suite.name}"`);
-                        }
-
-                        let maybeTestError = null;
-
-                        try {
-                            for (const test of tests) {
-                                if (conf.testFilter !== null) {
-                                    const filterRegex = new RegExp(conf.testFilter, 'i');
-
-                                    if (!filterRegex.test(test.name)) {
-                                        this._log.info(`Skipping test: ${ test.name }`);
-                                        continue;
-                                    }
+                                if (!filterRegex.test(test.name)) {
+                                    this._log.info(`Skipping test: ${ test.name }`);
+                                    continue;
                                 }
-
-                                this._assertCount = 0;
-
-                                this._currentTest = test;
-
-                                this._currentBeforeCommand = suite.beforeCommand || noop;
-                                this._currentAfterCommand = suite.afterCommand || noop;
-
-                                this._currentBeforeAssert = suite.beforeAssert || noop;
-                                this._currentAfterAssert = suite.afterAssert || noop;
-
-                                await this._runTest(test, {
-                                    suite,
-                                });
                             }
 
-                        }
-                        catch (err) {
-                            maybeTestError = err;
-                        }
+                            this._assertCount = 0;
 
-                        if (suite.afterSuite) {
-                            this._log.debug('running afterSuite');
-                            await suite.afterSuite();
-                            this._log.debug('completed afterSuite');
-                        }
+                            this._currentTest = test;
 
-                        if (maybeTestError) {
-                            throw maybeTestError;
+                            this._currentBeforeCommand = suite.beforeCommand || noop;
+                            this._currentAfterCommand = suite.afterCommand || noop;
+
+                            this._currentBeforeAssert = suite.beforeAssert || noop;
+                            this._currentAfterAssert = suite.afterAssert || noop;
+
+                            await this._runTest(test, {
+                                suite,
+                            });
                         }
 
                     }
+                    catch (err) {
+                        maybeTestError = err;
+                    }
+
+                    if (suite.afterSuite) {
+                        this._log.debug('running afterSuite');
+                        await suite.afterSuite();
+                        this._log.debug('completed afterSuite');
+                    }
+
+                    if (maybeTestError) {
+                        throw maybeTestError;
+                    }
+
                 }
-                catch (err) {
-                    process.exitCode = 1;
+            }
+            catch (err) {
+                process.exitCode = 1;
 
-                    if (err.type === ERRORS.BAILOUT) {
-                        this._inBailout = true;
-                        this._tapWriter.bailout(err.message);
-                        throw err;
-                    }
-                    else {
-                        this._log.error(err.stack || err.toString());
-                    }
+                if (err.type === ERRORS.BAILOUT) {
+                    this._inBailout = true;
+                    this._tapWriter.bailout(err.message);
+                    throw err;
                 }
-                finally {
-                    if (this._browserPuppeteer.isPuppetConnected()) {
-                        browser.open('');
-                    }
-
-                    // await this._awaitUserEnter()
-
-                    await browser.stop();
+                else {
+                    this._log.error(err.stack || err.toString());
                 }
-
-
-
+            }
+            finally {
+                await browser.stop();
             }
         }
-        catch (err) {
-            process.exitCode = 1;
-            this._log.fatal(err.stack || err.toString());
-        }
-        finally {
-            if (!this._inBailout) {
-                this._tapWriter.plan();
-                this._tapWriter.diagnostic(`tests ${this._tapWriter.testCount}`);
-                this._tapWriter.diagnostic(`pass ${this._tapWriter.passCount}`);
-                this._tapWriter.diagnostic(`fail ${this._tapWriter.failCount}`);
-            }
-
-            await this._stopServers();
-
-            this._log.info('Finished in ' + formatDuration(Math.floor((Date.now() - this._runStartTime) / 1000)));
-        }
-    })
-    .catch(error => {
+    }
+    catch (err) {
         process.exitCode = 1;
-        this._log.fatal(error.stack || error.toString());
-    });
+        this._log.fatal(err.stack || err.toString());
+    }
+    finally {
+        if (!this._inBailout) {
+            this._tapWriter.plan();
+            this._tapWriter.diagnostic(`tests ${this._tapWriter.testCount}`);
+            this._tapWriter.diagnostic(`pass ${this._tapWriter.passCount}`);
+            this._tapWriter.diagnostic(`fail ${this._tapWriter.failCount}`);
+        }
+
+        await this._browserPuppeteer.stop();
+
+        this._log.info('Finished in ' + formatDuration(Math.floor((Date.now() - this._runStartTime) / 1000)));
+    }
 };
 
 Testrunner.prototype._awaitUserEnter = async function () {
@@ -425,26 +396,6 @@ Testrunner.prototype._awaitUserEnter = async function () {
             resolve();
         });
     });
-};
-
-Testrunner.prototype._startServers = async function () {
-    const self = this;
-
-    self._log.trace('_startServers called');
-
-    self._browserPuppeteer.start();
-
-    // return new Promise((res,rej)=>{
-    //     self._httpServer = http.createServer(self._onHttpRequest.bind(self))
-
-    //     self._httpServer.listen(self._conf.testPort, res)
-
-    // })
-};
-
-Testrunner.prototype._stopServers = function () {
-    // this._httpServer.close()
-    this._browserPuppeteer.stop();
 };
 
 /**
@@ -510,7 +461,7 @@ Testrunner.prototype._runTest = async function (test, { suite }) {
 
     // TODO throw error if no appUrl was found (assert when parsing the testfile)
 
-    await this._currentBrowser.assertBrowserVisible();
+    await this._currentBrowser.waitForBrowserVisible();
     await this._currentBrowser.open(suite.appUrl);
     await this._browserPuppeteer.waitForConnection();
 
@@ -851,7 +802,7 @@ Testrunner.prototype._assert = async function () {
         try {
             fs.statSync(refImgPath);
             const refImg = PNG.sync.read(fs.readFileSync(refImgPath));
-            const imgDiffResult = bufferImageDiff(img, refImg, this._conf.asserterConf);
+            const imgDiffResult = bufferImageDiff(img, refImg, this._conf.imageDiffOptions);
             const formattedImgDiffPPM = String(imgDiffResult.difference).replace(/\.(\d)\d+/, '.$1');
 
             if (imgDiffResult.same) {

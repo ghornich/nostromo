@@ -1,6 +1,7 @@
 'use strict';
 
-const resolvePath = require('path').resolve;
+const assert = require('assert');
+const pathlib = require('path');
 const EventEmitter = require('events').EventEmitter;
 const util = require('util');
 const rimraf = require('rimraf');
@@ -18,13 +19,11 @@ const TEMP_DELETE_RETRIES = BrowserSpawnerBase.TEMP_DELETE_RETRIES = 3;
 const TEMP_DELETE_TIMEOUT = BrowserSpawnerBase.TEMP_DELETE_TIMEOUT = 1000;
 
 const DEFAULT_SPAWNER_PORT = 24556;
-const DEFAULT_VISIBILITY_TIMEOUT_MS = 60000;
-const VISIBILITY_POLL_INTERVAL_MS = 3000;
 
-class BrowserVisibilityTimeoutError extends Error {};
+class TimeoutError extends Error {}
 
 /**
- * @typedef {BrowserSpawnerOptions}
+ * @typedef {BrowserSpawnerConfig}
  *
  * @property {String} name - Display name for this browser
  * @property {String} path - Path to browser executable
@@ -32,21 +31,32 @@ class BrowserVisibilityTimeoutError extends Error {};
  * @property {Number} width - Recorded app viewport width
  * @property {Number} height - Recorded app viewport height
  * @property {Object} [logger] - Custom Loggr instance
+ * @property {Number} [waitForConnectionTimeoutMs = 60000]
+ * @property {Number} [waitForConnectionPollIntervalMs = 500]
+ * @property {Number} [visibilityTimeoutMs = 60000]
+ * @property {Number} [visibilityPollIntervalMs = 3000]
  */
+
+// TODO es6 class
 
 /**
- * 
- * @param {BrowserSpawnerOptions} options
+ * @param {BrowserSpawnerConfig} conf
  */
-function BrowserSpawnerBase(options) {
+function BrowserSpawnerBase(conf) {
     EventEmitter.call(this);
 
-    this._opts = options || {};
-    this._opts.width = this._opts.width;
-    this._opts.height = this._opts.height;
-    this._opts.tempDir = resolvePath(this._opts.tempDir || this._getDefaultTempDir());
-    this._log = options.logger || new Loggr({
-        namespace: `BrowserSpawner ${this._opts.name}`,
+    assert(conf, 'BrowserSpawnerBase: missing conf');
+
+    this._conf = Object.assign({}, {
+        tempDir: pathlib.resolve(conf.tempDir || this._getDefaultTempDir()),
+        waitForConnectionTimeoutMs: 60000,
+        waitForConnectionPollIntervalMs: 500,
+        visibilityTimeoutMs: 60000,
+        visibilityPollIntervalMs: 3000,
+    }, conf);
+
+    this._log = conf.logger || new Loggr({
+        namespace: `BrowserSpawner ${this._conf.name}`,
         indent: '  ',
     });
 
@@ -58,7 +68,7 @@ function BrowserSpawnerBase(options) {
 
     Object.defineProperty(this, 'name', {
         get: function () {
-            return this._opts.name;
+            return this._conf.name;
         },
     });
 }
@@ -81,24 +91,32 @@ BrowserSpawnerBase.prototype.start = async function () {
 
     await new Promise(res => this._httpServer.listen(DEFAULT_SPAWNER_PORT, res));
 
-    await this._startBrowser(resolvePath(__dirname, 'browser-spawner-context.html'));
+    await this._startBrowser(pathlib.resolve(__dirname, 'browser-spawner-context.html'));
     await this._waitForConnection();
 
     // TODO await this with events?
     this._sendWsMessage({
         type: 'set-iframe-size',
-        width: this._opts.width,
-        height: this._opts.height,
+        width: this._conf.width,
+        height: this._conf.height,
     });
     await delay(500);
 };
 
-// TODO isBrowserVisible, etc. methods here
+BrowserSpawnerBase.prototype._isConnected = function () {
+    return this._wsConn !== null;
+}
 
-// TODO timeout?
 BrowserSpawnerBase.prototype._waitForConnection = async function () {
-    while (this._wsConn === null) {
-        await delay(500);
+    const startTime = Date.now();
+    const timeoutMs = this._conf.waitForConnectionTimeoutMs;
+
+    while (!this._isConnected()) {
+        if (startTime + timeoutMs < Date.now()) {
+            throw new TimeoutError(`BrowserSpawnerBase._waitForConnection: timeout after ${timeoutMs}ms`);
+        }
+
+        await delay(this._conf.waitForConnectionPollIntervalMs);
     }
 };
 
@@ -120,21 +138,18 @@ BrowserSpawnerBase.prototype.isBrowserVisible = async function () {
     return isVisible;
 };
 
-BrowserSpawnerBase.prototype.assertBrowserVisible = async function (timeout = DEFAULT_VISIBILITY_TIMEOUT_MS) {
+BrowserSpawnerBase.prototype.waitForBrowserVisible = async function () {
     const startTime = Date.now();
+    const timeoutMs = this._conf.visibilityTimeoutMs;
 
-    while (true) {
-        if (startTime + timeout < Date.now()) {
-            throw new BrowserVisibilityTimeoutError(`BrowserSpawnerBase.assertBrowserVisible: timeout after ${timeout}ms`);
+    while (!this.isBrowserVisible()) {
+        if (startTime + timeoutMs < Date.now()) {
+            throw new TimeoutError(`BrowserSpawnerBase.waitForBrowserVisible: timeout after ${timeoutMs}ms`);
         }
 
-        if (this.isBrowserVisible()) {
-            return;
-        }
-
-        await delay(VISIBILITY_POLL_INTERVAL_MS);
+        await delay(this._conf.visibilityPollIntervalMs);
     }
-}
+};
 
 /**
  * @abstract
@@ -164,7 +179,7 @@ BrowserSpawnerBase.prototype.open = async function (url) {
     this._sendWsMessage({ type: 'open', url: url });
 
     // hack await
-    await new Promise(res => setTimeout(res, 500));
+    await delay(500);
 };
 
 BrowserSpawnerBase.prototype._sendWsMessage = function (msgArg) {
@@ -223,7 +238,7 @@ BrowserSpawnerBase.prototype._deleteTempDir = function () {
                 throw new Error('BrowserSpawnerBase: maximum retries reached');
             }
 
-            rimraf(this._opts.tempDir, (maybeError) => {
+            rimraf(this._conf.tempDir, (maybeError) => {
                 if (maybeError) {
                     this._log.debug(`BrowserSpawnerBase: deleting temp dir failed: ${maybeError}`);
 
@@ -240,4 +255,4 @@ BrowserSpawnerBase.prototype._deleteTempDir = function () {
 };
 
 exports = module.exports = BrowserSpawnerBase;
-BrowserSpawnerBase.BrowserVisibilityTimeoutError = BrowserVisibilityTimeoutError;
+BrowserSpawnerBase.TimeoutError = TimeoutError;

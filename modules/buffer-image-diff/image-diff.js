@@ -19,13 +19,17 @@ class DifferentSizeError extends Error {
  */
 
 /**
+ * @typedef {Object} ImageDiffOptions
+ * @property {Number} options.colorThreshold
+ * @property {Number} options.imageThreshold
+ * @property {Number} [options.equivalenceThreshold = 4]
+ * @property {Number} [options.grayscaleThreshold = 0] - Ignore grayscale differences. Zero disables this threshold
+ */
+
+/**
  * @param {Image} a
  * @param {Image} b
- * @param {Object} options
- * @param {Number} options.colorThreshold
- * @param {Number} options.imageThreshold
- * @param {Number} [options.equivalenceThreshold = 4]
- * @param {Number} [options.grayscaleThreshold = 0] - Ignore grayscale differences. Zero disables this threshold
+ * @param {ImageDiffOptions} options
  * @return {ImageDiffResult}
  */
 function imageDiff(a, b, options) {
