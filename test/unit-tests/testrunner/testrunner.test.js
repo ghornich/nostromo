@@ -81,4 +81,6 @@ test('Testrunner: test throws', async t => {
     t.end();
 });
 
+// TODO before/after functions throw
+
 function noop() {}

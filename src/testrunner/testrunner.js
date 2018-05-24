@@ -847,7 +847,7 @@ Testrunner.prototype._assert = async function () {
         }
     }
     catch (e) {
-        this._log.error(e.message);
+        this._log.error(e.stack || e.toString());
         process.exitCode = 1;
     }
     finally {
@@ -884,6 +884,7 @@ function __isArray(v) {
     return __toString(v) === '[object Array]';
 }
 
+// TODO use es6 classes for errors
 function createError(type, msg) {
     const e = new Error(msg); e.type = type; return e;
 }

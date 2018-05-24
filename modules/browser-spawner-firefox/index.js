@@ -39,7 +39,7 @@ BrowserSpawnerFirefox.prototype._startBrowser = async function (spawnerControlUr
 
     // TODO what if folder exists?
 
-    const prefsPath = resolvePath(this._opts.tempDir, 'prefs.js');
+    const prefsPath = resolvePath(this._conf.tempDir, 'prefs.js');
 
     const xulstoreObj = {
         'chrome://browser/content/browser.xul': {
@@ -47,16 +47,16 @@ BrowserSpawnerFirefox.prototype._startBrowser = async function (spawnerControlUr
         },
     };
 
-    const xulstorePath = resolvePath(this._opts.tempDir, 'xulstore.json');
+    const xulstorePath = resolvePath(this._conf.tempDir, 'xulstore.json');
 
-    await mkdirpAsync(this._opts.tempDir)
+    await mkdirpAsync(this._conf.tempDir)
     await fs.writeFileAsync(prefsPath, PREF_DEFAULT)
     await fs.writeFileAsync(xulstorePath, JSON.stringify(xulstoreObj))
 
-    let selectedPath = this._opts.path;
+    let selectedPath = this._conf.path;
 
     if (Array.isArray(selectedPath)) {
-        for (let path of this._opts.path) {
+        for (let path of this._conf.path) {
             try {
                 await fs.statAsync(path);
                 selectedPath = path;
@@ -69,7 +69,7 @@ BrowserSpawnerFirefox.prototype._startBrowser = async function (spawnerControlUr
 
     this._log.info(`using path "${selectedPath}"`)
 
-    this._process = spawn(selectedPath, ['-profile', this._opts.tempDir, '-no-remote', spawnerControlUrl]);
+    this._process = spawn(selectedPath, ['-profile', this._conf.tempDir, '-no-remote', spawnerControlUrl]);
 
     this._process.on('error', err => {
         this.emit('error', err);

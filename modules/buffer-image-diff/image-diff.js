@@ -1,12 +1,6 @@
 exports = module.exports = imageDiff;
 
-class DifferentSizeError extends Error {
-    constructor (message) {
-        super(message);
-        this.message = message;
-        this.name = 'DifferentSizeError';
-    }
-}
+class DifferentSizeError extends Error {}
 
 // Image: {width, height, data:Buffer of pixel rgba's}
 // a, b: Image
