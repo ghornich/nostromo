@@ -21,7 +21,7 @@ BrowserSpawnerChrome.prototype._startBrowser = async function (spawnerControlUrl
 
     // params mostly from: https://github.com/karma-runner/karma-chrome-launcher/blob/master/index.js
     const params = [
-        `--user-data-dir=${this._opts.tempDir}`,
+        `--user-data-dir=${this._conf.tempDir}`,
         '--no-default-browser-check',
         '--no-first-run',
         '--disable-default-apps',
@@ -39,7 +39,7 @@ BrowserSpawnerChrome.prototype._startBrowser = async function (spawnerControlUrl
 
     params.push(spawnerControlUrl);
 
-    this._process = spawn(this._opts.path, params);
+    this._process = spawn(this._conf.path, params);
 
     this._process.on('error', () => this.emit('error'));
     this._process.on('close', () => {

@@ -197,8 +197,9 @@ BrowserPuppeteer.prototype._onWsClose = function (code) {
 };
 
 BrowserPuppeteer.prototype.closeConnection = function () {
-    if (this._currentMessageHandler.reject) {
-        this._currentMessageHandler.reject();
+    // TODO what is the correct solution for this? silent resolve or reject?
+    if (this._currentMessageHandler.resolve) {
+        this._currentMessageHandler.resolve();
         this._clearCurrentMessage();
     }
 
