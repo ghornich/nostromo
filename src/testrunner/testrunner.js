@@ -111,7 +111,6 @@ exports = module.exports = Testrunner;
  * @property {Number|String} [logLevel] - See Logger.LEVELS
  * @property {Boolean} [testBailout = true] - Bailout from a single test if an assert fails
  * @property {Boolean} [bailout = false] - Bailout from the entire test program if an assert fails
- * @property {Number} [browserReadyTimeout = 10000] browser timeout in ms
  * @property {String} [referenceScreenshotsDir = DEFAULT_REF_SCREENSHOTS_DIR]
  * @property {String} [referenceErrorsDir = DEFAULT_REF_ERRORS_DIR]
  * @property {Array<BrowserSpawner>} browsers - see example run config file
@@ -132,7 +131,6 @@ function Testrunner(conf) {
         logLevel: Loggr.LEVELS.INFO,
         testBailout: true,
         bailout: false,
-        browserReadyTimeout: 10000,
         referenceScreenshotsDir: DEFAULT_REF_SCREENSHOTS_DIR,
         referenceErrorsDir: DEFAULT_REF_ERRORS_DIR,
         browsers: [],
@@ -515,13 +513,6 @@ Testrunner.prototype._runTest = async function (test, { suite }) {
             throw maybeTestError;
         }
     }
-};
-
-Testrunner.prototype._waitUntilBrowserReady = async function () {
-    return this._browserPuppeteer.waitForPuppet({
-        ensureVisible: true,
-        timeout: this._conf.browserReadyTimeout,
-    });
 };
 
 Testrunner.prototype._wrapFunctionWithSideEffects = function (fn, cmdType) {
