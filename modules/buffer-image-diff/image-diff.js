@@ -24,6 +24,7 @@ class DifferentSizeError extends Error {
  * @property {Number} options.imageThreshold
  * @property {Number} [options.equivalenceThreshold = 4]
  * @property {Number} [options.grayscaleThreshold = 0] - Ignore grayscale differences. Zero disables this threshold
+ * @property {Number} [options.includeDiffBufferIndexes = false]
  */
 
 /**
@@ -55,6 +56,7 @@ function imageDiff(a, b, options) {
     }
 
     let diffPxCount = 0;
+    const diffBufferIndexes = [];
 
     for (let i = 0; i < a.data.length; i += 4) {
         const px1Avg = (a.data[i] + a.data[i + 1] + a.data[i + 2]) / 3
@@ -79,14 +81,23 @@ function imageDiff(a, b, options) {
 
         if (colorDiffPercent > opts.colorThreshold) {
             diffPxCount++;
+
+            if (opts.includeDiffBufferIndexes) {
+                diffBufferIndexes.push(i);
+            }
         }
     }
 
     const totalPxs = a.width * b.width;
     const imgDifference = diffPxCount / totalPxs * 1e6;
     const same = imgDifference <= opts.imageThreshold;
+    const result = { same: same, difference: imgDifference };
 
-    return { same: same, difference: imgDifference };
+    if (opts.includeDiffBufferIndexes) {
+        result.diffBufferIndexes = diffBufferIndexes;
+    }
+
+    return result;
 }
 
 function assert(v, m) {
