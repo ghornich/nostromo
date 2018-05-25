@@ -117,6 +117,7 @@ exports = module.exports = Testrunner;
  * @property {ImageDiffOptions} [imageDiffOptions] - options for the built-in, screenshot-based asserter
  * @property {Array<Suite>} suites
  * @property {String} [testFilter] - regular expression string
+ * @property {Number} [failedTestRetryCount = 0] - retry failed tests n times
  */
 
 /**
