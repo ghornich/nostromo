@@ -35,7 +35,16 @@ else {
 async function fileDiffer(conf) {
     const changedFilePaths = await glob(conf.changedRootDir.replace(/[\\\/]+$/, '') + '/**/*.png')
 
+    try {
+        fs.mkdirSync(OUTPUT_DIR_NAME)
+    }
+    catch(e){
+        // ignore
+        // console.error(e)
+    }
+
     for (const changedFilePath of changedFilePaths) {
+        console.log(`Scanning ${changedFilePath}`)
         const baseFilePath = changedFilePath.replace(/[^\\\/]+/, conf.baseRootDir)
 
         const baseImg=PNG.sync.read(fs.readFileSync(baseFilePath))
@@ -59,14 +68,12 @@ async function fileDiffer(conf) {
             const outputFilePath = changedFilePath.replace(/[^\\\/]+/, OUTPUT_DIR_NAME)
             const outputDirPath = outputFilePath.replace(/[\\\/][^\\\/]+$/, '')
 
-console.log(outputFilePath, outputDirPath)
-
             try {
                 fs.mkdirSync(outputDirPath)
             }
             catch(e){
                 // ignore
-                console.error(e)
+                // console.error(e)
             }
 
             fs.writeFileSync(outputFilePath, PNG.sync.write(baseImg))
