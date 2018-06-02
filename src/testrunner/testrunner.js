@@ -18,6 +18,7 @@ const PNG = require('pngjs').PNG;
 const globAsync = Promise.promisify(require('glob'));
 const bufferImageDiff = require(MODULES_PATH + 'buffer-image-diff');
 const rimrafAsync = Promise.promisify(require('rimraf'));
+const accessAsync = util.promisify(fs.access);
 
 // TODO standard tape API (sync), rename current equal() to valueEquals()
 // TODO convert to es6 class
@@ -62,6 +63,7 @@ const DEFAULT_SUITE_NAME = '(Unnamed suite)';
 
 const DEFAULT_REF_SCREENSHOTS_DIR = 'reference-screenshots';
 const DEFAULT_REF_ERRORS_DIR = 'reference-errors';
+const DEFAULT_REF_DIFFS_DIR = 'reference-diffs';
 
 // TODO use es6 class to inherit Error
 const ERRORS = {
@@ -70,6 +72,8 @@ const ERRORS = {
     TEST_BAILOUT: 2,
     BAILOUT: 3,
 };
+
+class AssertError extends Error {}
 
 exports = module.exports = Testrunner;
 
@@ -134,6 +138,7 @@ function Testrunner(conf) {
         bailout: false,
         referenceScreenshotsDir: DEFAULT_REF_SCREENSHOTS_DIR,
         referenceErrorsDir: DEFAULT_REF_ERRORS_DIR,
+        referenceDiffsDir: DEFAULT_REF_DIFFS_DIR,
         browsers: [],
         suites: [],
         testFilter: null,
@@ -143,6 +148,7 @@ function Testrunner(conf) {
     const defaultImageDiffOptions = {
         colorThreshold: 3,
         imageThreshold: 20,
+        includeDiffBufferIndexes: true,
     };
 
     this._conf = Object.assign(defaultConf, conf);
@@ -170,6 +176,8 @@ function Testrunner(conf) {
 
     this._currentBeforeAssert = null;
     this._currentAfterAssert = null;
+
+    this._currentTestOk = true;
 
     this._tapWriter = new TapWriter({
         outStream: this._conf.outStream,
@@ -257,34 +265,215 @@ function Testrunner(conf) {
 
     this._assertCount = 0;
     this._currentBrowser = null;
-
-    this._log.trace('instance created');
-
-    this._runStartTime = null;
+    this._testsCount = 0;
+    this._okTestsCount = 0;
 }
 
 util.inherits(Testrunner, EventEmitter);
 
+
 Testrunner.prototype.run = async function () {
     const conf = this._conf;
-
-    if (conf.suites.length === 0) {
-        throw new Error('No test suites specified');
-    }
-
-    this._runStartTime = Date.now();
-    this._log.debug('running...');
-    await rimrafAsync(this._conf.referenceErrorsDir);
-    await this._browserPuppeteer.start();
-    this._tapWriter.version();
+    const runStartTime = Date.now();
 
     try {
-        for (const browser of conf.browsers) {
-            this._currentBrowser = browser;
+        if (conf.suites.length === 0) {
+            throw new Error('No test suites specified');
+        }
 
-            this._log.info(`Starting browser: ${browser.name}`);
+        // TODO nem ennek a felelossege?
+        await rimrafAsync(conf.referenceErrorsDir);
 
-            await browser.start();
+        await this._parseSuiteTestfiles();
+        this._testsCount = conf.suites.reduce((accum, test) => accum + test.tests.length, 0);
+        this._tapWriter.version();
+        this._log.info(`found ${this._testsCount} tests`)
+
+
+
+        await this._browserPuppeteer.start();
+
+        try {
+            await this._runBrowsers()
+        }
+        catch (error) {
+            throw error;
+        }
+        finally {
+            await this._browserPuppeteer.stop();
+        }
+
+    }
+    catch (error) {
+        process.exitCode = 1;
+        this._log.error(error.stack || error.message || error)
+    }
+    finally {
+        // TODO run time, TAP msg
+        this._log.info(`finished in ${formatDuration(Math.floor((Date.now() - runStartTime) / 1000))}`);
+
+        this._tapWriter.diagnostic(`1..${this._testsCount}`)
+        this._tapWriter.diagnostic(`tests ${this._testsCount}`)
+        this._tapWriter.diagnostic(`pass ${this._okTestsCount}`)
+
+        if(this._testsCount!==this._okTestsCount) {
+            process.exitCode=1
+            this._tapWriter.diagnostic('FAILURE')
+        }
+        else {
+            this._tapWriter.diagnostic('SUCCESS')
+        }
+    }
+};
+
+Testrunner.prototype._runBrowsers = async function () {
+    const conf=this._conf
+
+    for (const browser of conf.browsers) {
+        this._currentBrowser = browser;
+        this._log.info(`Starting browser: ${browser.name}`);
+
+        await browser.start();
+        await browser.waitForBrowserVisible();
+
+        try {
+            await this._runSuites();
+        }
+        catch (error) {
+            throw error;
+        }
+        finally {
+            await browser.stop();
+        }
+    }
+}
+
+Testrunner.prototype._runSuites = async function () {
+    const conf=this._conf
+
+    for (const suite of conf.suites) {
+        this._log.info(`running suite: ${suite.name}`)
+
+        try {
+            if (suite.beforeSuite) {
+                this._log.debug('running beforeSuite');
+                await suite.beforeSuite()
+                this._log.debug('completed beforeSuite');
+            }
+
+            await this._runTestsInSuite(suite)
+        }
+        catch (error) {
+            throw error;
+        }
+        finally {
+            if (suite.afterSuite) {
+                this._log.debug('running afterSuite');
+                await suite.afterSuite()
+                this._log.debug('completed afterSuite');
+            }
+        }
+    }
+}
+
+Testrunner.prototype._runTestsInSuite=async function (suite){
+    for (const test of suite.tests){
+        try {
+            if (suite.beforeTest) {
+                this._log.debug('running beforeTest');
+                await suite.beforeTest(this.directAPI)
+                this._log.debug('completed beforeTest');
+            }
+
+            await this._runTest({ suite, test })
+        }
+        catch (error) {
+            // throw error;
+            this._log.error(error.stack||error.message)
+            process.exitCode=1
+        }
+        finally {
+            if (suite.afterTest) {
+                this._log.debug('running afterTest');
+                await suite.afterTest(this.directAPI)
+                this._log.debug('completed afterTest');
+            }
+        }
+    }
+}
+
+Testrunner.prototype._runTest=async function({suite,test}){
+    this._currentTest = test
+    this._currentTestOk = true;
+    this._assertCount=0
+    this._tapWriter.diagnostic(test.name);
+
+    try {
+        await this._currentBrowser.open(suite.appUrl)
+        await this._browserPuppeteer.waitForConnection()
+
+        if (suite.beforeFirstCommand){
+            await suite.beforeFirstCommand(this.directAPI)
+        }
+
+        this._currentBeforeCommand=suite.beforeCommand || noop
+        this._currentAfterCommand=suite.afterCommand || noop
+        this._currentBeforeAssert=suite.beforeAssert || noop
+        this._currentAfterAssert=suite.afterAssert || noop
+
+        try {
+            await test.testFn(this.tAPI, { directAPI: this.directAPI })
+
+            if (this._currentTestOk) {
+                this._tapWriter.ok(test.name)
+                this._okTestsCount++
+            }
+            else {
+                throw new Error(`test ${test.name} failed`)
+            }
+        }
+        catch (error) {
+            this._tapWriter.notOk(error.message)
+            this._log.error(error.stack || error.message || error)
+        }
+
+        if (suite.afterLastCommand) {
+            await suite.afterLastCommand(this.directAPI)
+        }
+
+    }
+    catch (error) {
+        throw error;
+    }
+    finally {
+        await this._browserPuppeteer.clearPersistentData()
+        await this._browserPuppeteer.closeConnection()
+        await this._currentBrowser.open('')
+    }
+}
+
+Testrunner.prototype._parseSuiteTestfiles=async function(){
+    const conf = this._conf;
+
+    if (this._conf.testFilter !== null) {
+        this._log.info(`using filter: ${this._conf.testFilter}`);
+    }
+
+    for (const suite of conf.suites) {
+        suite.tests = await this._parseTestFiles(await multiGlobAsync(suite.testFiles))
+
+        if (conf.testFilter !== null) {
+            const filterRegex = new RegExp(conf.testFilter, 'i');
+
+            suite.tests = suite.tests.filter(test => filterRegex.test(test.name));
+        }
+    };
+
+    conf.suites = conf.suites.filter(suite => suite.tests.length > 0);
+}
+
+/*Testrunner.prototype.run = async function () {
+
 
             try {
                 for (const suite of conf.suites) {
@@ -310,14 +499,6 @@ Testrunner.prototype.run = async function () {
 
                     try {
                         for (const test of tests) {
-                            if (conf.testFilter !== null) {
-                                const filterRegex = new RegExp(conf.testFilter, 'i');
-
-                                if (!filterRegex.test(test.name)) {
-                                    this._log.info(`Skipping test: ${ test.name }`);
-                                    continue;
-                                }
-                            }
 
                             this._assertCount = 0;
 
@@ -384,18 +565,7 @@ Testrunner.prototype.run = async function () {
 
         this._log.info('Finished in ' + formatDuration(Math.floor((Date.now() - this._runStartTime) / 1000)));
     }
-};
-
-Testrunner.prototype._awaitUserEnter = async function () {
-    console.log('--- Testrunner paused. Press Enter to continue... ---');
-    process.stdin.resume();
-
-    return new Promise(resolve => {
-        process.stdin.once('data', function () {
-            resolve();
-        });
-    });
-};
+};*/
 
 /**
  * @typedef {Object} Test
@@ -447,7 +617,7 @@ Testrunner.prototype._parseTestFiles = async function (testFilePaths) {
 };
 
 // TODO use _currentSuite?
-Testrunner.prototype._runTest = async function (test, { suite }) {
+Testrunner.prototype._runTestORIG = async function (test, { suite }) {
     this._log.debug(`running test: ${test.name}`);
 
     this._tapWriter.diagnostic(test.name);
@@ -463,6 +633,8 @@ Testrunner.prototype._runTest = async function (test, { suite }) {
     await this._currentBrowser.waitForBrowserVisible();
     await this._currentBrowser.open(suite.appUrl);
     await this._browserPuppeteer.waitForConnection();
+
+    await this._browserPuppeteer.clearPersistentData();
 
     let maybeTestError = null;
 
@@ -494,8 +666,7 @@ Testrunner.prototype._runTest = async function (test, { suite }) {
         maybeTestError = err;
     }
 
-    await this._browserPuppeteer.clearPersistentData();
-
+    await this._browserPuppeteer.closeConnection()
     await this._currentBrowser.open('');
 
     if (suite.afterTest) {
@@ -565,17 +736,20 @@ Testrunner.prototype._execCommandsSideEffect = async function (cmds) {
 
 Testrunner.prototype._equal = async function (actual, expected, description) {
     if (isEqual(actual, expected)) {
-        this._tapWriter.ok({
-            type: 'equal',
-            message: description,
-        });
+        this._log.info('equal OK: ' + (description||'(unnamed)'))
+        // this._tapWriter.ok({
+        //     type: 'equal',
+        //     message: description,
+        // });
     }
     else {
-        this._tapWriter.fail({
-            type: 'equal',
-            expected: expected,
-            actual: actual,
-        });
+        this._log.error('equal FAIL: ' + (description||'(unnamed)'))
+        throw new Error(`Testrunner._equal: FAIL (actual: ${actual}, expected: ${expected}, description: ${description||'(none)'})`)
+        // this._tapWriter.fail({
+        //     type: 'equal',
+        //     expected: expected,
+        //     actual: actual,
+        // });
 
     }
 };
@@ -589,10 +763,10 @@ Testrunner.prototype._clickDirect = async function (selector, rawDescription) {
             selector: selector,
         });
 
-        this._tapWriter.pass({ type: 'click', message: description });
+        // this._tapWriter.pass({ type: 'click', message: description });
     }
     catch (err) {
-        this._tapWriter.notOk(err.message);
+        // this._tapWriter.notOk(err.message);
 
         this._handleCommandError(err);
     }
@@ -623,10 +797,10 @@ Testrunner.prototype._setValueDirect = async function (selector, value, rawDescr
         value: value,
     })
     .then(() => {
-        this._tapWriter.pass({ type: 'setValue', message: description });
+        // this._tapWriter.pass({ type: 'setValue', message: description });
     })
     .catch(err => {
-        this._tapWriter.notOk(err.message);
+        // this._tapWriter.notOk(err.message);
 
         this._handleCommandError(err);
     });
@@ -652,7 +826,7 @@ Testrunner.prototype._waitForVisibleDirect = async function (selector, opts = {}
         timeout: opts.timeout,
     })
     .catch(err => {
-        this._tapWriter.notOk(`waitForVisible - ${err.message}`);
+        // this._tapWriter.notOk(`waitForVisible - ${err.message}`);
 
         this._handleCommandError(err);
     });
@@ -669,7 +843,7 @@ Testrunner.prototype._waitWhileVisibleDirect = async function (selector, opts = 
         timeout: opts.timeout,
     })
     .catch(err => {
-        this._tapWriter.notOk(`waitWhileVisible - ${err.message}`);
+        // this._tapWriter.notOk(`waitWhileVisible - ${err.message}`);
 
         this._handleCommandError(err);
     });
@@ -681,7 +855,7 @@ Testrunner.prototype._isVisibleDirect = async function (selector) {
         selector: selector,
     })
     .catch(err => {
-        this._tapWriter.notOk(`isVisible - ${err.message}`);
+        // this._tapWriter.notOk(`isVisible - ${err.message}`);
 
         this._handleCommandError(err);
     });
@@ -716,7 +890,7 @@ Testrunner.prototype._scrollDirect = async function (selector, scrollTop) {
         scrollTop: scrollTop,
     })
     .catch(err => {
-        this._tapWriter.notOk(`scroll - ${err.message}`);
+        // this._tapWriter.notOk(`scroll - ${err.message}`);
 
         this._handleCommandError(err);
     });
@@ -730,7 +904,7 @@ Testrunner.prototype._compositeDirect = async function (commands) {
         commands: commands,
     })
     .catch(err => {
-        this._tapWriter.notOk(`composite - ${err.message}`);
+        // this._tapWriter.notOk(`composite - ${err.message}`);
 
         this._handleCommandError(err);
     });
@@ -744,7 +918,7 @@ Testrunner.prototype._mouseoverDirect = async function (selector) {
         selector: selector,
     })
     .catch(err => {
-        this._tapWriter.notOk(`mouseover - ${err.message}`);
+        // this._tapWriter.notOk(`mouseover - ${err.message}`);
 
         this._handleCommandError(err);
     });
@@ -779,75 +953,117 @@ Testrunner.prototype._handleCommandError = function (err) {
 Testrunner.prototype._assert = async function () {
     const refImgDir = pathlib.resolve(this._conf.referenceScreenshotsDir, this._currentBrowser.name.toLowerCase(), this._currentTest.id);
     const failedImgDir = pathlib.resolve(this._conf.referenceErrorsDir, this._currentBrowser.name.toLowerCase(), this._currentTest.id);
-    let failedImgDirExists = null;
 
     const refImgName = `${this._assertCount}.png`;
     const refImgPath = pathlib.resolve(refImgDir, refImgName);
     const refImgPathRelative = pathlib.relative(pathlib.resolve(this._conf.referenceScreenshotsDir), refImgPath);
 
+    await this._currentBeforeAssert(this.directAPI);
+    await mkdirpAsync(refImgDir);
+
+    let screenshotImg = await screenshotjs({ cropMarker: screenshotMarkerImg });
+
+    // region save new ref img
     try {
-        await this._currentBeforeAssert(this.directAPI);
-        await mkdirpAsync(refImgDir);
+        await accessAsync(refImgPath, fs.constants.F_OK);
+    }
+    catch (error) {
+        const png = new PNG(screenshotImg);
+        png.data = screenshotImg.data;
+        const pngFileBin = PNG.sync.write(png);
 
-        const img = await screenshotjs({ cropMarker: screenshotMarkerImg });
+        fs.writeFileSync(refImgPath, pngFileBin);
 
-        try {
-            fs.statSync(refImgPath);
-            const refImg = PNG.sync.read(fs.readFileSync(refImgPath));
-            const imgDiffResult = bufferImageDiff(img, refImg, this._conf.imageDiffOptions);
-            const formattedImgDiffPPM = String(imgDiffResult.difference).replace(/\.(\d)\d+/, '.$1');
+        // this._tapWriter.ok(`new reference image added: ${refImgPathRelative}`);
+        this._log.info(`new reference image added: ${refImgPathRelative}`)
 
-            if (imgDiffResult.same) {
-                this._tapWriter.ok(`screenshot assert (${formattedImgDiffPPM} ppm): ${refImgPathRelative}`);
-            }
-            else {
-                if (!failedImgDirExists) {
-                    await mkdirpAsync(failedImgDir);
-                    failedImgDirExists = true;
-                }
+        await this._runCurrentAfterAssertTasks();
+        return;
+    }
+    // endregion
 
-                this._tapWriter.notOk(`screenshot assert (${formattedImgDiffPPM} ppm): ${refImgPathRelative}`);
+    const refImg = PNG.sync.read(fs.readFileSync(refImgPath));
 
-                const failedImgName = `${this._assertCount}.png`;
-                const failedImgPath = pathlib.resolve(failedImgDir, failedImgName);
-                const failedImgPathRelative = pathlib.relative(pathlib.resolve(this._conf.referenceErrorsDir), failedImgPath);
+    const retryCount=4
+    const retryInterval=1000
+    let imgDiffResult
+    let formattedPPM
 
-                const failedPng = new PNG(img);
-                failedPng.data = img.data;
-                const failedImgBin = PNG.sync.write(failedPng);
+    for(let i=0;i<retryCount;i++){
+        imgDiffResult = bufferImageDiff(screenshotImg, refImg, this._conf.imageDiffOptions);
+        formattedPPM = String(imgDiffResult.difference).replace(/\.(\d)\d+/, '.$1');
+        
+        if (imgDiffResult.same) {
+            // this._tapWriter.ok(`screenshot assert (${formattedPPM} ppm): ${refImgPathRelative}, retries: ${i}`);
+            this._log.info(`OK screenshot assert (${formattedPPM} ppm): ${refImgPathRelative}, retries: ${i}`)
 
-                fs.writeFileSync(failedImgPath, failedImgBin);
-
-                this._log.info(`failed screenshot added: ${failedImgPathRelative}`);
-
-                throw new Error('screenshot assert failed');
-            }
+            await this._runCurrentAfterAssertTasks()
+            return;
         }
-        catch (e) {
-            if (e.code === 'ENOENT') {
-                const png = new PNG(img);
-                png.data = img.data;
-                const pngFileBin = PNG.sync.write(png);
-
-                fs.writeFileSync(refImgPath, pngFileBin);
-
-                this._tapWriter.ok(`new reference image added: ${refImgPathRelative}`);
-            }
-            else {
-                throw e;
-            }
+        
+        this._log.warn(`screenshot assert failed: ${refImgPathRelative}, ppm: ${formattedPPM}, attempt#: ${i}`)
+        
+        if (i<retryCount){
+            let screenshotImg = await screenshotjs({ cropMarker: screenshotMarkerImg });
+            await Promise.delay(retryInterval)
         }
     }
-    catch (e) {
-        this._log.error(e.stack || e.toString());
+
+    this._currentTestOk = false
+
+    this._log.error(`FAIL screenshot assert (${formattedPPM} ppm): ${refImgPathRelative}`)
+
+    // this._tapWriter.notOk(`screenshot assert (${formattedPPM} ppm): ${refImgPathRelative}`);
+
+    // region write failed image
+    await mkdirpAsync(failedImgDir);
+    const failedImgName = `${this._assertCount}.png`;
+    const failedImgPath = pathlib.resolve(failedImgDir, failedImgName);
+    const failedImgPathRelative = pathlib.relative(pathlib.resolve(this._conf.referenceErrorsDir), failedImgPath);
+    const failedPng = new PNG(screenshotImg);
+    failedPng.data = screenshotImg.data;
+    const failedImgBin = PNG.sync.write(failedPng);
+    fs.writeFileSync(failedImgPath, failedImgBin);
+    this._log.info(`failed screenshot added: ${failedImgPathRelative}`);
+    // endregion
+
+
+    // region write diff image
+    await mkdirpAsync(this._conf.referenceDiffsDir);
+    const diffImgPath = pathlib.resolve(
+        this._conf.referenceDiffsDir,
+        this._currentBrowser.name.toLowerCase() + '___' + this._currentTest.id + '___' + this._assertCount + '.png'
+    );
+    const diffImgPathRelative = pathlib.relative(pathlib.resolve(this._conf.referenceDiffsDir), diffImgPath);
+
+    for (let bufIdx of imgDiffResult.diffBufferIndexes) {
+        screenshotImg.data[bufIdx] = 255;
+        screenshotImg.data[bufIdx + 1] = 0;
+        screenshotImg.data[bufIdx + 2] = 0;
+    }
+
+    const diffPng = new PNG(screenshotImg);
+    diffPng.data = screenshotImg.data;
+    const diffImgBin = PNG.sync.write(diffPng);
+    fs.writeFileSync(diffImgPath, diffImgBin);
+    this._log.info(`diff screenshot added: ${diffImgPathRelative}`);
+    // endregion
+
+    await this._runCurrentAfterAssertTasks()
+};
+
+Testrunner.prototype._runCurrentAfterAssertTasks = async function () {
+    try {
+        await this._currentAfterAssert(this.directAPI);
+    }
+    catch (error) {
+        this._log.trace('_runCurrentAfterAssert catch');
+        this._log.error(error.stack || error.message)
         process.exitCode = 1;
     }
-    finally {
-        // TODO handle possible errors from afterAssert
-        await this._currentAfterAssert(this.directAPI);
-        this._assertCount++;
-    }
-};
+
+    this._assertCount++;
+}
 
 Testrunner.prototype._uploadFileAndAssignDirect = async function (data) {
     const filePath = data.filePath;
