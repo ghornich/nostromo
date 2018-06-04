@@ -10,6 +10,8 @@ class DifferentSizeError extends Error {}
  * @typedef {Object} ImageDiffResult
  * @property {Boolean} same
  * @property {Number} difference
+ * @property {Number} totalChangedPixels
+ * @property {Array<Number>} [diffBufferIndexes]
  */
 
 /**
@@ -46,10 +48,11 @@ function imageDiff(a, b, options) {
     }
 
     if (a.data.equals(b.data)) {
-        return { same: true, difference: 0 };
+        return { same: true, difference: 0,totalChangedPixels:0 };
     }
 
     let diffPxCount = 0;
+    let totalChangedPixels=0
     const diffBufferIndexes = [];
 
     for (let i = 0; i < a.data.length; i += 4) {
@@ -57,6 +60,10 @@ function imageDiff(a, b, options) {
         const px2Avg = (b.data[i] + b.data[i + 1] + b.data[i + 2]) / 3
         const colorDiff=Math.abs(px1Avg-px2Avg)
         const colorDiffPercent=colorDiff/255*100
+
+        if (colorDiff>0){
+            totalChangedPixels++
+        }
 
         if (colorDiff <= opts.equivalenceThreshold) {
             continue
@@ -85,7 +92,7 @@ function imageDiff(a, b, options) {
     const totalPxs = a.width * b.width;
     const imgDifference = diffPxCount / totalPxs * 1e6;
     const same = imgDifference <= opts.imageThreshold;
-    const result = { same: same, difference: imgDifference };
+    const result = { same: same, difference: imgDifference, totalChangedPixels:totalChangedPixels };
 
     if (opts.includeDiffBufferIndexes) {
         result.diffBufferIndexes = diffBufferIndexes;

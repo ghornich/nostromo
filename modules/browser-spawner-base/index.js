@@ -66,9 +66,16 @@ function BrowserSpawnerBase(conf) {
     this._wsServer = null;
     this._wsConn = null;
 
-    Object.defineProperty(this, 'name', {
-        get: function () {
-            return this._conf.name;
+    Object.defineProperties(this, {
+        name:  {
+            get: function () {
+                return this._conf.name;
+            },
+        },
+        path: {
+            get: function () {
+                return this._conf.path;
+            },
         },
     });
 }

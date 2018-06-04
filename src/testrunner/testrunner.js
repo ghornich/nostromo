@@ -177,8 +177,6 @@ function Testrunner(conf) {
     this._currentBeforeAssert = null;
     this._currentAfterAssert = null;
 
-    this._currentTestOk = true;
-
     this._tapWriter = new TapWriter({
         outStream: this._conf.outStream,
     });
@@ -283,13 +281,12 @@ Testrunner.prototype.run = async function () {
 
         // TODO nem ennek a felelossege?
         await rimrafAsync(conf.referenceErrorsDir);
+        await rimrafAsync(conf.referenceDiffsDir);
 
         await this._parseSuiteTestfiles();
         this._testsCount = conf.suites.reduce((accum, test) => accum + test.tests.length, 0);
         this._tapWriter.version();
-        this._log.info(`found ${this._testsCount} tests`)
-
-
+        this._log.info(`found ${this._testsCount} tests${ (conf.testFilter?` (using filter "${conf.testFilter}")`:``) }`)
 
         await this._browserPuppeteer.start();
 
@@ -331,7 +328,7 @@ Testrunner.prototype._runBrowsers = async function () {
 
     for (const browser of conf.browsers) {
         this._currentBrowser = browser;
-        this._log.info(`Starting browser: ${browser.name}`);
+        this._log.info(`Starting browser  "${browser.name}" from "${browser.path}"`);
 
         await browser.start();
         await browser.waitForBrowserVisible();
@@ -404,9 +401,10 @@ Testrunner.prototype._runTestsInSuite=async function (suite){
 
 Testrunner.prototype._runTest=async function({suite,test}){
     this._currentTest = test
-    this._currentTestOk = true;
     this._assertCount=0
     this._tapWriter.diagnostic(test.name);
+
+    test.runErrors = []
 
     try {
         await this._currentBrowser.open(suite.appUrl)
@@ -424,12 +422,12 @@ Testrunner.prototype._runTest=async function({suite,test}){
         try {
             await test.testFn(this.tAPI, { directAPI: this.directAPI })
 
-            if (this._currentTestOk) {
+            if (test.runErrors.length===0) {
                 this._tapWriter.ok(test.name)
                 this._okTestsCount++
             }
             else {
-                throw new Error(`test ${test.name} failed`)
+                throw new Error(`test "${test.name}" failed:\n${ test.runErrors.map(e=>`  ${e.message}`).join('\n') }`)
             }
         }
         catch (error) {
@@ -454,10 +452,6 @@ Testrunner.prototype._runTest=async function({suite,test}){
 
 Testrunner.prototype._parseSuiteTestfiles=async function(){
     const conf = this._conf;
-
-    if (this._conf.testFilter !== null) {
-        this._log.info(`using filter: ${this._conf.testFilter}`);
-    }
 
     for (const suite of conf.suites) {
         suite.tests = await this._parseTestFiles(await multiGlobAsync(suite.testFiles))
@@ -995,13 +989,13 @@ Testrunner.prototype._assert = async function () {
         
         if (imgDiffResult.same) {
             // this._tapWriter.ok(`screenshot assert (${formattedPPM} ppm): ${refImgPathRelative}, retries: ${i}`);
-            this._log.info(`OK screenshot assert (${formattedPPM} ppm): ${refImgPathRelative}, retries: ${i}`)
+            this._log.info(`OK screenshot assert (${formattedPPM} ppm): ${refImgPathRelative}, totalChangedPixels: ${imgDiffResult.totalChangedPixels}, retries: ${i}`)
 
             await this._runCurrentAfterAssertTasks()
             return;
         }
         
-        this._log.warn(`screenshot assert failed: ${refImgPathRelative}, ppm: ${formattedPPM}, attempt#: ${i}`)
+        this._log.warn(`screenshot assert failed: ${refImgPathRelative}, ppm: ${formattedPPM}, totalChangedPixels: ${imgDiffResult.totalChangedPixels}, attempt#: ${i}`)
         
         if (i<retryCount){
             let screenshotImg = await screenshotjs({ cropMarker: screenshotMarkerImg });
@@ -1009,9 +1003,9 @@ Testrunner.prototype._assert = async function () {
         }
     }
 
-    this._currentTestOk = false
+    this._currentTest.runErrors.push(new AssertError(`FAIL screenshot assert (${formattedPPM} ppm): ${refImgPathRelative}, totalChangedPixels: ${imgDiffResult.totalChangedPixels}`))
 
-    this._log.error(`FAIL screenshot assert (${formattedPPM} ppm): ${refImgPathRelative}`)
+    this._log.error(`FAIL screenshot assert (${formattedPPM} ppm): ${refImgPathRelative}, totalChangedPixels: ${imgDiffResult.totalChangedPixels}`)
 
     // this._tapWriter.notOk(`screenshot assert (${formattedPPM} ppm): ${refImgPathRelative}`);
 
