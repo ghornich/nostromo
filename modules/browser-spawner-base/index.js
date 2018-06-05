@@ -204,9 +204,14 @@ BrowserSpawnerBase.prototype.stop = async function () {
             this._wsServer.close(resolve);
         });
 
-        await new Promise((resolve, reject) => {
-            treeKill(this._process.pid, err => err ? reject(err) : resolve());
-        });
+        try {
+            await new Promise((resolve, reject) => {
+                treeKill(this._process.pid, err => err ? reject(err) : resolve());
+            });
+        }
+        catch (error) {
+            this._log.error(`failed to stop browser: ${error.stack || error.message}`)
+        }
 
         await new Promise(res => this._httpServer.close(res));
         this._wsConn = null;
