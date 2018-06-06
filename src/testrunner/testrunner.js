@@ -293,9 +293,6 @@ Testrunner.prototype.run = async function () {
         try {
             await this._runBrowsers()
         }
-        catch (error) {
-            throw error;
-        }
         finally {
             await this._browserPuppeteer.stop();
         }
@@ -328,7 +325,7 @@ Testrunner.prototype._runBrowsers = async function () {
 
     for (const browser of conf.browsers) {
         this._currentBrowser = browser;
-        this._log.info(`Starting browser  "${browser.name}" from "${browser.path}"`);
+        this._log.info(`starting browser "${browser.name}" from "${browser.path}"`);
 
         await browser.start();
         await browser.waitForBrowserVisible();
@@ -336,11 +333,13 @@ Testrunner.prototype._runBrowsers = async function () {
         try {
             await this._runSuites();
         }
-        catch (error) {
-            throw error;
-        }
         finally {
-            await browser.stop();
+            try {
+                await browser.stop();
+            }
+            catch (error) {
+                this._log.error('error while stopping browser: ', error);
+            }
         }
     }
 }
@@ -353,21 +352,25 @@ Testrunner.prototype._runSuites = async function () {
 
         try {
             if (suite.beforeSuite) {
-                this._log.debug('running beforeSuite');
+                this._log.trace('running beforeSuite');
                 await suite.beforeSuite()
-                this._log.debug('completed beforeSuite');
+                this._log.trace('completed beforeSuite');
             }
 
             await this._runTestsInSuite(suite)
         }
-        catch (error) {
-            throw error;
-        }
         finally {
             if (suite.afterSuite) {
-                this._log.debug('running afterSuite');
-                await suite.afterSuite()
-                this._log.debug('completed afterSuite');
+                this._log.trace('running afterSuite');
+
+                try {
+                    await suite.afterSuite();
+                }
+                catch (error) {
+                    this._log.error('error while running afterSuite: ', error);
+                }
+
+                this._log.trace('completed afterSuite');
             }
         }
     }
@@ -377,23 +380,30 @@ Testrunner.prototype._runTestsInSuite=async function (suite){
     for (const test of suite.tests){
         try {
             if (suite.beforeTest) {
-                this._log.debug('running beforeTest');
+                this._log.trace('running beforeTest');
                 await suite.beforeTest(this.directAPI)
-                this._log.debug('completed beforeTest');
+                this._log.trace('completed beforeTest');
             }
 
             await this._runTest({ suite, test })
         }
         catch (error) {
             // throw error;
-            this._log.error(error.stack||error.message)
+            this._log.error(error)
             process.exitCode=1
         }
         finally {
             if (suite.afterTest) {
-                this._log.debug('running afterTest');
-                await suite.afterTest(this.directAPI)
-                this._log.debug('completed afterTest');
+                this._log.trace('running afterTest');
+
+                try {
+                    await suite.afterTest(this.directAPI)
+                }
+                catch (error) {
+                    this._log.error('error while running afterTest: ', error);
+                }
+
+                this._log.trace('completed afterTest');
             }
         }
     }
@@ -439,9 +449,6 @@ Testrunner.prototype._runTest=async function({suite,test}){
             await suite.afterLastCommand(this.directAPI)
         }
 
-    }
-    catch (error) {
-        throw error;
     }
     finally {
         await this._browserPuppeteer.clearPersistentData()
