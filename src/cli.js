@@ -97,10 +97,24 @@ const DEFAULT_DIFF_CFG_FILE = 'nostromo.diff.conf.js';
 
             const tr = new Testrunner(baseConf);
 
-            tr.run();
+            process.on('SIGINT', async () => {
+                console.log('Aborting Testrunner...');
+
+                try {
+                    await tr.abort();
+                }
+                catch (error) {
+                    console.log('Error while aborting Testrunner:', error);
+                }
+
+                process.exit(1);
+            });
+
+            await tr.run();
         }
         catch (err) {
             console.error(err);
+            process.exit(1);
         }
     }
     else if (args.update) {

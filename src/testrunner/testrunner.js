@@ -73,7 +73,19 @@ const ERRORS = {
     BAILOUT: 3,
 };
 
-class AssertError extends Error {}
+class AssertError extends Error {
+    constructor (message) {
+        super(message);
+        this.name = 'AssertError';
+    }
+}
+
+class AbortError extends Error {
+    constructor (message) {
+        super(message);
+        this.name = 'AbortError';
+    }
+}
 
 exports = module.exports = Testrunner;
 
@@ -183,6 +195,9 @@ function Testrunner(conf) {
 
     this._inBailout = false;
 
+    this._isRunning = false;
+    this._isAborting = false;
+
     // -------------------
 
     // TODO ensure browser names are unique (for reference images)
@@ -274,6 +289,12 @@ Testrunner.prototype.run = async function () {
     const conf = this._conf;
     const runStartTime = Date.now();
 
+    if (this._isRunning) {
+        throw new Error('Testrunner.run(): already running');
+    }
+
+    this._isRunning = true;
+
     try {
         if (conf.suites.length === 0) {
             throw new Error('No test suites specified');
@@ -317,13 +338,43 @@ Testrunner.prototype.run = async function () {
         else {
             this._tapWriter.diagnostic('SUCCESS')
         }
+
+        this._isRunning = false;
     }
 };
+
+Testrunner.prototype.abort = async function () {
+    if (!this._isRunning) {
+        throw new Error('Testrunner.abort(): not running');
+    }
+
+    if (this._isAborting) {
+        throw new Error('Testrunner.abort(): already aborting');
+    }
+
+    this._isAborting = true;
+    this._log.info('aborting...');
+
+    while (this._isRunning) {
+        await Promise.delay(500);
+    }
+
+    this._isAborting = false;
+    this._log.info('aborted!');
+}
+
+Testrunner.prototype.isRunning = function () {
+    return this._isRunning;
+}
 
 Testrunner.prototype._runBrowsers = async function () {
     const conf=this._conf
 
     for (const browser of conf.browsers) {
+        if (this._isAborting) {
+            throw new AbortError();
+        }
+
         this._currentBrowser = browser;
         this._log.info(`starting browser "${browser.name}" from "${browser.path}"`);
 
@@ -348,6 +399,10 @@ Testrunner.prototype._runSuites = async function () {
     const conf=this._conf
 
     for (const suite of conf.suites) {
+        if (this._isAborting) {
+            throw new AbortError();
+        }
+
         this._log.info(`running suite: ${suite.name}`)
 
         try {
@@ -378,6 +433,10 @@ Testrunner.prototype._runSuites = async function () {
 
 Testrunner.prototype._runTestsInSuite=async function (suite){
     for (const test of suite.tests){
+        if (this._isAborting) {
+            throw new AbortError();
+        }
+
         try {
             if (suite.beforeTest) {
                 this._log.trace('running beforeTest');
@@ -690,6 +749,10 @@ Testrunner.prototype._runTestORIG = async function (test, { suite }) {
 
 Testrunner.prototype._wrapFunctionWithSideEffects = function (fn, cmdType) {
     return async (...args) => {
+        if (this._isAborting) {
+            throw new AbortError();
+        }        
+
         await this._currentBeforeCommand(this.directAPI, { type: cmdType });
         const fnResult = await fn(...args);
         await this._currentAfterCommand(this.directAPI, { type: cmdType });
