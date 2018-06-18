@@ -151,6 +151,8 @@ function Testrunner(conf) {
         referenceScreenshotsDir: DEFAULT_REF_SCREENSHOTS_DIR,
         referenceErrorsDir: DEFAULT_REF_ERRORS_DIR,
         referenceDiffsDir: DEFAULT_REF_DIFFS_DIR,
+        assertRetryCount: 4,
+        assertRetryInterval: 1000,
         browsers: [],
         suites: [],
         testFilter: null,
@@ -376,22 +378,8 @@ Testrunner.prototype._runBrowsers = async function () {
         }
 
         this._currentBrowser = browser;
-        this._log.info(`starting browser "${browser.name}" from "${browser.path}"`);
 
-        await browser.start();
-        await browser.waitForBrowserVisible();
-
-        try {
-            await this._runSuites();
-        }
-        finally {
-            try {
-                await browser.stop();
-            }
-            catch (error) {
-                this._log.error('error while stopping browser: ', error);
-            }
-        }
+        await this._runSuites();
     }
 }
 
@@ -476,6 +464,8 @@ Testrunner.prototype._runTest=async function({suite,test}){
     test.runErrors = []
 
     try {
+        await this._currentBrowser.start();
+        await this._currentBrowser.waitForBrowserVisible();
         await this._currentBrowser.open(suite.appUrl)
         await this._browserPuppeteer.waitForConnection()
 
@@ -510,9 +500,8 @@ Testrunner.prototype._runTest=async function({suite,test}){
 
     }
     finally {
-        await this._browserPuppeteer.clearPersistentData()
         await this._browserPuppeteer.closeConnection()
-        await this._currentBrowser.open('')
+        await this._currentBrowser.stop()
     }
 }
 
@@ -1022,8 +1011,8 @@ Testrunner.prototype._assert = async function () {
     const refImgPath = pathlib.resolve(refImgDir, refImgName);
     const refImgPathRelative = pathlib.relative(pathlib.resolve(this._conf.referenceScreenshotsDir), refImgPath);
 
-    await this._currentBeforeAssert(this.directAPI);
     await mkdirpAsync(refImgDir);
+    await this._currentBeforeAssert(this.directAPI);
 
     let screenshotImg = await screenshotjs({ cropMarker: screenshotMarkerImg });
 
@@ -1048,12 +1037,10 @@ Testrunner.prototype._assert = async function () {
 
     const refImg = PNG.sync.read(fs.readFileSync(refImgPath));
 
-    const retryCount=4
-    const retryInterval=1000
     let imgDiffResult
     let formattedPPM
 
-    for(let i=0;i<retryCount;i++){
+    for(let i=0;i<this._conf.assertRetryCount;i++){
         imgDiffResult = bufferImageDiff(screenshotImg, refImg, this._conf.imageDiffOptions);
         formattedPPM = String(imgDiffResult.difference).replace(/\.(\d)\d+/, '.$1');
         
@@ -1066,10 +1053,12 @@ Testrunner.prototype._assert = async function () {
         }
         
         this._log.warn(`screenshot assert failed: ${refImgPathRelative}, ppm: ${formattedPPM}, totalChangedPixels: ${imgDiffResult.totalChangedPixels}, attempt#: ${i}`)
-        
-        if (i<retryCount){
-            let screenshotImg = await screenshotjs({ cropMarker: screenshotMarkerImg });
-            await Promise.delay(retryInterval)
+
+        if (i<this._conf.assertRetryCount){
+            await Promise.delay(this._conf.assertRetryInterval)
+            await this._currentBeforeAssert(this.directAPI);
+            screenshotImg = await screenshotjs({ cropMarker: screenshotMarkerImg });
+            await this._currentAfterAssert(this.directAPI);
         }
     }
 
