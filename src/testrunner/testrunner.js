@@ -276,7 +276,7 @@ class Testrunner extends EventEmitter {
 
         this._assertCount = 0;
         this._currentBrowser = null;
-        this._testsCount = 0;
+        this._foundTestsCount = 0;
         this._okTestsCount = 0;
     }
 
@@ -300,9 +300,23 @@ class Testrunner extends EventEmitter {
             await rimrafAsync(conf.referenceDiffsDir);
 
             await this._parseSuiteTestfiles();
-            this._testsCount = conf.suites.reduce((accum, test) => accum + test.tests.length, 0);
+            this._foundTestsCount = conf.suites.reduce((accum, test) => accum + test.tests.length, 0);
             this._tapWriter.version();
-            this._log.info(`found ${this._testsCount} tests${(conf.testFilter ? ` (using filter "${conf.testFilter}")` : '')}`);
+
+            // TODO move to function
+            // region test count info
+            let testCountInfo = `found ${this._foundTestsCount} tests`;
+
+            if (conf.browsers.length > 1) {
+                testCountInfo += ` for ${conf.browsers.length} browsers`;
+            }
+
+            if (conf.testFilter) {
+                testCountInfo += ` (using filter "${conf.testFilter}")`;
+            }
+
+            // endregion
+            this._log.info(testCountInfo);
 
             await this._browserPuppeteer.start();
 
@@ -322,11 +336,13 @@ class Testrunner extends EventEmitter {
             // TODO run time, TAP msg
             this._log.info(`finished in ${formatDuration(Math.floor((Date.now() - runStartTime) / 1000))}`);
 
-            this._tapWriter.diagnostic(`1..${this._testsCount}`);
-            this._tapWriter.diagnostic(`tests ${this._testsCount}`);
+            const effectiveTestsCount = this._foundTestsCount * this._conf.browsers.length;
+
+            this._tapWriter.diagnostic(`1..${effectiveTestsCount}`);
+            this._tapWriter.diagnostic(`tests ${effectiveTestsCount}`);
             this._tapWriter.diagnostic(`pass ${this._okTestsCount}`);
 
-            if (this._testsCount !== this._okTestsCount) {
+            if (effectiveTestsCount !== this._okTestsCount) {
                 process.exitCode = 1;
                 this._tapWriter.diagnostic('FAILURE');
             }
