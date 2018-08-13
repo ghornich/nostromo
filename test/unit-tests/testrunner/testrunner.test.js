@@ -1,10 +1,14 @@
 'use strict';
 
+const rfr = require('rfr');
 const pathlib = require('path');
 const test = require('tape');
 const WebSocket = require('ws');
 const Testrunner = require('../../../src/testrunner/testrunner');
 const stream = require('stream');
+const Chrome = rfr('modules/browser-spawner-chrome');
+
+global.retryLogicTestRuns = 0;
 
 class NullStream extends stream.Writable {
     _write(chunk, encoding, cb) {
@@ -12,7 +16,7 @@ class NullStream extends stream.Writable {
     }
 }
 
-test('Testrunner: browser fails to start', async t => {
+test.skip('Testrunner: browser fails to start', async t => {
     const testrunner = new Testrunner({
         testPort: 47225,
         testBailout: true,
@@ -51,7 +55,7 @@ test('Testrunner: browser fails to start', async t => {
     t.end();
 });
 
-test('Testrunner: test throws', async t => {
+test.skip('Testrunner: test throws', async t => {
     let wsClient;
 
     const testrunner = new Testrunner({
@@ -59,7 +63,7 @@ test('Testrunner: test throws', async t => {
         testBailout: true,
         bailout: false,
 
-        outStream: new NullStream(),
+        // outStream: new NullStream(),
 
         browsers: [
             {
@@ -82,7 +86,10 @@ test('Testrunner: test throws', async t => {
             {
                 name: 'My suite',
                 appUrl: 'http://url-to-my-app.com/index.html',
-                testFiles: [pathlib.resolve(__dirname, 'testrunner-test--testfile-throws.js')],
+                testFiles: [
+                    pathlib.resolve(__dirname, 'testrunner-test--testfile-throws.js'),
+                    pathlib.resolve(__dirname, 'testrunner-test--testfile-retry-logic.js'),
+                ],
             },
         ],
     });
@@ -92,6 +99,48 @@ test('Testrunner: test throws', async t => {
     t.ok(process.exitCode > 0);
     process.exitCode = 0;
     t.pass('exits gracefully');
+
+    t.end();
+});
+
+test('Testrunner: test retries', async t => {
+    const testrunner = new Testrunner({
+        testPort: 47225,
+        testBailout: true,
+        bailout: false,
+
+        // outStream: new NullStream(),
+
+        logLevel:2000,
+        testRetryCount: 4,
+
+        browsers: [
+            new Chrome({
+                name: 'Chrome',
+                path: 'C:/Program Files (x86)/Google/Chrome/Application/chrome.exe',
+                width: 750,
+                height: 550,
+            }),
+        ],
+
+        suites: [
+            {
+                name: 'My suite',
+                appUrl: 'file:///' + pathlib.resolve(__dirname, '..\\..\\self-tests\\testapp\\index.html'),
+                testFiles: [
+                    pathlib.resolve(__dirname, 'testrunner-test--testfile-retry-logic.js'),
+                ],
+                beforeCommand: function (beforeCommandT) {
+                    return beforeCommandT.waitWhileVisible('.loading, #toast');
+                },
+            },
+        ],
+    });
+
+    await testrunner.run();
+
+    t.ok(process.exitCode === undefined || process.exitCode === 0);
+    t.pass('retry succeeded');
 
     t.end();
 });

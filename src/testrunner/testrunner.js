@@ -87,6 +87,14 @@ class AbortError extends Error {
     }
 }
 
+class TestFailedError extends Error {
+    constructor({ message, testErrors }) {
+        super(message);
+        this.testErrors = testErrors || [];
+        this.name = 'TestFailedError';
+    }
+}
+
 /**
  * test assert API (without before/after side effects, "directAPI"), TODO define
  * @typedef {Object} TestAssertAPIDirect
@@ -131,7 +139,8 @@ class AbortError extends Error {
  * @property {ImageDiffOptions} [imageDiffOptions] - options for the built-in, screenshot-based asserter
  * @property {Array<Suite>} suites
  * @property {String} [testFilter] - regular expression string
- * @property {Number} [failedTestRetryCount = 0] - retry failed tests n times
+ * @property {Number} [testRetryCount = 0] - retry failed tests n times
+ * @property {RegExp} [testRetryFilter = /.+/] - retry failed tests only if test name matches this filter
  */
 
 class Testrunner extends EventEmitter {
@@ -151,8 +160,10 @@ class Testrunner extends EventEmitter {
             referenceDiffsDir: DEFAULT_REF_DIFFS_DIR,
             browsers: [],
             suites: [],
-            testFilter: null,
+            testFilter: null, // TODO use regex instead of string
             outStream: process.stdout,
+            testRetryCount: 0,
+            testRetryFilter: /.+/,
         };
 
         const defaultImageDiffOptions = {
@@ -414,7 +425,7 @@ class Testrunner extends EventEmitter {
                 throw new AbortError();
             }
 
-            this._log.info(`running suite: ${suite.name}`);
+            this._log.info(`running suite: ${suite.name || DEFAULT_SUITE_NAME}`);
 
             try {
                 if (suite.beforeSuite) {
@@ -423,7 +434,7 @@ class Testrunner extends EventEmitter {
                     this._log.trace('completed beforeSuite');
                 }
 
-                await this._runTestsInSuite(suite);
+                await this._runSuite(suite);
             }
             finally {
                 if (suite.afterSuite) {
@@ -442,44 +453,74 @@ class Testrunner extends EventEmitter {
         }
     }
 
-    async _runTestsInSuite(suite) {
+    async _runSuite(suite) {
         for (const test of suite.tests) {
             if (this._isAborting) {
                 throw new AbortError();
             }
 
             try {
-                if (suite.beforeTest) {
-                    this._log.trace('running beforeTest');
-                    await suite.beforeTest(this.directAPI);
-                    this._log.trace('completed beforeTest');
-                }
+                await this._runTestWithRetries({ suite, test });
+                this._tapWriter.ok(test.name);
+                this._okTestsCount++;
+            }
+            catch (error) {
+                this._tapWriter.notOk(test.name);
+                this._log.error(error);
+            }
+        }
+    }
 
+    async _runTestWithRetries({ suite, test }) {
+        const maxAttempt = this._conf.testRetryFilter.test(test.name) ? this._conf.testRetryCount + 1 : 1;
+
+        for (let attempt = 1; attempt < maxAttempt; attempt++) {
+            try {
                 await this._runTest({ suite, test });
             }
             catch (error) {
-                // throw error;
-                this._log.error(error);
-                process.exitCode = 1;
-            }
-            finally {
-                if (suite.afterTest) {
-                    this._log.trace('running afterTest');
-
-                    try {
-                        await suite.afterTest(this.directAPI);
-                    }
-                    catch (error) {
-                        this._log.error('error while running afterTest: ', error);
-                    }
-
-                    this._log.trace('completed afterTest');
+                if (attempt === maxAttempt || !(error instanceof TestFailedError)) {
+                    throw error;
                 }
+                // this._log.warn(error.message);
+                this._log.info(`Test "${test.name}" failed, retrying #${attempt}`);
+                this._log.debug(error.testErrors.map(String).join('\n'));
             }
         }
     }
 
     async _runTest({ suite, test }) {
+        try {
+            if (suite.beforeTest) {
+                this._log.trace('running beforeTest');
+                await suite.beforeTest(this.directAPI);
+                this._log.trace('completed beforeTest');
+            }
+
+            await this._runTestCore({ suite, test });
+        }
+        finally {
+            if (suite.afterTest) {
+                this._log.trace('running afterTest');
+
+                try {
+                    await suite.afterTest(this.directAPI);
+                }
+                catch (error) {
+                    this._log.error('error while running afterTest: ', error);
+                }
+
+                this._log.trace('completed afterTest');
+            }
+        }
+    }
+
+    /**
+     * @param  {Object} options.suite
+     * @param  {Object} options.test
+     * @throws {}
+     */
+    async _runTestCore({ suite, test }) {
         this._currentTest = test;
         this._assertCount = 0;
         this._tapWriter.diagnostic(test.name);
@@ -502,23 +543,24 @@ class Testrunner extends EventEmitter {
             try {
                 await test.testFn(this.tAPI, { directAPI: this.directAPI });
 
-                if (test.runErrors.length === 0) {
-                    this._tapWriter.ok(test.name);
-                    this._okTestsCount++;
-                }
-                else {
-                    throw new Error(`test "${test.name}" failed:\n${test.runErrors.map(e => `  ${e.message}`).join('\n')}`);
+                if (test.runErrors.length > 0) {
+                    throw new TestFailedError({
+                        message: `Test "${test.name}" failed`,
+                        testErrors: test.runErrors,
+                    });
                 }
             }
             catch (error) {
-                this._tapWriter.notOk(error.message);
-                this._log.error(error.stack || error.message || error);
+                // TODO this seems incorrect, should throw TestFailedError from the original places
+                throw new TestFailedError({
+                    message: error.message
+                });
             }
-
-            if (suite.afterLastCommand) {
-                await suite.afterLastCommand(this.directAPI);
+            finally {
+                if (suite.afterLastCommand) {
+                    await suite.afterLastCommand(this.directAPI);
+                }
             }
-
         }
         finally {
             await this._browserPuppeteer.clearPersistentData();
@@ -542,101 +584,6 @@ class Testrunner extends EventEmitter {
 
         conf.suites = conf.suites.filter(suite => suite.tests.length > 0);
     }
-
-    /* Testrunner.prototype.run = async function () {
-
-
-                try {
-                    for (const suite of conf.suites) {
-                        suite.name = suite.name || DEFAULT_SUITE_NAME;
-
-                        this._log.info(`Starting suite: "${suite.name}"`);
-
-                        if (suite.beforeSuite) {
-                            this._log.debug('running beforeSuite');
-                            await suite.beforeSuite();
-                            this._log.debug('completed beforeSuite');
-                        }
-
-                        this._log.trace('suite testFiles: ' + suite.testFiles.join(', '));
-
-                        const tests = await this._parseTestFiles(await multiGlobAsync(suite.testFiles));
-
-                        if (tests.length === 0) {
-                            throw new Error(`No tests found in the suite "${suite.name}"`);
-                        }
-
-                        let maybeTestError = null;
-
-                        try {
-                            for (const test of tests) {
-
-                                this._assertCount = 0;
-
-                                this._currentTest = test;
-
-                                this._currentBeforeCommand = suite.beforeCommand || noop;
-                                this._currentAfterCommand = suite.afterCommand || noop;
-
-                                this._currentBeforeAssert = suite.beforeAssert || noop;
-                                this._currentAfterAssert = suite.afterAssert || noop;
-
-                                await this._runTest(test, {
-                                    suite,
-                                });
-                            }
-
-                        }
-                        catch (err) {
-                            maybeTestError = err;
-                        }
-
-                        if (suite.afterSuite) {
-                            this._log.debug('running afterSuite');
-                            await suite.afterSuite();
-                            this._log.debug('completed afterSuite');
-                        }
-
-                        if (maybeTestError) {
-                            throw maybeTestError;
-                        }
-
-                    }
-                }
-                catch (err) {
-                    process.exitCode = 1;
-
-                    if (err.type === ERRORS.BAILOUT) {
-                        this._inBailout = true;
-                        this._tapWriter.bailout(err.message);
-                        throw err;
-                    }
-                    else {
-                        this._log.error(err.stack || err.toString());
-                    }
-                }
-                finally {
-                    await browser.stop();
-                }
-            }
-        }
-        catch (err) {
-            process.exitCode = 1;
-            this._log.fatal(err.stack || err.toString());
-        }
-        finally {
-            if (!this._inBailout) {
-                this._tapWriter.plan();
-                this._tapWriter.diagnostic(`tests ${this._tapWriter.testCount}`);
-                this._tapWriter.diagnostic(`pass ${this._tapWriter.passCount}`);
-                this._tapWriter.diagnostic(`fail ${this._tapWriter.failCount}`);
-            }
-
-            await this._browserPuppeteer.stop();
-
-            this._log.info('Finished in ' + formatDuration(Math.floor((Date.now() - this._runStartTime) / 1000)));
-        }
-    };*/
 
     /**
      * @typedef {Object} Test
@@ -685,77 +632,6 @@ class Testrunner extends EventEmitter {
         }
 
         return tests;
-    }
-
-    // TODO use _currentSuite?
-    async _runTestORIG(test, { suite }) {
-        this._log.debug(`running test: ${test.name}`);
-
-        this._tapWriter.diagnostic(test.name);
-
-        if (suite.beforeTest) {
-            this._log.debug('running beforeTest');
-            await suite.beforeTest(this.directAPI);
-            this._log.debug('completed beforeTest');
-        }
-
-        // TODO throw error if no appUrl was found (assert when parsing the testfile)
-
-        await this._currentBrowser.waitForBrowserVisible();
-        await this._currentBrowser.open(suite.appUrl);
-        await this._browserPuppeteer.waitForConnection();
-
-        await this._browserPuppeteer.clearPersistentData();
-
-        let maybeTestError = null;
-
-        try {
-            if (suite.beforeFirstCommand) {
-                this._log.debug('running beforeFirstCommand');
-                // TODO test beforeFirstCommand
-                await suite.beforeFirstCommand(this.directAPI);
-                this._log.debug('completed beforeFirstCommand');
-            }
-
-            const maybeTestPromise = test.testFn(this.tAPI, { directAPI: this.directAPI });
-
-            if (typeof maybeTestPromise !== 'object' || typeof maybeTestPromise.then !== 'function') {
-                throw new Error(`test function didn't return a promise (name: ${test.name})`);
-            }
-
-            await maybeTestPromise;
-
-            if (suite.afterLastCommand) {
-                this._log.debug('running afterLastCommand');
-                // TODO test afterLastCommand
-                await suite.afterLastCommand(this.directAPI);
-                this._log.debug('completed afterLastCommand');
-            }
-        }
-        catch (err) {
-            process.exitCode = 1;
-            maybeTestError = err;
-        }
-
-        await this._browserPuppeteer.closeConnection();
-        await this._currentBrowser.open('');
-
-        if (suite.afterTest) {
-            this._log.debug('running afterTest');
-            await suite.afterTest(this.directAPI);
-            this._log.debug('completed afterTest');
-        }
-
-        if (maybeTestError) {
-            if (maybeTestError.type === ERRORS.TEST_BAILOUT) {
-                // ignore error
-                this._log.warn(`test bailout: halting test "${test.name}" due to error`);
-                this._log.warn(maybeTestError.stack || maybeTestError.toString());
-            }
-            else {
-                throw maybeTestError;
-            }
-        }
     }
 
     _wrapFunctionWithSideEffects(fn, cmdType) {
