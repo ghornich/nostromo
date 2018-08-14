@@ -252,7 +252,7 @@ BrowserSpawnerBase.prototype._deleteTempDir = function () {
 
             rimraf(this._conf.tempDir, (maybeError) => {
                 if (maybeError) {
-                    this._log.debug(`BrowserSpawnerBase: deleting temp dir failed: ${maybeError}`);
+                    this._log.error(`BrowserSpawnerBase: deleting temp dir failed: ${maybeError}`);
 
                     setTimeout(loop, TEMP_DELETE_TIMEOUT);
                 }
