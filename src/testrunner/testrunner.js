@@ -393,27 +393,13 @@ class Testrunner extends EventEmitter {
         const conf = this._conf;
 
         for (const browser of conf.browsers) {
+            this._currentBrowser = browser;
+
             if (this._isAborting) {
                 throw new AbortError();
             }
 
-            this._currentBrowser = browser;
-            this._log.info(`starting browser "${browser.name}" from "${browser.path}"`);
-
-            await browser.start();
-            await browser.waitForBrowserVisible();
-
-            try {
-                await this._runSuites();
-            }
-            finally {
-                try {
-                    await browser.stop();
-                }
-                catch (error) {
-                    this._log.error('error while stopping browser: ', error);
-                }
-            }
+            await this._runSuites();
         }
     }
 
@@ -490,6 +476,12 @@ class Testrunner extends EventEmitter {
     }
 
     async _runTest({ suite, test }) {
+        var browser = this._currentBrowser;
+
+        this._log.info(`starting browser "${browser.name}" from "${browser.path}"`);
+        await browser.start();
+        await browser.waitForBrowserVisible();
+
         try {
             if (suite.beforeTest) {
                 this._log.trace('running beforeTest');
@@ -511,6 +503,13 @@ class Testrunner extends EventEmitter {
                 }
 
                 this._log.trace('completed afterTest');
+            }
+
+            try {
+                await browser.stop();
+            }
+            catch (error) {
+                this._log.error('error while stopping browser: ', error);
             }
         }
     }

@@ -63,7 +63,7 @@ test.skip('Testrunner: test throws', async t => {
         testBailout: true,
         bailout: false,
 
-        // outStream: new NullStream(),
+        outStream: new NullStream(),
 
         browsers: [
             {
@@ -109,7 +109,7 @@ test('Testrunner: test retries', async t => {
         testBailout: true,
         bailout: false,
 
-        // outStream: new NullStream(),
+        outStream: new NullStream(),
 
         logLevel:2000,
         testRetryCount: 4,
