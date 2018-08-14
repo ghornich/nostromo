@@ -15,7 +15,7 @@ const screenshotMarkerImg = require('./screenshot-marker');
 const screenshotjs = require('../screenshot-js');
 const bufferImageSearch = require('../buffer-image-search');
 
-const TEMP_DELETE_RETRIES = BrowserSpawnerBase.TEMP_DELETE_RETRIES = 3;
+const TEMP_DELETE_RETRIES = BrowserSpawnerBase.TEMP_DELETE_RETRIES = 10;
 const TEMP_DELETE_TIMEOUT = BrowserSpawnerBase.TEMP_DELETE_TIMEOUT = 1000;
 
 const DEFAULT_SPAWNER_PORT = 24556;
@@ -164,12 +164,12 @@ BrowserSpawnerBase.prototype.waitForBrowserVisible = async function () {
  * @return {Promise}
  */
 BrowserSpawnerBase.prototype._startBrowser = async function () {
-    throw new Error('BrowserSpawnerBase::_startBrowser: not implemented');
+    throw new Error('BrowserSpawnerBase._startBrowser: not implemented');
 };
 
 BrowserSpawnerBase.prototype.open = async function (url) {
     if (!this._wsConn) {
-        throw new Error('BrowserSpawnerBase::open: not connected');
+        throw new Error('BrowserSpawnerBase.open: not connected');
     }
 
     const truncatedUrl = truncateString(url, {
@@ -228,11 +228,11 @@ BrowserSpawnerBase.prototype.stop = async function () {
  * @param {Function} callback - Params: 'close' event: none; 'error' event: error
  */
 // BrowserSpawnerBase.prototype.on = function () {
-//     return Promise.reject(new Error('BrowserSpawnerBase::on: not implemented'))
+//     return Promise.reject(new Error('BrowserSpawnerBase.on: not implemented'))
 // };
 
 BrowserSpawnerBase.prototype._getDefaultTempDir = function () {
-    throw new Error('BrowserSpawnerBase::_getDefaultTempDir: not implemented');
+    throw new Error('BrowserSpawnerBase._getDefaultTempDir: not implemented');
 };
 
 BrowserSpawnerBase.prototype._deleteTempDir = function () {
@@ -247,7 +247,7 @@ BrowserSpawnerBase.prototype._deleteTempDir = function () {
             attempts++;
 
             if (attempts > TEMP_DELETE_RETRIES) {
-                throw new Error('BrowserSpawnerBase: maximum retries reached');
+                throw new Error('BrowserSpawnerBase: maximum temp dir delete retries reached');
             }
 
             rimraf(this._conf.tempDir, (maybeError) => {
