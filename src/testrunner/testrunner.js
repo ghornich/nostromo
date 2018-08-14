@@ -411,8 +411,6 @@ class Testrunner extends EventEmitter {
                 throw new AbortError();
             }
 
-            this._log.info(`running suite: ${suite.name || DEFAULT_SUITE_NAME}`);
-
             try {
                 if (suite.beforeSuite) {
                     this._log.trace('running beforeSuite');
@@ -440,6 +438,8 @@ class Testrunner extends EventEmitter {
     }
 
     async _runSuite(suite) {
+        this._log.info(`running suite: ${suite.name || DEFAULT_SUITE_NAME}`);
+
         for (const test of suite.tests) {
             if (this._isAborting) {
                 throw new AbortError();
@@ -458,14 +458,22 @@ class Testrunner extends EventEmitter {
     }
 
     async _runTestWithRetries({ suite, test }) {
-        const maxAttempt = this._conf.testRetryFilter.test(test.name) ? this._conf.testRetryCount + 1 : 1;
+        this._log.trace(`_runTestWithRetries: started for test: '${ test.name }'`);
 
-        for (let attempt = 1; attempt < maxAttempt; attempt++) {
+        const maxAttempts = this._conf.testRetryFilter.test(test.name) ? this._conf.testRetryCount + 1 : 1;
+
+        this._log.trace(`_runTestWithRetries: maxAttempts = ${ maxAttempts }`);
+
+        for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+            this._log.trace(`_runTestWithRetries loop: attempt = ${ attempt }`);
+
             try {
                 await this._runTest({ suite, test });
+                this._log.trace(`_runTestWithRetries: success, test '${ test.name }' passed`);
+                break;
             }
             catch (error) {
-                if (attempt === maxAttempt || !(error instanceof TestFailedError)) {
+                if (attempt === maxAttempts || !(error instanceof TestFailedError)) {
                     throw error;
                 }
                 // this._log.warn(error.message);
@@ -476,6 +484,8 @@ class Testrunner extends EventEmitter {
     }
 
     async _runTest({ suite, test }) {
+        this._log.trace(`_runTest: running test ${ test.name }`);
+
         var browser = this._currentBrowser;
 
         this._log.info(`starting browser "${browser.name}" from "${browser.path}"`);
@@ -520,6 +530,8 @@ class Testrunner extends EventEmitter {
      * @throws {}
      */
     async _runTestCore({ suite, test }) {
+        this._log.trace(`_runTestCore: running test ${ test.name }`);
+
         this._currentTest = test;
         this._assertCount = 0;
         this._tapWriter.diagnostic(test.name);

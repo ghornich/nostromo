@@ -8,15 +8,13 @@ const Testrunner = require('../../../src/testrunner/testrunner');
 const stream = require('stream');
 const Chrome = rfr('modules/browser-spawner-chrome');
 
-global.retryLogicTestRuns = 0;
-
 class NullStream extends stream.Writable {
     _write(chunk, encoding, cb) {
         setImmediate(cb);
     }
 }
 
-test.skip('Testrunner: browser fails to start', async t => {
+test('Testrunner: browser fails to start', async t => {
     const testrunner = new Testrunner({
         testPort: 47225,
         testBailout: true,
@@ -48,14 +46,13 @@ test.skip('Testrunner: browser fails to start', async t => {
 
     await testrunner.run();
 
-    t.ok(process.exitCode > 0);
+    t.ok(process.exitCode > 0, 'test exitCode');
     process.exitCode = 0;
-    t.pass('exits gracefully');
 
     t.end();
 });
 
-test.skip('Testrunner: test throws', async t => {
+test('Testrunner: test throws', async t => {
     let wsClient;
 
     const testrunner = new Testrunner({
@@ -88,7 +85,6 @@ test.skip('Testrunner: test throws', async t => {
                 appUrl: 'http://url-to-my-app.com/index.html',
                 testFiles: [
                     pathlib.resolve(__dirname, 'testrunner-test--testfile-throws.js'),
-                    pathlib.resolve(__dirname, 'testrunner-test--testfile-retry-logic.js'),
                 ],
             },
         ],
@@ -96,9 +92,8 @@ test.skip('Testrunner: test throws', async t => {
 
     await testrunner.run();
 
-    t.ok(process.exitCode > 0);
+    t.ok(process.exitCode > 0, 'test exitCode');
     process.exitCode = 0;
-    t.pass('exits gracefully');
 
     t.end();
 });
@@ -111,7 +106,6 @@ test('Testrunner: test retries', async t => {
 
         outStream: new NullStream(),
 
-        logLevel:2000,
         testRetryCount: 4,
 
         browsers: [
@@ -139,8 +133,7 @@ test('Testrunner: test retries', async t => {
 
     await testrunner.run();
 
-    t.ok(process.exitCode === undefined || process.exitCode === 0);
-    t.pass('retry succeeded');
+    t.ok(process.exitCode === undefined || process.exitCode === 0, 'retry exitCode');
 
     t.end();
 });
