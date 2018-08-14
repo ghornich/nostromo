@@ -472,20 +472,22 @@ class Testrunner extends EventEmitter {
     }
 
     async _runTestWithRetries({ suite, test }) {
-        this._log.trace(`_runTestWithRetries: started for test: ${ test.name }`);
+        this._log.trace(`_runTestWithRetries: started for test: '${ test.name }'`);
 
-        const maxAttempt = this._conf.testRetryFilter.test(test.name) ? this._conf.testRetryCount + 1 : 1;
+        const maxAttempts = this._conf.testRetryFilter.test(test.name) ? this._conf.testRetryCount + 1 : 1;
 
-        this._log.trace(`_runTestWithRetries: maxAttempt = ${ maxAttempt }`);
+        this._log.trace(`_runTestWithRetries: maxAttempts = ${ maxAttempts }`);
 
-        for (let attempt = 1; attempt <= maxAttempt; attempt++) {
+        for (let attempt = 1; attempt <= maxAttempts; attempt++) {
             this._log.trace(`_runTestWithRetries loop: attempt = ${ attempt }`);
 
             try {
                 await this._runTest({ suite, test });
+                this._log.trace(`_runTestWithRetries: success, test '${ test.name }' passed`);
+                break;
             }
             catch (error) {
-                if (attempt === maxAttempt || !(error instanceof TestFailedError)) {
+                if (attempt === maxAttempts || !(error instanceof TestFailedError)) {
                     throw error;
                 }
                 // this._log.warn(error.message);
