@@ -426,12 +426,11 @@ class Testrunner extends EventEmitter {
 
                     try {
                         await suite.afterSuite();
+                        this._log.trace('completed afterSuite');    
                     }
                     catch (error) {
                         this._log.error('error while running afterSuite: ', error);
                     }
-
-                    this._log.trace('completed afterSuite');
                 }
             }
         }
@@ -446,6 +445,7 @@ class Testrunner extends EventEmitter {
             }
 
             try {
+                this._tapWriter.diagnostic(test.name);
                 await this._runTestWithRetries({ suite, test });
                 this._tapWriter.ok(test.name);
                 this._okTestsCount++;
@@ -473,11 +473,14 @@ class Testrunner extends EventEmitter {
                 break;
             }
             catch (error) {
+                this._log.error(`_runTestWithRetries: error when running _runTest:`);
+                this._log.error(error);
+
                 if (attempt === maxAttempts || !(error instanceof TestFailedError)) {
                     throw error;
                 }
-                // this._log.warn(error.message);
-                this._log.info(`Test "${test.name}" failed, retrying #${attempt}`);
+
+                this._log.info(`test "${test.name}" failed, retrying`);
                 this._log.debug(error.testErrors.map(String).join('\n'));
             }
         }
@@ -534,7 +537,6 @@ class Testrunner extends EventEmitter {
 
         this._currentTest = test;
         this._assertCount = 0;
-        this._tapWriter.diagnostic(test.name);
 
         test.runErrors = [];
 
