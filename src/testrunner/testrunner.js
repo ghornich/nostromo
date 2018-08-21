@@ -891,7 +891,7 @@ class Testrunner extends EventEmitter {
     async _execFunctionDirect(fn, ...args) {
         this._log.debug('execFunction');
 
-        return this._browserPuppeteer.execFunction(fn, args);
+        return this._browserPuppeteer.execFunction(fn, ...args);
     }
 
     async _delay(ms, description) {
