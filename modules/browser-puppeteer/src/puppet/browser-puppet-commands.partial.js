@@ -252,7 +252,7 @@ BrowserPuppetCommands.prototype.isVisible = function (cmd) {
  * @throws {Error}
  */
 BrowserPuppetCommands.prototype.uploadFileAndAssign = function (cmd) {
-    cmd.fileData.mime = cmd.fileData.mime || DEFAULT_UPLOAD_FILE_MIME;
+    cmd.fileData.type = cmd.fileData.type || DEFAULT_UPLOAD_FILE_MIME;
     lodashSet(window, cmd.destinationVariable, base64ToFile(cmd.fileData));
 };
 
