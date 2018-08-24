@@ -103,11 +103,6 @@
     |---|---|---|
     | type | `String` | 'set-unique-selector-options' |
     | options | `UniqueSelectorOptions` |  |
-- __TerminatePuppetMessage__ - _DownstreamControlMessage_
-
-    |Name|Type|Description|
-    |---|---|---|
-    | type | `String` | 'terminate-puppet' |
 ### Commands
 - __Command__ - _Object_
 - __ClickCommand__ - _Command_

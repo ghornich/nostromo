@@ -9,7 +9,7 @@ exports = module.exports = function (fileData) {
         uint8Array[i] = binary.charCodeAt(i);
     }
 
-    return new File([uint8Array], fileData.name, { mime: fileData.mime });
+    return new File([uint8Array], fileData.name, { type: fileData.type });
 };
 
 },{}],2:[function(require,module,exports){
@@ -538,7 +538,7 @@ BrowserPuppetCommands.prototype.isVisible = function (cmd) {
  * @throws {Error}
  */
 BrowserPuppetCommands.prototype.uploadFileAndAssign = function (cmd) {
-    cmd.fileData.mime = cmd.fileData.mime || DEFAULT_UPLOAD_FILE_MIME;
+    cmd.fileData.type = cmd.fileData.type || DEFAULT_UPLOAD_FILE_MIME;
     lodashSet(window, cmd.destinationVariable, base64ToFile(cmd.fileData));
 };
 
@@ -1826,6 +1826,10 @@ Loggr.prototype._log = function (level, messages) {
 
         var message = messages
         .map(function (msg) {
+            if (msg && msg.stack) {
+                return msg.stack;
+            }
+
             return String(msg);
         })
         .join(' ');

@@ -420,6 +420,10 @@ Loggr.prototype._log = function (level, messages) {
 
         var message = messages
         .map(function (msg) {
+            if (msg && msg.stack) {
+                return msg.stack;
+            }
+
             return String(msg);
         })
         .join(' ');

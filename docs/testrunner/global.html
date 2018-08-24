@@ -102,185 +102,6 @@
 
         
                 
-<h4 class="name" id="AsserterConf">AsserterConf</h4>
-
-
-
-
-<div class="description">
-    TODO outdated?
-</div>
-
-
-
-    <h5>Type:</h5>
-    <ul>
-        <li>
-            
-<span class="param-type">Object</span>
-
-
-        </li>
-    </ul>
-
-
-
-
-
-    <h5 class="subsection-title">Properties:</h5>
-
-    
-
-<table class="props">
-    <thead>
-    <tr>
-        
-        <th>Name</th>
-        
-
-        <th>Type</th>
-
-        
-        <th>Attributes</th>
-        
-
-        
-        <th>Default</th>
-        
-
-        <th class="last">Description</th>
-    </tr>
-    </thead>
-
-    <tbody>
-    
-
-        <tr>
-            
-                <td class="name"><code>colorThreshold</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">Number</span>
-
-
-            
-            </td>
-
-            
-                <td class="attributes">
-                
-                    &lt;optional><br>
-                
-
-                
-                </td>
-            
-
-            
-                <td class="default">
-                
-                    3
-                
-                </td>
-            
-
-            <td class="description last">maximum percent difference between average pixel color channel values, calculated as: |a-b| / 255 * 100</td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>imageThreshold</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">Number</span>
-
-
-            
-            </td>
-
-            
-                <td class="attributes">
-                
-                    &lt;optional><br>
-                
-
-                
-                </td>
-            
-
-            
-                <td class="default">
-                
-                    20
-                
-                </td>
-            
-
-            <td class="description last">maximum ppm difference between images' pixel count, calculated as: changedPixels / allPixels * 1e6</td>
-        </tr>
-
-    
-    </tbody>
-</table>
-
-
-
-
-<dl class="details">
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-    <dt class="tag-source">Source:</dt>
-    <dd class="tag-source"><ul class="dummy"><li>
-        <a href="testrunner.js.html">testrunner.js</a>, <a href="testrunner.js.html#line110">line 110</a>
-    </li></ul></dd>
-    
-
-    
-
-    
-
-    
-</dl>
-
-
-
-
-
-
-            
-                
 
     
 
@@ -405,7 +226,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="testrunner.js.html">testrunner.js</a>, <a href="testrunner.js.html#line83">line 83</a>
+        <a href="testrunner.js.html">testrunner.js</a>, <a href="testrunner.js.html#line103">line 103</a>
     </li></ul></dd>
     
 
@@ -536,7 +357,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="testrunner.js.html">testrunner.js</a>, <a href="testrunner.js.html#line89">line 89</a>
+        <a href="testrunner.js.html">testrunner.js</a>, <a href="testrunner.js.html#line109">line 109</a>
     </li></ul></dd>
     
 
@@ -1013,7 +834,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="testrunner.js.html">testrunner.js</a>, <a href="testrunner.js.html#line94">line 94</a>
+        <a href="testrunner.js.html">testrunner.js</a>, <a href="testrunner.js.html#line114">line 114</a>
     </li></ul></dd>
     
 
@@ -1179,7 +1000,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="testrunner.js.html">testrunner.js</a>, <a href="testrunner.js.html#line445">line 445</a>
+        <a href="testrunner.js.html">testrunner.js</a>, <a href="testrunner.js.html#line601">line 601</a>
     </li></ul></dd>
     
 
@@ -1251,7 +1072,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="testrunner.js.html">testrunner.js</a>, <a href="testrunner.js.html#line78">line 78</a>
+        <a href="testrunner.js.html">testrunner.js</a>, <a href="testrunner.js.html#line98">line 98</a>
     </li></ul></dd>
     
 
@@ -1469,44 +1290,7 @@
 
         <tr>
             
-                <td class="name"><code>browserReadyTimeout</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">Number</span>
-
-
-            
-            </td>
-
-            
-                <td class="attributes">
-                
-                    &lt;optional><br>
-                
-
-                
-                </td>
-            
-
-            
-                <td class="default">
-                
-                    10000
-                
-                </td>
-            
-
-            <td class="description last">browser timeout in ms</td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>referenceScreenshotDir</code></td>
+                <td class="name"><code>referenceScreenshotsDir</code></td>
             
 
             <td class="type">
@@ -1531,7 +1315,44 @@
             
                 <td class="default">
                 
-                    'referenceScreenshots'
+                    DEFAULT_REF_SCREENSHOTS_DIR
+                
+                </td>
+            
+
+            <td class="description last"></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>referenceErrorsDir</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                    DEFAULT_REF_ERRORS_DIR
                 
                 </td>
             
@@ -1576,13 +1397,13 @@
 
         <tr>
             
-                <td class="name"><code>asserterConf</code></td>
+                <td class="name"><code>imageDiffOptions</code></td>
             
 
             <td class="type">
             
                 
-<span class="param-type"><a href="global.html#AsserterConf">AsserterConf</a></span>
+<span class="param-type">ImageDiffOptions</span>
 
 
             
@@ -1676,6 +1497,80 @@
         </tr>
 
     
+
+        <tr>
+            
+                <td class="name"><code>testRetryCount</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Number</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                    0
+                
+                </td>
+            
+
+            <td class="description last">retry failed tests n times</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>testRetryFilter</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">RegExp</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                    /.+/
+                
+                </td>
+            
+
+            <td class="description last">retry failed tests only if test name matches this filter</td>
+        </tr>
+
+    
     </tbody>
 </table>
 
@@ -1711,7 +1606,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="testrunner.js.html">testrunner.js</a>, <a href="testrunner.js.html#line117">line 117</a>
+        <a href="testrunner.js.html">testrunner.js</a>, <a href="testrunner.js.html#line130">line 130</a>
     </li></ul></dd>
     
 
@@ -1747,7 +1642,7 @@
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.5.4</a> on Sat Apr 07 2018 16:13:26 GMT+0200 (Central Europe Daylight Time)
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.5.5</a> on Fri Aug 24 2018 17:03:41 GMT+0200 (Central Europe Daylight Time)
 </footer>
 
 <script> prettyPrint(); </script>
