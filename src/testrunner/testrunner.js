@@ -1042,6 +1042,7 @@ class Testrunner extends EventEmitter {
             fileData: {
                 base64: fileBase64,
                 name: fileName,
+                type: data.type,
             },
             destinationVariable: destinationVariable,
         });
