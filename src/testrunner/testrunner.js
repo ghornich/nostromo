@@ -826,7 +826,7 @@ class Testrunner extends EventEmitter {
         })
         .catch(err => {
             // TODO handle as error?
-            this._tapWriter.warn(`WARNING - focus - ${err.message}`);
+            this._log.warn(`WARNING - focus - ${err.message}`);
 
             // this._handleCommandError(err);
         });
