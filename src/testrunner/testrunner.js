@@ -168,6 +168,8 @@ class Testrunner extends EventEmitter {
             assertRetryInterval: 1000,
             testRetryCount: 0,
             testRetryFilter: /.+/,
+            commandRetryCount: 3,
+            commandRetryInterval: 500,
         };
 
         const defaultImageDiffOptions = {
@@ -258,7 +260,7 @@ class Testrunner extends EventEmitter {
                 return;
             }
             const directAPIFn = this.directAPI[key];
-            this.sideEffectAPI[key] = this._wrapFunctionWithSideEffects(directAPIFn, key);
+            this.sideEffectAPI[key] = this._wrapCommandWithSideEffects(directAPIFn, key);
         });
 
         this.sideEffectAPI.delay = this.directAPI.delay;
@@ -651,22 +653,39 @@ class Testrunner extends EventEmitter {
         return tests;
     }
 
-    _wrapFunctionWithSideEffects(fn, cmdType) {
+    _wrapCommandWithSideEffects(fn, cmdType) {
         return async (...args) => {
             if (this._isAborting) {
                 throw new AbortError();
             }
 
             await this._currentBeforeCommand(this.directAPI, { type: cmdType });
-            const fnResult = await fn(...args);
+
+            let fnResult;
+            let commandAttempt = 1;
+            const maxCommandAttempts = this._conf.commandRetryCount + 1;
+
+            while (true) {
+                try {
+                    fnResult = await fn(...args);
+                    break;
+                }
+                catch (error) {
+                    if (commandAttempt === maxCommandAttempts) {
+                        this._log.error(error);
+                        throw error;
+                    }
+
+                    this._log.warn(`command "${cmdType}" failed (attempt #${commandAttempt}), retrying`);
+                    this._log.warn(error);
+                    commandAttempt++;
+
+                    await delay(this._conf.commandRetryInterval);
+                }
+            }
+
             await this._currentAfterCommand(this.directAPI, { type: cmdType });
             return fnResult;
-            // return Promise.try(() => this._currentBeforeCommand(this.directAPI, { type: cmdType }))
-            // .then(() => fn(...args))
-            // .then(async fnResult => {
-            //     await this._currentAfterCommand(this.directAPI, { type: cmdType });
-            //     return fnResult;
-            // });
         };
     }
 
