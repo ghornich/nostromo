@@ -930,7 +930,8 @@ class Testrunner extends EventEmitter {
         await mkdirpAsync(refImgDir);
 
         let screenshotImg = await screenshotjs({ cropMarker: screenshotMarkerImg });
-        let firstScreenshotImg = screenshotImg;
+        let screenshots = [screenshotImg];
+        let diffResults = [];
 
         // region save new ref img
         try {
@@ -959,6 +960,7 @@ class Testrunner extends EventEmitter {
 
         for (let assertAttempt = 0; assertAttempt < assertRetryMaxAttempts; assertAttempt++) {
             imgDiffResult = bufferImageDiff(screenshotImg, refImg, this._conf.imageDiffOptions);
+            diffResults.push(imgDiffResult);
             formattedPPM = String(imgDiffResult.difference).replace(/\.(\d)\d+/, '.$1');
 
             if (imgDiffResult.same) {
@@ -973,6 +975,7 @@ class Testrunner extends EventEmitter {
 
             if (assertAttempt < assertRetryMaxAttempts) {
                 screenshotImg = await screenshotjs({ cropMarker: screenshotMarkerImg });
+                screenshots.push(screenshotImg);
                 await Promise.delay(this._conf.assertRetryInterval);
             }
         }
@@ -983,38 +986,44 @@ class Testrunner extends EventEmitter {
 
         // this._tapWriter.notOk(`screenshot assert (${formattedPPM} ppm): ${refImgPathRelative}`);
 
-        // region write first failed image
         await mkdirpAsync(failedImgDir);
-        const failedImgName = `${this._assertCount}.png`;
-        const failedImgPath = pathlib.resolve(failedImgDir, failedImgName);
-        const failedImgPathRelative = pathlib.relative(pathlib.resolve(this._conf.referenceErrorsDir), failedImgPath);
-        const failedPng = new PNG(firstScreenshotImg);
-        failedPng.data = firstScreenshotImg.data;
-        const failedImgBin = PNG.sync.write(failedPng);
-        fs.writeFileSync(failedImgPath, failedImgBin);
-        this._log.info(`failed screenshot added: ${failedImgPathRelative}`);
+        await mkdirpAsync(this._conf.referenceDiffsDir);
+
+        // region write failed images
+        for (const [i, image] of screenshots.entries()) {
+            const failedImgName = `${this._assertCount}__attempt_${i+1}.png`;
+            const failedImgPath = pathlib.resolve(failedImgDir, failedImgName);
+            const failedImgPathRelative = pathlib.relative(pathlib.resolve(this._conf.referenceErrorsDir), failedImgPath);
+            const failedPng = new PNG(image);
+            failedPng.data = image.data;
+            const failedImgBin = PNG.sync.write(failedPng);
+            fs.writeFileSync(failedImgPath, failedImgBin);
+            this._log.info(`failed screenshot added: ${failedImgPathRelative}`);
+        }
         // endregion
 
+        // region write diff images
+        for (const [i, diffResult] of diffResults.entries()) {
+            const image = screenshots[i];
 
-        // region write diff image of first attempt
-        await mkdirpAsync(this._conf.referenceDiffsDir);
-        const diffImgPath = pathlib.resolve(
-            this._conf.referenceDiffsDir,
-            this._currentBrowser.name.toLowerCase() + '___' + this._currentTest.id + '___' + this._assertCount + '.png'
-        );
-        const diffImgPathRelative = pathlib.relative(pathlib.resolve(this._conf.referenceDiffsDir), diffImgPath);
+            const diffImgPath = pathlib.resolve(
+                this._conf.referenceDiffsDir,
+                this._currentBrowser.name.toLowerCase() + '___' + this._currentTest.id + '___' + this._assertCount + `__attempt_${i+1}.png`
+            );
+            const diffImgPathRelative = pathlib.relative(pathlib.resolve(this._conf.referenceDiffsDir), diffImgPath);
 
-        for (const bufIdx of imgDiffResult.diffBufferIndexes) {
-            firstScreenshotImg.data[bufIdx] = 255;
-            firstScreenshotImg.data[bufIdx + 1] = 0;
-            firstScreenshotImg.data[bufIdx + 2] = 0;
+            for (const bufIdx of diffResult.diffBufferIndexes) {
+                image.data[bufIdx] = 255;
+                image.data[bufIdx + 1] = 0;
+                image.data[bufIdx + 2] = 0;
+            }
+
+            const diffPng = new PNG(image);
+            diffPng.data = image.data;
+            const diffImgBin = PNG.sync.write(diffPng);
+            fs.writeFileSync(diffImgPath, diffImgBin);
+            this._log.info(`diff screenshot added: ${diffImgPathRelative}`);
         }
-
-        const diffPng = new PNG(firstScreenshotImg);
-        diffPng.data = firstScreenshotImg.data;
-        const diffImgBin = PNG.sync.write(diffPng);
-        fs.writeFileSync(diffImgPath, diffImgBin);
-        this._log.info(`diff screenshot added: ${diffImgPathRelative}`);
         // endregion
 
         await this._runCurrentAfterAssertTasks();
