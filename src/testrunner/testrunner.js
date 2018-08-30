@@ -57,7 +57,7 @@ const CONF_SCHEMA = {
 const DEFAULT_TEST_PORT = 47225;
 const DEFAULT_TEST_NAME = '(Unnamed test)';
 
-const ELLIPSIS_LIMIT = 60;
+const ELLIPSIS_LIMIT = 40;
 
 const DEFAULT_SUITE_NAME = '(Unnamed suite)';
 
@@ -722,24 +722,21 @@ class Testrunner extends EventEmitter {
         }
     }
 
-    async _clickDirect(selector, rawDescription) {
-        const description = rawDescription || `click - '${selector}'`;
+    async _clickDirect(selector) {
+        this._log.info(`click: "${ellipsis(selector)}"`);
 
         try {
             await this._browserPuppeteer.execCommand({
                 type: 'click',
                 selector: selector,
             });
-
-            // this._tapWriter.pass({ type: 'click', message: description });
         }
         catch (err) {
-            // this._tapWriter.notOk(err.message);
-
             this._handleCommandError(err);
         }
     }
 
+    // TODO wtf is this? use _getValueDirect?
     async _getValue(selector) {
         return this._browserPuppeteer.execCommand({
             type: 'getValue',
@@ -748,34 +745,29 @@ class Testrunner extends EventEmitter {
     }
 
     async _getValueDirect(selector) {
-        // TODO logging?
+        this._log.info(`getValue: "${ellipsis(selector)}"`);
+
         return this._browserPuppeteer.execCommand({
             type: 'getValue',
             selector: selector,
         });
     }
 
-    async _setValueDirect(selector, value, rawDescription) {
-        // TODO logging?
-        const description = rawDescription || `setValue - ${selector}, ${value}`;
+    async _setValueDirect(selector, value) {
+        this._log.info(`setValue: "${ellipsis(value)}", "${ellipsis(selector)}"`);
 
         return this._browserPuppeteer.execCommand({
             type: 'setValue',
             selector: selector,
             value: value,
         })
-        .then(() => {
-            // this._tapWriter.pass({ type: 'setValue', message: description });
-        })
         .catch(err => {
-            // this._tapWriter.notOk(err.message);
-
             this._handleCommandError(err);
         });
     }
 
-    async _pressKeyDirect(selector, keyCode, description) {
-        this._log.info(`pressKey: ${keyCode} (${ellipsis(selector, ELLIPSIS_LIMIT)})`);
+    async _pressKeyDirect(selector, keyCode) {
+        this._log.info(`pressKey: ${keyCode}, "${ellipsis(selector)}"`);
 
         return this._browserPuppeteer.execCommand({
             type: 'pressKey',
@@ -785,7 +777,7 @@ class Testrunner extends EventEmitter {
     }
 
     async _waitForVisibleDirect(selector, opts = {}) {
-        this._log.info(`waitForVisible: ${ellipsis(selector, ELLIPSIS_LIMIT)}`);
+        this._log.info(`waitForVisible: "${ellipsis(selector)}"`);
 
         return this._browserPuppeteer.execCommand({
             type: 'waitForVisible',
@@ -794,14 +786,12 @@ class Testrunner extends EventEmitter {
             timeout: opts.timeout,
         })
         .catch(err => {
-            // this._tapWriter.notOk(`waitForVisible - ${err.message}`);
-
             this._handleCommandError(err);
         });
     }
 
     async _waitWhileVisibleDirect(selector, opts = {}) {
-        this._log.debug(`waitWhileVisible: ${ellipsis(selector, ELLIPSIS_LIMIT)}`);
+        this._log.info(`waitWhileVisible: "${ellipsis(selector)}"`);
 
         return this._browserPuppeteer.execCommand({
             type: 'waitWhileVisible',
@@ -811,8 +801,6 @@ class Testrunner extends EventEmitter {
             timeout: opts.timeout,
         })
         .catch(err => {
-            // this._tapWriter.notOk(`waitWhileVisible - ${err.message}`);
-
             this._handleCommandError(err);
         });
     }
@@ -829,28 +817,23 @@ class Testrunner extends EventEmitter {
         });
     }
 
-    async _focusDirect(selector, rawDescription) {
-        this._log.info(`focus: ${selector}`);
-        const description = rawDescription || `focus - selector: ${selector}`;
+    async _focusDirect(selector) {
+        this._log.info(`focus: "${ellipsis(selector)}"`);
 
         return this._browserPuppeteer.execCommand({
             type: 'focus',
             selector: selector,
         })
-        .then(() => {
-            // this._tapWriter.pass({type:'focus',message:description})
-        })
         .catch(err => {
-            // this._tapWriter.notOk('focus - '+ e.message)
             // TODO handle as error?
-            this._tapWriter.diagnostic(`WARNING - focus - ${err.message}`);
+            this._tapWriter.warn(`WARNING - focus - ${err.message}`);
 
             // this._handleCommandError(err);
         });
     }
 
     async _scrollDirect(selector, scrollTop) {
-        this._log.debug(`scroll: ${selector}`);
+        this._log.debug(`scroll: ${scrollTop}, "${ellipsis(selector)}"`);
 
         return this._browserPuppeteer.execCommand({
             type: 'scroll',
@@ -858,8 +841,6 @@ class Testrunner extends EventEmitter {
             scrollTop: scrollTop,
         })
         .catch(err => {
-            // this._tapWriter.notOk(`scroll - ${err.message}`);
-
             this._handleCommandError(err);
         });
     }
@@ -1076,10 +1057,12 @@ function createError(type, msg) {
     const e = new Error(msg); e.type = type; return e;
 }
 
-function ellipsis(s, l) {
+function ellipsis(s, l = ELLIPSIS_LIMIT) {
     if (s.length <= l) {
         return s;
-    } return `${s.substr(0, l - 3)}...`;
+    }
+
+    return `${s.substr(0, l - 3)}...`;
 }
 
 function multiGlobAsync(globs) {
