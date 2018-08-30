@@ -138,6 +138,8 @@ class TestFailedError extends Error {
  * @property {Array<BrowserSpawner>} browsers - see example run config file
  * @property {ImageDiffOptions} [imageDiffOptions] - options for the built-in, screenshot-based asserter
  * @property {Array<Suite>} suites
+ * @property {Number} [assertRetryCount = 0]
+ * @property {Number} [assertRetryInterval = 1000]
  * @property {String} [testFilter] - regular expression string
  * @property {Number} [testRetryCount = 0] - retry failed tests n times
  * @property {RegExp} [testRetryFilter = /.+/] - retry failed tests only if test name matches this filter
@@ -162,6 +164,8 @@ class Testrunner extends EventEmitter {
             suites: [],
             testFilter: null, // TODO use regex instead of string
             outStream: process.stdout,
+            assertRetryCount: 0,
+            assertRetryInterval: 1000,
             testRetryCount: 0,
             testRetryFilter: /.+/,
         };
@@ -926,6 +930,7 @@ class Testrunner extends EventEmitter {
         await mkdirpAsync(refImgDir);
 
         let screenshotImg = await screenshotjs({ cropMarker: screenshotMarkerImg });
+        let firstScreenshotImg = screenshotImg;
 
         // region save new ref img
         try {
@@ -948,28 +953,27 @@ class Testrunner extends EventEmitter {
 
         const refImg = PNG.sync.read(fs.readFileSync(refImgPath));
 
-        const retryCount = 4;
-        const retryInterval = 1000;
+        const assertRetryMaxAttempts = this._conf.assertRetryCount + 1;
         let imgDiffResult;
         let formattedPPM;
 
-        for (let i = 0; i < retryCount; i++) {
+        for (let assertAttempt = 0; assertAttempt < assertRetryMaxAttempts; assertAttempt++) {
             imgDiffResult = bufferImageDiff(screenshotImg, refImg, this._conf.imageDiffOptions);
             formattedPPM = String(imgDiffResult.difference).replace(/\.(\d)\d+/, '.$1');
 
             if (imgDiffResult.same) {
-                // this._tapWriter.ok(`screenshot assert (${formattedPPM} ppm): ${refImgPathRelative}, retries: ${i}`);
-                this._log.info(`OK screenshot assert (${formattedPPM} ppm): ${refImgPathRelative}, totalChangedPixels: ${imgDiffResult.totalChangedPixels}, retries: ${i}`);
+                // this._tapWriter.ok(`screenshot assert (${formattedPPM} ppm): ${refImgPathRelative}, retries: ${assertAttempt}`);
+                this._log.info(`OK screenshot assert (${formattedPPM} ppm): ${refImgPathRelative}, totalChangedPixels: ${imgDiffResult.totalChangedPixels}, retries: ${assertAttempt}`);
 
                 await this._runCurrentAfterAssertTasks();
                 return;
             }
 
-            this._log.warn(`screenshot assert failed: ${refImgPathRelative}, ppm: ${formattedPPM}, totalChangedPixels: ${imgDiffResult.totalChangedPixels}, attempt#: ${i}`);
+            this._log.warn(`screenshot assert failed: ${refImgPathRelative}, ppm: ${formattedPPM}, totalChangedPixels: ${imgDiffResult.totalChangedPixels}, attempt#: ${assertAttempt}`);
 
-            if (i < retryCount) {
+            if (assertAttempt < assertRetryMaxAttempts) {
                 screenshotImg = await screenshotjs({ cropMarker: screenshotMarkerImg });
-                await Promise.delay(retryInterval);
+                await Promise.delay(this._conf.assertRetryInterval);
             }
         }
 
@@ -979,20 +983,20 @@ class Testrunner extends EventEmitter {
 
         // this._tapWriter.notOk(`screenshot assert (${formattedPPM} ppm): ${refImgPathRelative}`);
 
-        // region write failed image
+        // region write first failed image
         await mkdirpAsync(failedImgDir);
         const failedImgName = `${this._assertCount}.png`;
         const failedImgPath = pathlib.resolve(failedImgDir, failedImgName);
         const failedImgPathRelative = pathlib.relative(pathlib.resolve(this._conf.referenceErrorsDir), failedImgPath);
-        const failedPng = new PNG(screenshotImg);
-        failedPng.data = screenshotImg.data;
+        const failedPng = new PNG(firstScreenshotImg);
+        failedPng.data = firstScreenshotImg.data;
         const failedImgBin = PNG.sync.write(failedPng);
         fs.writeFileSync(failedImgPath, failedImgBin);
         this._log.info(`failed screenshot added: ${failedImgPathRelative}`);
         // endregion
 
 
-        // region write diff image
+        // region write diff image of first attempt
         await mkdirpAsync(this._conf.referenceDiffsDir);
         const diffImgPath = pathlib.resolve(
             this._conf.referenceDiffsDir,
@@ -1001,13 +1005,13 @@ class Testrunner extends EventEmitter {
         const diffImgPathRelative = pathlib.relative(pathlib.resolve(this._conf.referenceDiffsDir), diffImgPath);
 
         for (const bufIdx of imgDiffResult.diffBufferIndexes) {
-            screenshotImg.data[bufIdx] = 255;
-            screenshotImg.data[bufIdx + 1] = 0;
-            screenshotImg.data[bufIdx + 2] = 0;
+            firstScreenshotImg.data[bufIdx] = 255;
+            firstScreenshotImg.data[bufIdx + 1] = 0;
+            firstScreenshotImg.data[bufIdx + 2] = 0;
         }
 
-        const diffPng = new PNG(screenshotImg);
-        diffPng.data = screenshotImg.data;
+        const diffPng = new PNG(firstScreenshotImg);
+        diffPng.data = firstScreenshotImg.data;
         const diffImgBin = PNG.sync.write(diffPng);
         fs.writeFileSync(diffImgPath, diffImgBin);
         this._log.info(`diff screenshot added: ${diffImgPathRelative}`);
