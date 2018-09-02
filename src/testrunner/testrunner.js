@@ -496,6 +496,7 @@ class Testrunner extends EventEmitter {
         this._log.trace(`_runTest: running test ${ test.name }`);
 
         var browser = this._currentBrowser;
+        let maybeError = null;
 
         this._log.info(`starting browser "${browser.name}" from "${browser.path}"`);
         await browser.start();
@@ -509,6 +510,9 @@ class Testrunner extends EventEmitter {
             }
 
             await this._runTestCore({ suite, test });
+        }
+        catch (error) {
+            maybeError = error;
         }
         finally {
             if (suite.afterTest) {
@@ -524,11 +528,28 @@ class Testrunner extends EventEmitter {
                 this._log.trace('completed afterTest');
             }
 
+            if (maybeError !== null) {
+                try {
+                    const body = await this.directAPI.execFunction(function () {
+                        return window.document.body.outerHTML;
+                    });
+
+                    this._log.debug(body);
+                }
+                catch (error) {
+                this._log.error('error while collecting body html code: ', error);
+                }
+            }
+
             try {
                 await browser.stop();
             }
             catch (error) {
                 this._log.error('error while stopping browser: ', error);
+            }
+
+            if (maybeError !== null) {
+                throw maybeError;
             }
         }
     }
