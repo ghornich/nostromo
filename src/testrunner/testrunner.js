@@ -680,7 +680,7 @@ class Testrunner extends EventEmitter {
                     this._log.warn(error);
                     commandAttempt++;
 
-                    await delay(this._conf.commandRetryInterval);
+                    await Promise.delay(this._conf.commandRetryInterval);
                 }
             }
 
