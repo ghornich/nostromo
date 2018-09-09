@@ -568,6 +568,8 @@ class Testrunner extends EventEmitter {
                 }
             }
             catch (error) {
+                this._log.error(error);
+
                 // TODO this seems incorrect, should throw TestFailedError from the original places
                 throw new TestFailedError({
                     message: error.message
@@ -868,12 +870,12 @@ class Testrunner extends EventEmitter {
     }
 
     async _execFunctionDirect(fn, ...args) {
-        this._log.debug('execFunction');
+        this._log.debug(`execFunction: ${fn.name || '(anonymous)'}`);
 
         return this._browserPuppeteer.execFunction(fn, ...args);
     }
 
-    async _delay(ms, description) {
+    async _delay(ms) {
         this._log.debug(`delay ${ms}`);
         return Promise.delay(ms);
     }

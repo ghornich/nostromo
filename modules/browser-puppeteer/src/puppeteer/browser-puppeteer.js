@@ -233,8 +233,8 @@ BrowserPuppeteer.prototype.sendMessage = async function (data) {
         await this.waitForConnection();
     }
 
-    this._log.debug(`sending message, type: ${data ? data.type : 'undefined'}`);
-    this._log.trace(util.inspect(data).slice(0, 300));
+    this._log.trace(`sending message, type: ${data ? data.type : 'undefined'}`);
+    this._log.trace(util.inspect(data).slice(0, 1000));
 
     return new Promise((res, rej) => {
         let sendableData = data;
