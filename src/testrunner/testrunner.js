@@ -143,6 +143,8 @@ class TestFailedError extends Error {
  * @property {String} [testFilter] - regular expression string
  * @property {Number} [testRetryCount = 0] - retry failed tests n times
  * @property {RegExp} [testRetryFilter = /.+/] - retry failed tests only if test name matches this filter
+ * @property {DirectAPICallback} [onCommandError]
+ * @property {DirectAPICallback} [onAssertError]
  */
 
 class Testrunner extends EventEmitter {
@@ -168,6 +170,8 @@ class Testrunner extends EventEmitter {
             assertRetryInterval: 1000,
             testRetryCount: 0,
             testRetryFilter: /.+/,
+            onCommandError: null,
+            onAssertError: null,
         };
 
         const defaultImageDiffOptions = {
@@ -727,8 +731,8 @@ class Testrunner extends EventEmitter {
                 selector: selector,
             });
         }
-        catch (err) {
-            this._handleCommandError(err);
+        catch (async err) {
+            await this._handleCommandError(err);
         }
     }
 
@@ -757,8 +761,8 @@ class Testrunner extends EventEmitter {
             selector: selector,
             value: value,
         })
-        .catch(err => {
-            this._handleCommandError(err);
+        .catch(async err => {
+            await this._handleCommandError(err);
         });
     }
 
@@ -781,8 +785,8 @@ class Testrunner extends EventEmitter {
             pollInterval: opts.pollInterval,
             timeout: opts.timeout,
         })
-        .catch(err => {
-            this._handleCommandError(err);
+        .catch(async err => {
+            await this._handleCommandError(err);
         });
     }
 
@@ -796,8 +800,8 @@ class Testrunner extends EventEmitter {
             initialDelay: opts.initialDelay,
             timeout: opts.timeout,
         })
-        .catch(err => {
-            this._handleCommandError(err);
+        .catch(async err => {
+            await this._handleCommandError(err);
         });
     }
 
@@ -806,10 +810,8 @@ class Testrunner extends EventEmitter {
             type: 'isVisible',
             selector: selector,
         })
-        .catch(err => {
-            // this._tapWriter.notOk(`isVisible - ${err.message}`);
-
-            this._handleCommandError(err);
+        .catch(async err => {
+            await this._handleCommandError(err);
         });
     }
 
@@ -836,8 +838,8 @@ class Testrunner extends EventEmitter {
             selector: selector,
             scrollTop: scrollTop,
         })
-        .catch(err => {
-            this._handleCommandError(err);
+        .catch(async err => {
+            await this._handleCommandError(err);
         });
     }
 
@@ -848,10 +850,8 @@ class Testrunner extends EventEmitter {
             type: 'composite',
             commands: commands,
         })
-        .catch(err => {
-            // this._tapWriter.notOk(`composite - ${err.message}`);
-
-            this._handleCommandError(err);
+        .catch(async err => {
+            await this._handleCommandError(err);
         });
     }
 
@@ -862,10 +862,8 @@ class Testrunner extends EventEmitter {
             type: 'mouseover',
             selector: selector,
         })
-        .catch(err => {
-            // this._tapWriter.notOk(`mouseover - ${err.message}`);
-
-            this._handleCommandError(err);
+        .catch(async err => {
+            await this._handleCommandError(err);
         });
     }
 
@@ -884,7 +882,17 @@ class Testrunner extends EventEmitter {
         this._tapWriter.comment(comment);
     }
 
-    _handleCommandError(err) {
+    async _handleCommandError(err) {
+        if (this._conf.onCommandError !== null) {
+            try {
+                await this._conf.onCommandError(this.directAPI);
+            }
+            catch (error) {
+                this._log.error('onCommandError error');
+                this._log.error(error);
+            }
+        }
+
         if (this._conf.testBailout) {
             throw createError(ERRORS.TEST_BAILOUT, err.message);
         }
@@ -961,14 +969,26 @@ class Testrunner extends EventEmitter {
 
         this._log.error(`FAIL screenshot assert (${formattedPPM} ppm): ${refImgPathRelative}, totalChangedPixels: ${imgDiffResult.totalChangedPixels}`);
 
-        // this._tapWriter.notOk(`screenshot assert (${formattedPPM} ppm): ${refImgPathRelative}`);
+        if (this._conf.onAssertError !== null) {
+            try {
+                await this._conf.onAssertError(this.directAPI);
+            }
+            catch (error) {
+                this._log.error('onAssertError error');
+                this._log.error(error);
+            }
+        }
 
         await mkdirpAsync(failedImgDir);
         await mkdirpAsync(this._conf.referenceDiffsDir);
 
         // region write failed images
         for (const [i, image] of screenshots.entries()) {
-            const failedImgName = `${this._assertCount}__attempt_${i+1}.png`;
+
+            const failedImgName = i === 0
+                ? `${this._assertCount}.png`
+                : `${this._assertCount}__attempt_${i+1}.png`;
+
             const failedImgPath = pathlib.resolve(failedImgDir, failedImgName);
             const failedImgPathRelative = pathlib.relative(pathlib.resolve(this._conf.referenceErrorsDir), failedImgPath);
             const failedPng = new PNG(image);
