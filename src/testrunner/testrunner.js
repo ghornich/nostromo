@@ -731,7 +731,7 @@ class Testrunner extends EventEmitter {
                 selector: selector,
             });
         }
-        catch (async err) {
+        catch (err) {
             await this._handleCommandError(err);
         }
     }
@@ -887,9 +887,9 @@ class Testrunner extends EventEmitter {
             try {
                 await this._conf.onCommandError(this.directAPI);
             }
-            catch (error) {
+            catch (oceError) {
                 this._log.error('onCommandError error');
-                this._log.error(error);
+                this._log.error(oceError);
             }
         }
 
