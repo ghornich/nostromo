@@ -54,6 +54,12 @@ const CONF_SCHEMA = {
     },
 };
 
+const TEST_STATE = {
+    SCHEDULED: 0,
+    PASSED: 1,
+    FAILED: 2
+};
+
 const DEFAULT_TEST_PORT = 47225;
 const DEFAULT_TEST_NAME = '(Unnamed test)';
 
@@ -319,7 +325,7 @@ class Testrunner extends EventEmitter {
             await rimrafAsync(conf.referenceDiffsDir);
 
             await this._parseSuiteTestfiles();
-            this._foundTestsCount = conf.suites.reduce((accum, test) => accum + test.tests.length, 0);
+            this._foundTestsCount = conf.suites.reduce((accum, suite) => accum + suite.tests.length, 0);
             this._tapWriter.version();
 
             // TODO move to function
@@ -363,6 +369,21 @@ class Testrunner extends EventEmitter {
 
             if (effectiveTestsCount !== this._okTestsCount) {
                 process.exitCode = 1;
+
+                const failedTestNames = [];
+
+                conf.suites.forEach(suite => {
+                    suite.tests.forEach(test => {
+                        if (test.state === TEST_STATE.FAILED && !failedTestNames.includes(test.name)) {
+                            failedTestNames.push(test.name);
+                        }
+                    })
+                });
+
+                this._tapWriter.diagnostic('---');
+                failedTestNames.forEach(name => this._tapWriter.diagnostic('[FAIL] ' + name));
+                this._tapWriter.diagnostic('---');
+
                 this._tapWriter.diagnostic('FAILURE');
             }
             else {
@@ -547,6 +568,7 @@ class Testrunner extends EventEmitter {
         this._assertCount = 0;
 
         test.runErrors = [];
+        test.state = TEST_STATE.SCHEDULED;
 
         try {
             await this._currentBrowser.open(suite.appUrl);
@@ -570,8 +592,11 @@ class Testrunner extends EventEmitter {
                         testErrors: test.runErrors,
                     });
                 }
+
+                test.state = TEST_STATE.PASSED;
             }
             catch (error) {
+                test.state = TEST_STATE.FAILED;
                 this._log.error(error);
 
                 // TODO this seems incorrect, should throw TestFailedError from the original places
