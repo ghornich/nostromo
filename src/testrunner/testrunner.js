@@ -118,6 +118,11 @@ class TestFailedError extends Error {
  */
 
 /**
+ * @callback TestrunnerCallback
+ * @param {Testrunner} testrunner
+ */
+
+/**
  * @typedef {Object} Suite
  * @property {String} name
  * @property {String} appUrl
@@ -149,8 +154,8 @@ class TestFailedError extends Error {
  * @property {String} [testFilter] - regular expression string
  * @property {Number} [testRetryCount = 0] - retry failed tests n times
  * @property {RegExp} [testRetryFilter = /.+/] - retry failed tests only if test name matches this filter
- * @property {DirectAPICallback} [onCommandError]
- * @property {DirectAPICallback} [onAssertError]
+ * @property {TestrunnerCallback} [onCommandError]
+ * @property {TestrunnerCallback} [onAssertError]
  */
 
 class Testrunner extends EventEmitter {
@@ -910,7 +915,7 @@ class Testrunner extends EventEmitter {
     async _handleCommandError(err) {
         if (this._conf.onCommandError !== null) {
             try {
-                await this._conf.onCommandError(this.directAPI);
+                await this._conf.onCommandError(this);
             }
             catch (oceError) {
                 this._log.error('onCommandError error');
@@ -996,7 +1001,7 @@ class Testrunner extends EventEmitter {
 
         if (this._conf.onAssertError !== null) {
             try {
-                await this._conf.onAssertError(this.directAPI);
+                await this._conf.onAssertError(this);
             }
             catch (error) {
                 this._log.error('onAssertError error');
