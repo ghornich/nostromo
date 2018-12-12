@@ -1,4 +1,0 @@
-{
-	"extends": "./node_modules/eslint-config-ghornich/eslintrc.js",
-	"parserOptions": { "ecmaVersion": 8 }
-}
