@@ -924,11 +924,11 @@ class Testrunner extends EventEmitter {
         }
 
         if (this._conf.testBailout) {
-            throw createError(ERRORS.TEST_BAILOUT, err.message);
+            throw createError(ERRORS.TEST_BAILOUT, err.stack || err.message);
         }
 
         if (this._conf.bailout) {
-            throw createError(ERRORS.BAILOUT, err.message);
+            throw createError(ERRORS.BAILOUT, err.stack || err.message);
         }
     }
 
