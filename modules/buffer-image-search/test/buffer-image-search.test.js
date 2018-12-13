@@ -1,21 +1,20 @@
-/* eslint-disable no-sync */
+'use strict';
 
 const test = require('tape');
-const pngjs = require('pngjs');
+const Bitmap = require('../../pnglib').Bitmap;
 const fs = require('fs');
 const resolve = require('path').resolve;
-
 const bufferImageSearch = require('../');
 
-const testImg1 = pngjs.PNG.sync.read(fs.readFileSync(resolve(__dirname, 'galaxy1.png')));
-const testImg2 = pngjs.PNG.sync.read(fs.readFileSync(resolve(__dirname, 'galaxy2.png')));
-const testImg3 = pngjs.PNG.sync.read(fs.readFileSync(resolve(__dirname, 'galaxy3.png')));
+test(async t => {
+    const testImg1 = await Bitmap.from(resolve(__dirname, 'galaxy1.png'));
+    const testImg2 = await Bitmap.from(resolve(__dirname, 'galaxy2.png'));
+    const testImg3 = await Bitmap.from(resolve(__dirname, 'galaxy3.png'));
 
-const marker1 = pngjs.PNG.sync.read(fs.readFileSync(resolve(__dirname, 'marker1.png')));
-const marker2 = pngjs.PNG.sync.read(fs.readFileSync(resolve(__dirname, 'marker2.png')));
-const marker3 = pngjs.PNG.sync.read(fs.readFileSync(resolve(__dirname, 'marker3.png')));
+    const marker1 = await Bitmap.from(resolve(__dirname, 'marker1.png'));
+    const marker2 = await Bitmap.from(resolve(__dirname, 'marker2.png'));
+    const marker3 = await Bitmap.from(resolve(__dirname, 'marker3.png'));
 
-test(t => {
     const results1 = bufferImageSearch(testImg1, marker1);
     const results2 = bufferImageSearch(testImg2, marker2);
     const results3 = bufferImageSearch(testImg3, marker3);

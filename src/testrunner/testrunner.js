@@ -14,7 +14,7 @@ const MESSAGES = require(MODULES_PATH + 'browser-puppeteer').MESSAGES;
 const screenshotMarkerImg = require(MODULES_PATH + 'browser-spawner-base/screenshot-marker');
 const screenshotjs = require(MODULES_PATH + 'screenshot-js');
 const mkdirpAsync = Promise.promisify(require('mkdirp'));
-const PNG = require('pngjs').PNG;
+const Bitmap = require(MODULES_PATH + 'pnglib').Bitmap;
 const globAsync = Promise.promisify(require('glob'));
 const bufferImageDiff = require(MODULES_PATH + 'buffer-image-diff');
 const rimrafAsync = Promise.promisify(require('rimraf'));
@@ -57,7 +57,7 @@ const CONF_SCHEMA = {
 const TEST_STATE = {
     SCHEDULED: 0,
     PASSED: 1,
-    FAILED: 2
+    FAILED: 2,
 };
 
 const DEFAULT_TEST_PORT = 47225;
@@ -382,7 +382,7 @@ class Testrunner extends EventEmitter {
                         if (test.state === TEST_STATE.FAILED && !failedTestNames.includes(test.name)) {
                             failedTestNames.push(test.name);
                         }
-                    })
+                    });
                 });
 
                 this._tapWriter.diagnostic('---');
@@ -460,7 +460,7 @@ class Testrunner extends EventEmitter {
 
                     try {
                         await suite.afterSuite();
-                        this._log.trace('completed afterSuite');    
+                        this._log.trace('completed afterSuite');
                     }
                     catch (error) {
                         this._log.error('error while running afterSuite: ', error);
@@ -492,22 +492,22 @@ class Testrunner extends EventEmitter {
     }
 
     async _runTestWithRetries({ suite, test }) {
-        this._log.trace(`_runTestWithRetries: started for test: '${ test.name }'`);
+        this._log.trace(`_runTestWithRetries: started for test: '${test.name}'`);
 
         const maxAttempts = this._conf.testRetryFilter.test(test.name) ? this._conf.testRetryCount + 1 : 1;
 
-        this._log.trace(`_runTestWithRetries: maxAttempts = ${ maxAttempts }`);
+        this._log.trace(`_runTestWithRetries: maxAttempts = ${maxAttempts}`);
 
         for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-            this._log.trace(`_runTestWithRetries loop: attempt = ${ attempt }`);
+            this._log.trace(`_runTestWithRetries loop: attempt = ${attempt}`);
 
             try {
                 await this._runTest({ suite, test });
-                this._log.trace(`_runTestWithRetries: success, test '${ test.name }' passed`);
+                this._log.trace(`_runTestWithRetries: success, test '${test.name}' passed`);
                 break;
             }
             catch (error) {
-                this._log.error(`_runTestWithRetries: error when running _runTest:`);
+                this._log.error('_runTestWithRetries: error when running _runTest:');
                 this._log.error(error);
 
                 if (attempt === maxAttempts || !(error instanceof TestFailedError)) {
@@ -521,9 +521,9 @@ class Testrunner extends EventEmitter {
     }
 
     async _runTest({ suite, test }) {
-        this._log.trace(`_runTest: running test ${ test.name }`);
+        this._log.trace(`_runTest: running test ${test.name}`);
 
-        var browser = this._currentBrowser;
+        const browser = this._currentBrowser;
 
         this._log.info(`starting browser "${browser.name}" from "${browser.path}"`);
         await browser.start();
@@ -567,7 +567,7 @@ class Testrunner extends EventEmitter {
      * @throws {}
      */
     async _runTestCore({ suite, test }) {
-        this._log.trace(`_runTestCore: running test ${ test.name }`);
+        this._log.trace(`_runTestCore: running test ${test.name}`);
 
         this._currentTest = test;
         this._assertCount = 0;
@@ -606,7 +606,7 @@ class Testrunner extends EventEmitter {
 
                 // TODO this seems incorrect, should throw TestFailedError from the original places
                 throw new TestFailedError({
-                    message: error.message
+                    message: error.message,
                 });
             }
             finally {
@@ -944,20 +944,16 @@ class Testrunner extends EventEmitter {
         await this._currentBeforeAssert(this.directAPI);
         await mkdirpAsync(refImgDir);
 
-        let screenshotImg = await screenshotjs({ cropMarker: screenshotMarkerImg });
-        let screenshots = [screenshotImg];
-        let diffResults = [];
+        let screenshotBitmap = await screenshotjs({ cropMarker: screenshotMarkerImg });
+        const screenshots = [screenshotBitmap];
+        const diffResults = [];
 
         // region save new ref img
         try {
             await accessAsync(refImgPath, fs.constants.F_OK);
         }
         catch (error) {
-            const png = new PNG(screenshotImg);
-            png.data = screenshotImg.data;
-            const pngFileBin = PNG.sync.write(png);
-
-            fs.writeFileSync(refImgPath, pngFileBin);
+            await screenshotBitmap.toPNGFile(refImgPath);
 
             // this._tapWriter.ok(`new reference image added: ${refImgPathRelative}`);
             this._log.info(`new reference image added: ${refImgPathRelative}`);
@@ -967,14 +963,14 @@ class Testrunner extends EventEmitter {
         }
         // endregion
 
-        const refImg = PNG.sync.read(fs.readFileSync(refImgPath));
+        const refImg = await Bitmap.from(refImgPath);
 
         const assertRetryMaxAttempts = this._conf.assertRetryCount + 1;
         let imgDiffResult;
         let formattedPPM;
 
         for (let assertAttempt = 0; assertAttempt < assertRetryMaxAttempts; assertAttempt++) {
-            imgDiffResult = bufferImageDiff(screenshotImg, refImg, this._conf.imageDiffOptions);
+            imgDiffResult = bufferImageDiff(screenshotBitmap, refImg, this._conf.imageDiffOptions);
             diffResults.push(imgDiffResult);
             formattedPPM = String(imgDiffResult.difference).replace(/\.(\d)\d+/, '.$1');
 
@@ -989,8 +985,8 @@ class Testrunner extends EventEmitter {
             this._log.warn(`screenshot assert failed: ${refImgPathRelative}, ppm: ${formattedPPM}, totalChangedPixels: ${imgDiffResult.totalChangedPixels}, attempt#: ${assertAttempt}`);
 
             if (assertAttempt < assertRetryMaxAttempts) {
-                screenshotImg = await screenshotjs({ cropMarker: screenshotMarkerImg });
-                screenshots.push(screenshotImg);
+                screenshotBitmap = await screenshotjs({ cropMarker: screenshotMarkerImg });
+                screenshots.push(screenshotBitmap);
                 await Promise.delay(this._conf.assertRetryInterval);
             }
         }
@@ -1017,14 +1013,11 @@ class Testrunner extends EventEmitter {
 
             const failedImgName = i === 0
                 ? `${this._assertCount}.png`
-                : `${this._assertCount}__attempt_${i+1}.png`;
+                : `${this._assertCount}__attempt_${i + 1}.png`;
 
             const failedImgPath = pathlib.resolve(failedImgDir, failedImgName);
             const failedImgPathRelative = pathlib.relative(pathlib.resolve(this._conf.referenceErrorsDir), failedImgPath);
-            const failedPng = new PNG(image);
-            failedPng.data = image.data;
-            const failedImgBin = PNG.sync.write(failedPng);
-            fs.writeFileSync(failedImgPath, failedImgBin);
+            await image.toPNGFile(failedImgPath);
             this._log.info(`failed screenshot added: ${failedImgPathRelative}`);
         }
         // endregion
@@ -1035,7 +1028,7 @@ class Testrunner extends EventEmitter {
 
             const diffImgPath = pathlib.resolve(
                 this._conf.referenceDiffsDir,
-                this._currentBrowser.name.toLowerCase() + '___' + this._currentTest.id + '___' + this._assertCount + `__attempt_${i+1}.png`
+                this._currentBrowser.name.toLowerCase() + '___' + this._currentTest.id + '___' + this._assertCount + `__attempt_${i + 1}.png`
             );
             const diffImgPathRelative = pathlib.relative(pathlib.resolve(this._conf.referenceDiffsDir), diffImgPath);
 
@@ -1045,10 +1038,7 @@ class Testrunner extends EventEmitter {
                 image.data[bufIdx + 2] = 0;
             }
 
-            const diffPng = new PNG(image);
-            diffPng.data = image.data;
-            const diffImgBin = PNG.sync.write(diffPng);
-            fs.writeFileSync(diffImgPath, diffImgBin);
+            await image.toPNGFile(diffImgPath);
             this._log.info(`diff screenshot added: ${diffImgPathRelative}`);
         }
         // endregion

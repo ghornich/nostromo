@@ -1,18 +1,22 @@
+'use strict';
+
+const util = require('util');
 const cp = require('child_process');
+const execAsync = util.promisify(cp.exec);
 const fs = require('fs');
+const unlinkAsync = util.promisify(fs.unlink);
+const readFileAsync = util.promisify(fs.readFile);
 const resolve = require('path').resolve;
-const Promise = require('bluebird');
-const pngjs = require('pngjs');
 const bufferImageSearch = require('../buffer-image-search');
 const bufferImageCrop = require('../buffer-image-crop');
+const Bitmap = require('../pnglib').Bitmap;
 
-const execAsync = Promise.promisify(cp.exec);
-const unlinkAsync = Promise.promisify(fs.unlink);
+const TEMP_FILE_NAME = '_screenshot_temp.png';
 
 // TODO crop is not a responsibility of this module
-// TODO asyncify
 
 /**
+ * @deprecated Use Bitmap
  * @typedef {Object} Image
  * @property {Number} width
  * @property {Number} height
@@ -22,92 +26,58 @@ const unlinkAsync = Promise.promisify(fs.unlink);
 /**
  * 
  * @param {Object} [opts]
- * @param {String} [opts.tempPath] - default: "<cwd>/_screenshot_temp.png"
+ * @param {String} [opts.tempPath] - default: "<cwd>/<TEMP_FILE_NAME>"
  * @param {String|Image} opts.cropMarker - 
  * @param {} opts.outfile - 
  * @param {} opts. - 
- * @return {[type]}           [description]
+ * @return {Bitmap}
  */
-module.exports = Promise.method(function (rawOpts) {
+module.exports = async function screenshot(rawOpts) {
     const opts = rawOpts || {};
 
-    const tempPath = resolve(opts.tempPath || '_screenshot_temp.png');
+    const tempPath = resolve(opts.tempPath || TEMP_FILE_NAME);
 
-    return Promise.try(() => {
+    if (process.platform === 'win32') {
+        const screenshotCmdPath = resolve(__dirname, 'platform_modules/screenshot-cmd/screenshot-cmd.exe');
+        await execAsync(`${screenshotCmdPath} -o ${tempPath}`);
+    }
+    else {
+        // TODO other platforms
+        throw new Error('screenshot-js: unsupported platform');
+    }
 
-        if (process.platform === 'win32') {
-            const screenshotCmdPath = resolve(__dirname, 'platform_modules/screenshot-cmd/screenshot-cmd.exe');
+    const screenshot = await Bitmap.from(tempPath);
 
-            return execAsync(`${screenshotCmdPath} -o ${tempPath}`);
-        }
+    if (!opts.cropMarker) {
+        return screenshot;
+    }
 
-        // TODO
+    let marker = opts.cropMarker;
 
-    })
-    .then(() => new Promise((res) => {
-        fs.createReadStream(tempPath)
-        .pipe(new pngjs.PNG())
-        .on('parsed', function () {
-            res({ width: this.width, height: this.height, data: this.data });
-        });
-    }))
-    .then(img => {
-        if (!opts.cropMarker) {
-            return img;
-        }
+    if (typeof marker === 'string') {
+        marker = await Bitmap.from(marker);
+    }
 
-        return Promise.try(() => {
-            if (typeof opts.cropMarker === 'string') {
-                return new Promise((res) => {
-                    fs.createReadStream(resolve(opts.cropMarker))
-                    .pipe(new pngjs.PNG())
-                    .on('parsed', function () {
-                        res({ width: this.width, height: this.height, data: this.data });
-                    });
-                });
-            }
+    const markerPositions = bufferImageSearch(screenshot, marker);
 
-            return opts.cropMarker;
+    if (markerPositions.length !== 2) {
+        throw new Error(`Marker count is not 2! Found ${markerPositions.length}`);
+    }
 
-        })
-        .then(marker => {
-            const markerPositions = bufferImageSearch(img, marker);
+    const cropDimensions = {
+        x: markerPositions[0].x + marker.width,
+        y: markerPositions[0].y + marker.height,
+        width: markerPositions[1].x - markerPositions[0].x - marker.width,
+        height: markerPositions[1].y - markerPositions[0].y - marker.height,
+    };
 
-            if (markerPositions.length !== 2) {
-                throw new Error(`Marker count is not 2! Found ${markerPositions.length}`);
-            }
+    const croppedScreenshot = bufferImageCrop(screenshot, cropDimensions);
 
-            const cropDimensions = {
-                x: markerPositions[0].x + marker.width,
-                y: markerPositions[0].y + marker.height,
-                width: markerPositions[1].x - markerPositions[0].x - marker.width,
-                height: markerPositions[1].y - markerPositions[0].y - marker.height,
-            };
+    await unlinkAsync(tempPath);
 
-            return bufferImageCrop(img, cropDimensions);
+    if (opts.outfile) {
+        await croppedScreenshot.toPNGFile(opts.outfile);
+    }
 
-        });
-    })
-    .then(img => {
-        return unlinkAsync(tempPath)
-        .then(() => {
-            if (opts.outfile) {
-                return new Promise((res, rej) => {
-                    const png = new pngjs.PNG(img);
-                    png.data = img.data;
-
-                    png
-                    .pack()
-                    .pipe(fs.createWriteStream(resolve(opts.outfile)))
-                    .on('error', rej)
-                    .on('end', res);
-                });
-            }
-        })
-        .then(() => ({
-            width: img.width,
-            height: img.height,
-            data: img.data,
-        }));
-    });
-});
+    return croppedScreenshot;
+};

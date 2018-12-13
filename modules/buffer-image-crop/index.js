@@ -1,6 +1,8 @@
 const assert = require('assert');
+const Bitmap = require('../pnglib').Bitmap;
 
 module.exports = function (img, conf) {
+    // TODO accept bitmap only
     assert(img.width && img.height && img.data, 'invalid img');
     assert(Buffer.isBuffer(img.data), 'img.data is not a buffer');
 
@@ -21,9 +23,9 @@ module.exports = function (img, conf) {
         }
     }
 
-    return {
+    return new Bitmap({
         width: conf.width,
         height: conf.height,
         data: Buffer.from(result),
-    };
+    });
 };

@@ -1,5 +1,5 @@
 const fs = require('fs');
-const PNG = require('pngjs').PNG;
+const PNG = require('pngjs').PNG; // TODO deprecated
 const test = require('tape');
 const imageVisualDiff = require('../');
 
