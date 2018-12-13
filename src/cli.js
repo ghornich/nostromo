@@ -89,8 +89,8 @@ const DEFAULT_DIFF_CFG_FILE = 'nostromo.diff.conf.js';
             // const conf = defaults({}, baseConf, {
             // });
 
-            if (args.grep||args.filter){
-                baseConf.testFilter = args.grep||args.filter
+            if (args.grep || args.filter) {
+                baseConf.testFilter = args.grep || args.filter;
             }
 
             const Testrunner = require('./testrunner/testrunner');
@@ -145,7 +145,7 @@ const DEFAULT_DIFF_CFG_FILE = 'nostromo.diff.conf.js';
                 else {
                     console.log('SUCCESS');
                 }
-            })
+            });
         });
     }
     else {

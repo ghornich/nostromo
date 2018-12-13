@@ -1,5 +1,5 @@
 'use strict';
 
 exports = module.exports = function (test) {
-    test('noop', t => {})
+    test('noop', t => {});
 };

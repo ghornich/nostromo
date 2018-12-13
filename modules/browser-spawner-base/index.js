@@ -112,7 +112,7 @@ BrowserSpawnerBase.prototype.start = async function () {
 
 BrowserSpawnerBase.prototype._isConnected = function () {
     return this._wsConn !== null;
-}
+};
 
 BrowserSpawnerBase.prototype._waitForConnection = async function () {
     const startTime = Date.now();
@@ -210,7 +210,7 @@ BrowserSpawnerBase.prototype.stop = async function () {
             });
         }
         catch (error) {
-            this._log.error(`failed to stop browser: ${error.stack || error.message}`)
+            this._log.error(`failed to stop browser: ${error.stack || error.message}`);
         }
 
         await new Promise(res => this._httpServer.close(res));

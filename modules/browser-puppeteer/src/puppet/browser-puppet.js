@@ -224,7 +224,7 @@ BrowserPuppet.prototype._attachConsolePipe = function () {
         self._sendMessage({
             type: MESSAGES.UPSTREAM.CONSOLE_PIPE,
             messageType: messageType,
-            message: message
+            message: message,
         });
     }
 
@@ -595,10 +595,12 @@ function getTargetNodeDTO(target) {
         if (attr.name.indexOf('data-') === 0) {
             dto[attr.name] = attr.value;
         }
-    })
+    });
 
     if (target.tagName === 'INPUT' && target.type === 'file') {
-        dto.$fileNames = __map(target.files, function (file) { return file.name });
+        dto.$fileNames = __map(target.files, function (file) {
+            return file.name;
+        });
     }
 
     return dto;
@@ -611,17 +613,17 @@ function assert(v, m) {
 }
 
 function __map(arrayLike, iteratee) {
-    var result=[]
+    var result = [];
 
-    for (var i=0;i<arrayLike.length;i++){
-        result.push(iteratee(arrayLike[i], i, arrayLike))
+    for (var i = 0; i < arrayLike.length; i++) {
+        result.push(iteratee(arrayLike[i], i, arrayLike));
     }
 
     return result;
 }
 
 function __each(arrayLike, iteratee) {
-    for (var i=0;i<arrayLike.length;i++){
-        iteratee(arrayLike[i], i, arrayLike)
+    for (var i = 0; i < arrayLike.length; i++) {
+        iteratee(arrayLike[i], i, arrayLike);
     }
 }

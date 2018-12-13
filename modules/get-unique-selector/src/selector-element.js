@@ -143,7 +143,7 @@ SelectorElement._getNodeSelectorData = function (node, rawOptions) {
             var matches = [];
 
             while (match = regex.exec(classNames)) {
-                 matches.push(match[0]);
+                matches.push(match[0]);
             }
 
             classNames = matches.join(' ');

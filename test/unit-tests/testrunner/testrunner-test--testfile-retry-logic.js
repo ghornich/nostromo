@@ -4,7 +4,7 @@ global.retryLogicTestRuns = 0;
 
 exports = module.exports = function (test) {
     test('testrunner-test--testfile-retry-logic', async t => {
-		global.retryLogicTestRuns++;
+        global.retryLogicTestRuns++;
 
         if (global.retryLogicTestRuns % 3 === 0) {
             await t.click('#show-dialog');

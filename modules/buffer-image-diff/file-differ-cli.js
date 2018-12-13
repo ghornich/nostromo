@@ -1,19 +1,19 @@
-const fs=require('fs')
-const pathlib=require('path')
-const util=require('util')
-const glob=util.promisify(require('glob'))
-const args=require('minimist')(process.argv.slice(2));
-const PNG = require('pngjs').PNG
-const bufferImageDiff=require('./image-diff')
+const fs = require('fs');
+const pathlib = require('path');
+const util = require('util');
+const glob = util.promisify(require('glob'));
+const args = require('minimist')(process.argv.slice(2));
+const PNG = require('pngjs').PNG; // TODO deprecated
+const bufferImageDiff = require('./image-diff');
 
-const OUTPUT_DIR_NAME='diff-results'
-const OUTPUT_DIR_ABS_PATH=pathlib.resolve(OUTPUT_DIR_NAME)
+const OUTPUT_DIR_NAME = 'diff-results';
+const OUTPUT_DIR_ABS_PATH = pathlib.resolve(OUTPUT_DIR_NAME);
 
 
-if (args._.length===0||args.h||args.help) {
-    console.log('')
+if (args._.length === 0 || args.h || args.help) {
+    console.log('');
     console.log('Params: <baseRootDir> <changedRootDir> -c <colorThreshold> -i <imageThreshold> -e <equivalenceThreshold> -g <grayscaleThreshold>');
-    console.log('')
+    console.log('');
 }
 else {
     fileDiffer({
@@ -23,7 +23,7 @@ else {
         imageThreshold: parseFloat(args.i),
         equivalenceThreshold: parseFloat(args.e),
         grayscaleThreshold: parseFloat(args.g),
-    })
+    });
 }
 
 /**
@@ -33,30 +33,30 @@ else {
  * @param {String} changedRootDir
  */
 async function fileDiffer(conf) {
-    const changedFilePaths = await glob(conf.changedRootDir.replace(/[\\\/]+$/, '') + '/**/*.png')
+    const changedFilePaths = await glob(conf.changedRootDir.replace(/[\\\/]+$/, '') + '/**/*.png');
 
     try {
-        fs.mkdirSync(OUTPUT_DIR_NAME)
+        fs.mkdirSync(OUTPUT_DIR_NAME);
     }
-    catch(e){
+    catch (e) {
         // ignore
         // console.error(e)
     }
 
     for (const changedFilePath of changedFilePaths) {
-        console.log(`Scanning ${changedFilePath}`)
-        const baseFilePath = changedFilePath.replace(/[^\\\/]+/, conf.baseRootDir)
+        console.log(`Scanning ${changedFilePath}`);
+        const baseFilePath = changedFilePath.replace(/[^\\\/]+/, conf.baseRootDir);
 
-        const baseImg=PNG.sync.read(fs.readFileSync(baseFilePath))
-        const changedImg=PNG.sync.read(fs.readFileSync(changedFilePath))
+        const baseImg = PNG.sync.read(fs.readFileSync(baseFilePath));
+        const changedImg = PNG.sync.read(fs.readFileSync(changedFilePath));
 
         const diff = bufferImageDiff(baseImg, changedImg, {
             colorThreshold: conf.colorThreshold,
             imageThreshold: conf.imageThreshold,
             equivalenceThreshold: conf.equivalenceThreshold,
             grayscaleThreshold: conf.grayscaleThreshold,
-            includeDiffBufferIndexes: true
-        })
+            includeDiffBufferIndexes: true,
+        });
 
         if (!diff.same) {
             for (const diffIndex of diff.diffBufferIndexes) {
@@ -65,18 +65,18 @@ async function fileDiffer(conf) {
                 baseImg.data[diffIndex + 2] = 0;
             }
 
-            const outputFilePath = changedFilePath.replace(/[^\\\/]+/, OUTPUT_DIR_NAME)
-            const outputDirPath = outputFilePath.replace(/[\\\/][^\\\/]+$/, '')
+            const outputFilePath = changedFilePath.replace(/[^\\\/]+/, OUTPUT_DIR_NAME);
+            const outputDirPath = outputFilePath.replace(/[\\\/][^\\\/]+$/, '');
 
             try {
-                fs.mkdirSync(outputDirPath)
+                fs.mkdirSync(outputDirPath);
             }
-            catch(e){
+            catch (e) {
                 // ignore
                 // console.error(e)
             }
 
-            fs.writeFileSync(outputFilePath, PNG.sync.write(baseImg))
+            fs.writeFileSync(outputFilePath, PNG.sync.write(baseImg));
         }
     }
 

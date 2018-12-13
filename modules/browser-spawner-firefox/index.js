@@ -49,14 +49,14 @@ BrowserSpawnerFirefox.prototype._startBrowser = async function (spawnerControlUr
 
     const xulstorePath = resolvePath(this._conf.tempDir, 'xulstore.json');
 
-    await mkdirpAsync(this._conf.tempDir)
-    await fs.writeFileAsync(prefsPath, PREF_DEFAULT)
-    await fs.writeFileAsync(xulstorePath, JSON.stringify(xulstoreObj))
+    await mkdirpAsync(this._conf.tempDir);
+    await fs.writeFileAsync(prefsPath, PREF_DEFAULT);
+    await fs.writeFileAsync(xulstorePath, JSON.stringify(xulstoreObj));
 
     let selectedPath = this._conf.path;
 
     if (Array.isArray(selectedPath)) {
-        for (let path of this._conf.path) {
+        for (const path of this._conf.path) {
             try {
                 await fs.statAsync(path);
                 selectedPath = path;
@@ -67,7 +67,7 @@ BrowserSpawnerFirefox.prototype._startBrowser = async function (spawnerControlUr
         }
     }
 
-    this._log.info(`using path "${selectedPath}"`)
+    this._log.info(`using path "${selectedPath}"`);
 
     this._process = spawn(selectedPath, ['-profile', this._conf.tempDir, '-no-remote', spawnerControlUrl]);
 

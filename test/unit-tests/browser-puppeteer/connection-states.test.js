@@ -13,7 +13,7 @@ test('BrowserPuppeteer: force close active connections', async t => {
     puppeteer._log._conf.logLevel = LOGLEVEL;
     await puppeteer.start();
 
-    const wsConn = new WebSocket(`ws://localhost:51480?puppet-id=7317574082848`);
+    const wsConn = new WebSocket('ws://localhost:51480?puppet-id=7317574082848');
     await new Promise(resolve => wsConn.on('open', resolve));
 
     await puppeteer.stop();
@@ -25,7 +25,7 @@ test('BrowserPuppeteer: missing puppet id', async t => {
     puppeteer._log._conf.logLevel = LOGLEVEL;
     await puppeteer.start();
 
-    const wsConn = new WebSocket(`ws://localhost:51480`);
+    const wsConn = new WebSocket('ws://localhost:51480');
     const error = await new Promise(resolve => wsConn.on('error', resolve));
     t.ok(/unexpected server response \(400\)/.test(error.message), 'wsConn error message');
 
@@ -39,7 +39,7 @@ test('BrowserPuppeteer: blacklisted puppet id', async t => {
     await puppeteer.start();
     puppeteer._puppetIdBlacklist.add(7317574082848);
 
-    const wsConn = new WebSocket(`ws://localhost:51480?puppet-id=7317574082848`);
+    const wsConn = new WebSocket('ws://localhost:51480?puppet-id=7317574082848');
     const error = await new Promise(resolve => wsConn.on('error', resolve));
     t.ok(/unexpected server response \(400\)/.test(error.message), 'wsConn error message');
 
@@ -52,7 +52,7 @@ test('BrowserPuppeteer: valid connection', async t => {
     puppeteer._log._conf.logLevel = LOGLEVEL;
     await puppeteer.start();
 
-    const wsConn = new WebSocket(`ws://localhost:51480?puppet-id=1044188020788`);
+    const wsConn = new WebSocket('ws://localhost:51480?puppet-id=1044188020788');
 
     await new Promise(resolve => wsConn.on('open', resolve));
     t.pass('connection');
@@ -66,11 +66,11 @@ test('BrowserPuppeteer: already connected', async t => {
     puppeteer._log._conf.logLevel = LOGLEVEL;
     await puppeteer.start();
 
-    const validConn = new WebSocket(`ws://localhost:51480?puppet-id=1044188020788`);
+    const validConn = new WebSocket('ws://localhost:51480?puppet-id=1044188020788');
     await new Promise(resolve => validConn.on('open', resolve));
     t.pass('validConn connection');
 
-    const invalidConn = new WebSocket(`ws://localhost:51480?puppet-id=6674262315383`);
+    const invalidConn = new WebSocket('ws://localhost:51480?puppet-id=6674262315383');
     const error = await new Promise(resolve => invalidConn.on('error', resolve));
     t.ok(/unexpected server response \(400\)/.test(error.message), 'invalidConn error');
 
@@ -83,7 +83,7 @@ test('BrowserPuppeteer: client restart', async t => {
     puppeteer._log._conf.logLevel = LOGLEVEL;
     await puppeteer.start();
 
-    let wsConn = new WebSocket(`ws://localhost:51480?puppet-id=1044188020788`);
+    let wsConn = new WebSocket('ws://localhost:51480?puppet-id=1044188020788');
 
     await new Promise(resolve => wsConn.on('open', resolve));
 
@@ -91,7 +91,7 @@ test('BrowserPuppeteer: client restart', async t => {
 
     await delay(500);
 
-    wsConn = new WebSocket(`ws://localhost:51480?puppet-id=1044188020788`);
+    wsConn = new WebSocket('ws://localhost:51480?puppet-id=1044188020788');
 
     await new Promise(resolve => wsConn.on('open', resolve));
     t.pass('client restart');
@@ -108,11 +108,11 @@ test('BrowserPuppeteer: deferred messaging', async t => {
     const commandPromise = puppeteer.execCommand({ type: 'dummy-command' });
 
     await delay(2000);
-    const wsConn = new WebSocket(`ws://localhost:51480?puppet-id=1044188020788`);
+    const wsConn = new WebSocket('ws://localhost:51480?puppet-id=1044188020788');
 
     wsConn.on('message', message => {
         const data = JSON.parse(message);
-        wsConn.send(JSON.stringify({ type: MESSAGES.UPSTREAM.ACK, result: 'dummy-command-ok' }))
+        wsConn.send(JSON.stringify({ type: MESSAGES.UPSTREAM.ACK, result: 'dummy-command-ok' }));
     });
 
     t.equal(await commandPromise, 'dummy-command-ok');
@@ -126,12 +126,12 @@ test('BrowserPuppeteer: terminateConnection', async t => {
     puppeteer._log._conf.logLevel = LOGLEVEL;
     await puppeteer.start();
 
-    let wsConn = new WebSocket(`ws://localhost:51480?puppet-id=1044188020788`);
+    let wsConn = new WebSocket('ws://localhost:51480?puppet-id=1044188020788');
     await new Promise(resolve => wsConn.on('open', resolve));
 
     puppeteer.terminateConnection();
 
-    wsConn = new WebSocket(`ws://localhost:51480?puppet-id=1044188020788`);
+    wsConn = new WebSocket('ws://localhost:51480?puppet-id=1044188020788');
     const error = await new Promise(resolve => wsConn.on('error', resolve));
     t.ok(/unexpected server response \(400\)/.test(error.message), 'wsConn error message');
 

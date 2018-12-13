@@ -1,4 +1,4 @@
-exports=module.exports=[
+exports = module.exports = [
     {
         name: 'RecorderApp',
         paths: [

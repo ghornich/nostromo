@@ -123,11 +123,11 @@ BrowserPuppeteer.prototype._wsShouldHandleRequest = function (request) {
         const puppetId = getPuppetIdFromRequest(request);
 
         if (this._puppetIdBlacklist.has(puppetId)) {
-            throw new Error(`puppetId is on blacklist`);
+            throw new Error('puppetId is on blacklist');
         }
 
         if (this._wsConn !== null) {
-            throw new Error(`already connected`);
+            throw new Error('already connected');
         }
     }
     catch (error) {
