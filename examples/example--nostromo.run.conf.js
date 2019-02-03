@@ -9,6 +9,7 @@ exports = module.exports = function (config) {
 
         referenceScreenshotsDir: 'reference-screenshots',
         referenceErrorsDir: 'reference-errors',
+        referenceDiffsDir: 'reference-diffs',
 
         browsers: [
             new config.browsers.Chrome({
