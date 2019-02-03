@@ -32,7 +32,7 @@ exports = module.exports = function (fileData) {
 }());
 
 },{"../src/puppet/browser-puppet.js":6}],3:[function(require,module,exports){
-'use strict'
+'use strict';
 
 /**
  * Command type constants
@@ -793,7 +793,7 @@ BrowserPuppet.prototype._attachConsolePipe = function () {
         self._sendMessage({
             type: MESSAGES.UPSTREAM.CONSOLE_PIPE,
             messageType: messageType,
-            message: message
+            message: message,
         });
     }
 
@@ -1164,10 +1164,12 @@ function getTargetNodeDTO(target) {
         if (attr.name.indexOf('data-') === 0) {
             dto[attr.name] = attr.value;
         }
-    })
+    });
 
     if (target.tagName === 'INPUT' && target.type === 'file') {
-        dto.$fileNames = __map(target.files, function (file) { return file.name });
+        dto.$fileNames = __map(target.files, function (file) {
+            return file.name;
+        });
     }
 
     return dto;
@@ -1180,20 +1182,21 @@ function assert(v, m) {
 }
 
 function __map(arrayLike, iteratee) {
-    var result=[]
+    var result = [];
 
-    for (var i=0;i<arrayLike.length;i++){
-        result.push(iteratee(arrayLike[i], i, arrayLike))
+    for (var i = 0; i < arrayLike.length; i++) {
+        result.push(iteratee(arrayLike[i], i, arrayLike));
     }
 
     return result;
 }
 
 function __each(arrayLike, iteratee) {
-    for (var i=0;i<arrayLike.length;i++){
-        iteratee(arrayLike[i], i, arrayLike)
+    for (var i = 0; i < arrayLike.length; i++) {
+        iteratee(arrayLike[i], i, arrayLike);
     }
 }
+
 },{"../../../../modules/get-unique-selector":8,"../../../../modules/jsonf":11,"../../../../modules/loggr":12,"../../../../modules/selector-observer":14,"../../../../modules/ws4ever":15,"../messages":4,"./browser-puppet-commands.partial":5,"bluebird":17,"jquery":18,"lodash.debounce":19,"lodash.defaults":20}],7:[function(require,module,exports){
 'use strict';
 
@@ -1263,7 +1266,7 @@ UniqueSelector.prototype.get = function (node) {
 
     // traverse up until prefClass is found or max depth reached or body reached
     if (this._opts.preferredClass && this._opts.useClosestParentWithPreferredClass) {
-        var currentNode = _node
+        var currentNode = _node;
         var depth = 0;
         var depthLimit = 1000;
 
@@ -1277,11 +1280,11 @@ UniqueSelector.prototype.get = function (node) {
             }
 
             if (this._opts.preferredClass.test(currentNode.className)) {
-                _node = currentNode
-                break
+                _node = currentNode;
+                break;
             }
 
-            currentNode = currentNode.parentNode
+            currentNode = currentNode.parentNode;
             depth++;
         }
     }
@@ -1355,7 +1358,7 @@ SelectorElementList.prototype.getSelectorPath = function () {
     .replace(/>{2,}/g, ' ')
     .replace(/^>|>$/, '')
     .replace(/>/g, ' > ')
-    .trim()
+    .trim();
 };
 
 SelectorElementList.prototype.toString = SelectorElementList.prototype.getSelectorPath;
@@ -1408,58 +1411,62 @@ SelectorElementList.prototype.simplifyClasses = function (enableUsePreferredClas
             continue;
         }
 
-        var originalSelector = selectorElement.rawSelector
-        var classList = new ClassList(originalSelector)
+        var originalSelector = selectorElement.rawSelector;
+        var classList = new ClassList(originalSelector);
 
         if (classList.length > 1) {
             for (var classIdx = classList.length - 1; classIdx >= 0; classIdx--) {
-                var classListElement = classList.get(classIdx)
+                var classListElement = classList.get(classIdx);
 
                 if (enableUsePreferredClass && this._opts.preferredClass && this._opts.preferredClass.test(classListElement.className)) {
                     continue;
                 }
 
-                classListElement.enabled = false
-                selectorElement.rawSelector = classList.getSelector()
+                classListElement.enabled = false;
+                selectorElement.rawSelector = classList.getSelector();
 
                 if (selectorElement.rawSelector === '' || this.getAmbiguity() > 1) {
-                    classListElement.enabled = true
+                    classListElement.enabled = true;
                 }
             }
 
-            selectorElement.rawSelector = classList.getSelector()
+            selectorElement.rawSelector = classList.getSelector();
         }
     }
 
 };
 
-function ClassList(classSelector){
+function ClassList(classSelector) {
     this.classListElements = classSelector.split(/(?=\.)/g).map(function (className) {
-        return new ClassListElement(className)
-    })
+        return new ClassListElement(className);
+    });
 
     Object.defineProperty(this, 'length', {
-        get: function () {return this.classListElements.length}
-    })
+        get: function () {
+            return this.classListElements.length;
+        },
+    });
 }
 
-ClassList.prototype.get=function(i){
-    return this.classListElements[i]
-}
+ClassList.prototype.get = function (i) {
+    return this.classListElements[i];
+};
 
-ClassList.prototype.getSelector=function(){
-    return this.classListElements.map(function (cle){
+ClassList.prototype.getSelector = function () {
+    return this.classListElements.map(function (cle) {
         return cle.enabled
             ? cle.className
-            : null
+            : null;
     })
-    .filter(function(s){return s})
-    .join('')
-}
+    .filter(function (s) {
+        return s;
+    })
+    .join('');
+};
 
 function ClassListElement(className) {
     this.enabled = true;
-    this.className=className;
+    this.className = className;
 }
 
 /**
@@ -1639,7 +1646,7 @@ SelectorElement._getNodeSelectorData = function (node, rawOptions) {
             var matches = [];
 
             while (match = regex.exec(classNames)) {
-                 matches.push(match[0]);
+                matches.push(match[0]);
             }
 
             classNames = matches.join(' ');
