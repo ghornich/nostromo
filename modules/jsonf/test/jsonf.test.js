@@ -33,10 +33,10 @@ test('JSONF test', t => {
 
     // eslint-disable-next-line no-multi-str
     const expectedStringified = '{"a":[1,2,3,"function (a,b) {\\n\\t\\t\\t/*          */\\n\\t\\t\\treturn a*b\\n\\t\\t}"],\
-"b":"function (a){return a*a/*\\n\\n\\n\\t\\t*/}",\
+"b":"function(a){return a*a/*\\n\\n\\n\\t\\t*/}",\
 "c":{"d":5},\
 "e":"function (x) {\\n\\t\\t\\treturn x + \'\\\\r\\\\n\';\\n\\t\\t}",\
-"f":"function (){}",\
+"f":"function(){}",\
 "g":{"regex1":"/^[a-z]+ latenc(y|ies)$/gi","regex2":"/[a-z]*\\\\\\\\\\\\/\\\\..+?/"}}';
 
     t.equal(stringified, expectedStringified);
