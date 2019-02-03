@@ -3,7 +3,6 @@ const Promise = require('bluebird');
 Promise.config({ longStackTraces: true });
 const Loggr = require(MODULES_PATH + 'loggr');
 const isEqual = require('lodash.isequal');
-// const Schema = require('schema-inspector');
 const fs = Promise.promisifyAll(require('fs'));
 const pathlib = require('path');
 const util = require('util');
@@ -22,37 +21,6 @@ const accessAsync = util.promisify(fs.access);
 
 // TODO standard tape API (sync), rename current equal() to valueEquals()
 // TODO convert to es6 class
-
-const CONF_SCHEMA = {
-    type: 'object',
-    properties: {
-        // appUrl: {
-        //     type: ['string', 'object'],
-        //     // pattern: /^(http:\/\/|file:\/\/\/?)[^ ]+$/,
-        // },
-        testPort: {
-            type: 'number',
-            optional: true,
-        },
-        // testFiles: {
-        //     type: ['string', 'array'],
-        // },
-        browsers: {
-            type: ['function', 'array'],
-        },
-        logLevel: {
-            type: 'number',
-            optional: true,
-        },
-        // bailout: {
-        //     type: 'boolean',
-        //     optional: true,
-        // },
-
-
-
-    },
-};
 
 const TEST_STATE = {
     SCHEDULED: 0,
@@ -239,7 +207,7 @@ class Testrunner extends EventEmitter {
 
         // -------------------
 
-        if (!__isArray(this._conf.browsers)) {
+        if (!Array.isArray(this._conf.browsers)) {
             this._conf.browsers = [this._conf.browsers];
         }
 
@@ -1081,13 +1049,6 @@ class Testrunner extends EventEmitter {
 
 function noop() {}
 
-function __toString(v) {
-    return Object.prototype.toString.call(v);
-}
-function __isArray(v) {
-    return __toString(v) === '[object Array]';
-}
-
 // TODO use es6 classes for errors
 function createError(type, msg) {
     const e = new Error(msg); e.type = type; return e;
@@ -1101,16 +1062,14 @@ function ellipsis(s, l = ELLIPSIS_LIMIT) {
     return `${s.substr(0, l - 3)}...`;
 }
 
-function multiGlobAsync(globs) {
+async function multiGlobAsync(globs) {
     let paths = [];
 
-    return Promise.each(globs, glob => {
-        return globAsync(glob)
-        .then(results => {
-            paths = paths.concat(results);
-        });
-    })
-    .then(() => paths);
+    for (const glob of globs) {
+        paths = paths.concat(await globAsync(glob));
+    }
+
+    return paths;
 }
 
 function formatDuration(val) {
