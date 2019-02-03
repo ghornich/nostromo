@@ -16,10 +16,6 @@
     "unit-test": "tape test/**/*.test.js modules/**/*.test.js",
     "self-test": "node src/cli.js --run -c test/self-tests/nostromo.run.conf.js",
     "prepush": "npm test",
-    "build-browser-puppet-docs": "node build/build-browser-puppet-docs.js",
-    "build-recorder-docs": "jsdoc src/recorder/recorder-server.js -d docs/recorder",
-    "build-testrunner-docs": "jsdoc src/testrunner/testrunner.js -d docs/testrunner",
-    "build-docs": "npm run build-browser-puppet-docs && npm run build-recorder-docs && npm run build-testrunner-docs"
   },
   "author": "ghornich",
   "dependencies": {
@@ -51,7 +47,6 @@
     "eslint": "^4.2.0",
     "http-server": "^0.10.0",
     "husky": "^0.14.3",
-    "jsdoc": "^3.5.4",
     "rfr": "^1.2.3",
     "tape": "^4.7.0",
     "watchmen": "github:ghornich/watchmen"
