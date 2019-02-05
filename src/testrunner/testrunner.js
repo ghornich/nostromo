@@ -159,6 +159,12 @@ class Testrunner extends EventEmitter {
             includeDiffBufferIndexes: true,
         };
 
+        for (const key of Reflect.ownKeys(conf)) {
+            if (conf[key] === undefined) {
+                delete conf[key];
+            }
+        }
+
         this._conf = Object.assign(defaultConf, conf);
         this._conf.imageDiffOptions = Object.assign({}, defaultImageDiffOptions, conf.imageDiffOptions);
 
