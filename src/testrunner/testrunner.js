@@ -16,7 +16,6 @@ const mkdirpAsync = Promise.promisify(require('mkdirp'));
 const Bitmap = require(MODULES_PATH + 'pnglib').Bitmap;
 const globAsync = Promise.promisify(require('glob'));
 const bufferImageDiff = require(MODULES_PATH + 'buffer-image-diff');
-const rimrafAsync = Promise.promisify(require('rimraf'));
 const accessAsync = util.promisify(fs.access);
 
 // TODO standard tape API (sync), rename current equal() to valueEquals()
@@ -298,10 +297,6 @@ class Testrunner extends EventEmitter {
             if (conf.suites.length === 0) {
                 throw new Error('No test suites specified');
             }
-
-            // TODO nem ennek a felelossege?
-            await rimrafAsync(conf.referenceErrorsDir);
-            await rimrafAsync(conf.referenceDiffsDir);
 
             await this._parseSuiteTestfiles();
             this._foundTestsCount = conf.suites.reduce((accum, suite) => accum + suite.tests.length, 0);
