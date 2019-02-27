@@ -1,6 +1,4 @@
-precommit hooks (lint, doc)
-generate docs from docblock
-create referenceErrors folder on-demand
+~precommit hooks (lint, doc)~ better: CI
 test per-test and per-run bailout
 testrunner: keepalive flag: stop execution and browser on first error (exit/continue on request)
 testrunner: handle ctrl+c gracefully (exit browser, stop servers, etc)
@@ -26,3 +24,7 @@ update example confs
 
 BUGS:
 SBV error if selector is visible when starting page (fixed?)
+
+record multiple selector paths (like selenium), for robustness
+* trivial: full path
+* reduced unique paths
