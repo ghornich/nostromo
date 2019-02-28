@@ -1,5 +1,5 @@
-precommit hooks (lint, doc)
-generate docs from docblock
+~precommit hooks (lint, doc)~ better: CI
+test per-test and per-run bailout
 testrunner: keepalive flag: stop execution and browser on first error (exit/continue on request)
 testrunner: handle ctrl+c gracefully (exit browser, stop servers, etc)
 replace all string command names with const definitions
@@ -36,3 +36,13 @@ BUGS:
 SBV error if selector is visible when starting page (fixed?)
 
 single nostromo installation should rec/run multiple branches, e.g. define folders in conf.js, etc.
+
+record multiple selector paths (like selenium), for robustness
+* trivial: full path
+* reduced unique paths
+
+fully configure from cmd?
+
+separate macro recorder from project
+* universal json output, pluggable converters
+* add timestamps
