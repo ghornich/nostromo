@@ -5,7 +5,6 @@ var Promise = require('bluebird');
 var promiseWhile = require('../../../../modules/promise-while')(Promise);
 var base64ToFile = require('../../../../modules/base64-to-file');
 var lodashSet = require('lodash.set');
-var COMMANDS = require('../commands');
 
 /**
  * @type {String}
@@ -15,6 +14,11 @@ var COMMANDS = require('../commands');
 var DEFAULT_UPLOAD_FILE_MIME = 'application/octet-stream';
 
 exports = module.exports = BrowserPuppetCommands;
+
+/**
+ * @type {Object} ElementAssertOptions
+ * @property {Boolean} [assertVisibility = true]
+ */
 
 /**
  * @class
@@ -146,11 +150,12 @@ BrowserPuppetCommands.prototype.waitWhileVisible = function (cmd) {
 
 /**
  * @param {ClickCommand} cmd
+ * @param {ElementAssertOptions} [options]
  * @throws {Error}
  */
-BrowserPuppetCommands.prototype.click = function (cmd) {
+BrowserPuppetCommands.prototype.click = function (cmd, options) {
     var $el = this.$(cmd.selector);
-    this._assert$el($el, cmd);
+    this._assert$el($el, cmd, options);
 
     // TODO use dispatchEvent?
     $el[0].click();
@@ -202,11 +207,12 @@ BrowserPuppetCommands.prototype.setValue = function (cmd) {
 
 /**
  * @param {FocusCommand} cmd
+ * @param {ElementAssertOptions} options
  * @throws {Error}
  */
-BrowserPuppetCommands.prototype.focus = function (cmd) {
+BrowserPuppetCommands.prototype.focus = function (cmd, options) {
     var $el = this.$(cmd.selector);
-    this._assert$el($el, cmd);
+    this._assert$el($el, cmd, options);
     $el[0].focus();
 };
 
@@ -256,7 +262,15 @@ BrowserPuppetCommands.prototype.uploadFileAndAssign = function (cmd) {
     lodashSet(window, cmd.destinationVariable, base64ToFile(cmd.fileData));
 };
 
-BrowserPuppetCommands.prototype._assert$el = function ($el, cmd) {
+/**
+ * @param {*} $el
+ * @param {*} cmd
+ * @param {ElementAssertOptions} [options]
+ */
+BrowserPuppetCommands.prototype._assert$el = function ($el, cmd, options) {
+    options = options || {};
+    options.assertVisibility = defaultVal(options.assertVisibility, true);
+
     if ($el.length === 0) {
         throw new Error(cmd.type + ': selector not found: "' + cmd.selector + '"');
     }
@@ -265,10 +279,18 @@ BrowserPuppetCommands.prototype._assert$el = function ($el, cmd) {
         throw new Error(cmd.type + ': selector not unique: "' + cmd.selector + '"');
     }
 
-    if (!this._isJQueryElementsVisible($el)) {
+    if (options.assertVisibility && !this._isJQueryElementsVisible($el)) {
         throw new Error(cmd.type + ': selector not visible: "' + cmd.selector + '"');
     }
 };
+
+function defaultVal(val, def) {
+    if (val !== undefined) {
+        return val;
+    }
+
+    return def;
+}
 
 function _defaultNum(value, def) {
     var numValue = Number(value);
