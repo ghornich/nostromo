@@ -1939,7 +1939,7 @@ function SelectorObserver(conf) {
     this._onMutation();
 
     this._mutationObserver = new window.MutationObserver(this._onMutation.bind(this));
-    this._mutationObserver.observe(document.body, { childList: true, subtree: true, attributeFilter: ['style', 'class'] });
+    this._mutationObserver.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['style', 'class'] });
 }
 
 SelectorObserver.prototype._onMutation = function () {
