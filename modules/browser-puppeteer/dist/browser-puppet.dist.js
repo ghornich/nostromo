@@ -15,120 +15,7 @@ exports = module.exports = function (fileData) {
 },{}],2:[function(require,module,exports){
 window.BrowserPuppet = require('../src/puppet/browser-puppet.js');
 
-},{"../src/puppet/browser-puppet.js":6}],3:[function(require,module,exports){
-'use strict';
-
-/**
- * Command type constants
- * @enum {String}
- */
-exports = module.exports = {
-    CLICK: 'click',
-    SET_VALUE: 'setValue',
-    GET_VALUE: 'getValue',
-    PRESS_KEY: 'pressKey',
-    SCROLL: 'scroll',
-    MOUSEOVER: 'mouseover',
-    WAIT_FOR_VISIBLE: 'waitForVisible',
-    WAIT_WHILE_VISIBLE: 'waitWhileVisible',
-    FOCUS: 'focus',
-    IS_VISIBLE: 'isVisible',
-    ASSERT: 'assert',
-    COMPOSITE: 'composite',
-    UPLOAD_FILE_AND_ASSIGN: 'uploadFileAndAssign',
-};
-
-/**
- * @memberOf BrowserPuppetCommands
- * @typedef {Object} Command
- */
-
-/**
- * @typedef {Command} CompositeCommand
- * @property {String} type - 'composite'
- * @property {Array<Command>} commands
- */
-
-/**
- * @typedef {Command} ScrollCommand
- * @property {String} type - 'scroll'
- * @property {String} selector
- * @property {Number} scrollTop
- */
-
-/**
- * @typedef {Command} MouseoverCommand
- * @property {String} type - 'mouseover'
- * @property {String} selector
- */
-
-/**
- * @typedef {Command} WaitForVisibleCommand
- * @property {String} type - 'waitForVisible'
- * @property {String} selector
- * @property {Number} [pollInterval = 500]
- * @property {Number} [timeout = 20000]
- */
-
-/**
- * @typedef {Command} WaitWhileVisibleCommand
- * @property {String} type - 'waitWhileVisible'
- * @property {String} selector
- * @property {Number} [pollInterval = 500]
- * @property {Number} [initialDelay = 500]
- * @property {Number} [timeout = 20000]
- */
-
-/**
- * @typedef {Command} ClickCommand
- * @property {String} type - 'click'
- * @property {String} selector
- */
-
-/**
- * @typedef {Command} PressKeyCommand
- * @property {String} type - 'pressKey'
- * @property {String} selector
- * @property {Number} keyCode
- */
-
-/**
- * @typedef {Command} SetValueCommand
- * @property {String} type - 'setValue'
- * @property {String} selector
- * @property {String} value
- */
-
-/**
- * @typedef {Command} FocusCommand
- * @property {String} type - 'focus'
- * @property {String} selector
- */
-
-/**
- * @typedef {Command} GetValueCommand
- * @property {String} type - 'getValue'
- * @property {String} selector
- */
-
-/**
- * @typedef {Command} IsVisibleCommand
- * @property {String} type - 'isVisible'
- * @property {String} selector
- */
-
-/**
- * @typedef {Command} UploadFileAndAssignCommand
- * @property {String} type - 'uploadFileAndAssign'
- * @property {String} selector - unique selector of the file input node
- * @property {Object} fileData
- * @property {String} fileData.base64 - base64 encoded file
- * @property {String} fileData.name
- * @property {String} [fileData.mime] - default: {@link DEFAULT_UPLOAD_FILE_MIME}
- * @property {String} destinationVariable - e.g. `'app.files.someFile'` assigns a `File` instance to `window.app.files.someFile` 
- */
-
-},{}],4:[function(require,module,exports){
+},{"../src/puppet/browser-puppet.js":5}],3:[function(require,module,exports){
 'use strict';
 
 /**
@@ -267,7 +154,7 @@ exports.DOWNSTREAM = {
  * @property {UniqueSelectorOptions} options
  */
 
-},{}],5:[function(require,module,exports){
+},{}],4:[function(require,module,exports){
 'use strict';
 
 var assert = require('assert');
@@ -275,7 +162,6 @@ var Promise = require('bluebird');
 var promiseWhile = require('../../../../modules/promise-while')(Promise);
 var base64ToFile = require('../../../../modules/base64-to-file');
 var lodashSet = require('lodash.set');
-var COMMANDS = require('../commands');
 
 /**
  * @type {String}
@@ -420,7 +306,7 @@ BrowserPuppetCommands.prototype.waitWhileVisible = function (cmd) {
  */
 BrowserPuppetCommands.prototype.click = function (cmd) {
     var $el = this.$(cmd.selector);
-    this._assert$el($el, cmd);
+    this._assert$el($el, cmd, cmd.options);
 
     // TODO use dispatchEvent?
     $el[0].click();
@@ -476,7 +362,7 @@ BrowserPuppetCommands.prototype.setValue = function (cmd) {
  */
 BrowserPuppetCommands.prototype.focus = function (cmd) {
     var $el = this.$(cmd.selector);
-    this._assert$el($el, cmd);
+    this._assert$el($el, cmd, cmd.options);
     $el[0].focus();
 };
 
@@ -526,7 +412,15 @@ BrowserPuppetCommands.prototype.uploadFileAndAssign = function (cmd) {
     lodashSet(window, cmd.destinationVariable, base64ToFile(cmd.fileData));
 };
 
-BrowserPuppetCommands.prototype._assert$el = function ($el, cmd) {
+/**
+ * @param {*} $el
+ * @param {*} cmd
+ * @param {ElementAssertOptions} [options]
+ */
+BrowserPuppetCommands.prototype._assert$el = function ($el, cmd, options) {
+    options = options || {};
+    options.assertVisibility = defaultVal(options.assertVisibility, true);
+
     if ($el.length === 0) {
         throw new Error(cmd.type + ': selector not found: "' + cmd.selector + '"');
     }
@@ -535,10 +429,18 @@ BrowserPuppetCommands.prototype._assert$el = function ($el, cmd) {
         throw new Error(cmd.type + ': selector not unique: "' + cmd.selector + '"');
     }
 
-    if (!this._isJQueryElementsVisible($el)) {
+    if (options.assertVisibility && !this._isJQueryElementsVisible($el)) {
         throw new Error(cmd.type + ': selector not visible: "' + cmd.selector + '"');
     }
 };
+
+function defaultVal(val, def) {
+    if (val !== undefined) {
+        return val;
+    }
+
+    return def;
+}
 
 function _defaultNum(value, def) {
     var numValue = Number(value);
@@ -550,7 +452,7 @@ function _defaultNum(value, def) {
     return def;
 }
 
-},{"../../../../modules/base64-to-file":1,"../../../../modules/promise-while":13,"../commands":3,"assert":16,"bluebird":17,"lodash.set":21}],6:[function(require,module,exports){
+},{"../../../../modules/base64-to-file":1,"../../../../modules/promise-while":12,"assert":15,"bluebird":16,"lodash.set":20}],5:[function(require,module,exports){
 'use strict';
 
 var Promise = require('bluebird');
@@ -1181,7 +1083,7 @@ function __each(arrayLike, iteratee) {
     }
 }
 
-},{"../../../../modules/get-unique-selector":8,"../../../../modules/jsonf":11,"../../../../modules/loggr":12,"../../../../modules/selector-observer":14,"../../../../modules/ws4ever":15,"../messages":4,"./browser-puppet-commands.partial":5,"bluebird":17,"jquery":18,"lodash.debounce":19,"lodash.defaults":20}],7:[function(require,module,exports){
+},{"../../../../modules/get-unique-selector":7,"../../../../modules/jsonf":10,"../../../../modules/loggr":11,"../../../../modules/selector-observer":13,"../../../../modules/ws4ever":14,"../messages":3,"./browser-puppet-commands.partial":4,"bluebird":16,"jquery":17,"lodash.debounce":18,"lodash.defaults":19}],6:[function(require,module,exports){
 'use strict';
 
 var DOMUtils = exports;
@@ -1202,7 +1104,7 @@ DOMUtils.getClass = function (node) {
     return node.className.trim();
 };
 
-},{}],8:[function(require,module,exports){
+},{}],7:[function(require,module,exports){
 'use strict';
 
 var DOMUtils = require('./dom-utils');
@@ -1315,7 +1217,7 @@ UniqueSelector.prototype.getFullSelectorPath = function (node) {
     return this._getParentSelectorPath(node).getSelectorPath();
 };
 
-},{"./dom-utils":7,"./selector-element":10,"./selector-element-list":9}],9:[function(require,module,exports){
+},{"./dom-utils":6,"./selector-element":9,"./selector-element-list":8}],8:[function(require,module,exports){
 'use strict';
 
 var defaults = require('lodash.defaults');
@@ -1484,7 +1386,7 @@ SelectorElementList.prototype.uniqueify = function () {
     }
 };
 
-},{"./selector-element":10,"lodash.defaults":20}],10:[function(require,module,exports){
+},{"./selector-element":9,"lodash.defaults":19}],9:[function(require,module,exports){
 'use strict';
 
 var DOMUtils = require('./dom-utils');
@@ -1661,7 +1563,7 @@ SelectorElement._getNodeSelectorData = function (node, rawOptions) {
     };
 };
 
-},{"./dom-utils":7}],11:[function(require,module,exports){
+},{"./dom-utils":6}],10:[function(require,module,exports){
 'use strict';
 
 // TODO support ES6 arrow fns
@@ -1723,7 +1625,7 @@ function parseRegExp(s) {
     return new RegExp(matches[1], matches[2]);
 }
 
-},{}],12:[function(require,module,exports){
+},{}],11:[function(require,module,exports){
 (function (process){
 var os = require('os');
 
@@ -1872,7 +1774,7 @@ Loggr.getLevelChar = function (level) {
 };
 
 }).call(this,require('_process'))
-},{"_process":23,"os":22}],13:[function(require,module,exports){
+},{"_process":22,"os":21}],12:[function(require,module,exports){
 'use strict';
 
 var assert = require('assert');
@@ -1894,7 +1796,7 @@ exports = module.exports = function (promiseLib) {
     };
 };
 
-},{"assert":16}],14:[function(require,module,exports){
+},{"assert":15}],13:[function(require,module,exports){
 'use strict';
 
 var assert = require('assert');
@@ -1956,7 +1858,7 @@ function __isArray(val) {
     return Object.prototype.toString.call(val) === '[object Array]';
 }
 
-},{"assert":16,"jquery":18}],15:[function(require,module,exports){
+},{"assert":15,"jquery":17}],14:[function(require,module,exports){
 
 if (isNode()) {
     module.exports = Ws4ever;
@@ -2075,7 +1977,7 @@ function isNode() {
 
 
 
-},{}],16:[function(require,module,exports){
+},{}],15:[function(require,module,exports){
 (function (global){
 'use strict';
 
@@ -2569,7 +2471,7 @@ var objectKeys = Object.keys || function (obj) {
 };
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"util/":26}],17:[function(require,module,exports){
+},{"util/":25}],16:[function(require,module,exports){
 (function (process,global){
 /* @preserve
  * The MIT License (MIT)
@@ -8191,7 +8093,7 @@ module.exports = ret;
 },{"./es5":13}]},{},[4])(4)
 });                    ;if (typeof window !== 'undefined' && window !== null) {                               window.P = window.Promise;                                                     } else if (typeof self !== 'undefined' && self !== null) {                             self.P = self.Promise;                                                         }
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"_process":23}],18:[function(require,module,exports){
+},{"_process":22}],17:[function(require,module,exports){
 /*!
  * jQuery JavaScript Library v3.2.1
  * https://jquery.com/
@@ -18446,7 +18348,7 @@ if ( !noGlobal ) {
 return jQuery;
 } );
 
-},{}],19:[function(require,module,exports){
+},{}],18:[function(require,module,exports){
 (function (global){
 /**
  * lodash (Custom Build) <https://lodash.com/>
@@ -18827,7 +18729,7 @@ function toNumber(value) {
 module.exports = debounce;
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],20:[function(require,module,exports){
+},{}],19:[function(require,module,exports){
 /**
  * lodash (Custom Build) <https://lodash.com/>
  * Build: `lodash modularize exports="npm" -o ./`
@@ -19497,7 +19399,7 @@ function keysIn(object) {
 
 module.exports = defaults;
 
-},{}],21:[function(require,module,exports){
+},{}],20:[function(require,module,exports){
 (function (global){
 /**
  * lodash (Custom Build) <https://lodash.com/>
@@ -20491,7 +20393,7 @@ function set(object, path, value) {
 module.exports = set;
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],22:[function(require,module,exports){
+},{}],21:[function(require,module,exports){
 exports.endianness = function () { return 'LE' };
 
 exports.hostname = function () {
@@ -20538,7 +20440,7 @@ exports.tmpdir = exports.tmpDir = function () {
 
 exports.EOL = '\n';
 
-},{}],23:[function(require,module,exports){
+},{}],22:[function(require,module,exports){
 // shim for using process in browser
 var process = module.exports = {};
 
@@ -20724,7 +20626,7 @@ process.chdir = function (dir) {
 };
 process.umask = function() { return 0; };
 
-},{}],24:[function(require,module,exports){
+},{}],23:[function(require,module,exports){
 if (typeof Object.create === 'function') {
   // implementation from standard node.js 'util' module
   module.exports = function inherits(ctor, superCtor) {
@@ -20749,14 +20651,14 @@ if (typeof Object.create === 'function') {
   }
 }
 
-},{}],25:[function(require,module,exports){
+},{}],24:[function(require,module,exports){
 module.exports = function isBuffer(arg) {
   return arg && typeof arg === 'object'
     && typeof arg.copy === 'function'
     && typeof arg.fill === 'function'
     && typeof arg.readUInt8 === 'function';
 }
-},{}],26:[function(require,module,exports){
+},{}],25:[function(require,module,exports){
 (function (process,global){
 // Copyright Joyent, Inc. and other Node contributors.
 //
@@ -21346,4 +21248,4 @@ function hasOwnProperty(obj, prop) {
 }
 
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./support/isBuffer":25,"_process":23,"inherits":24}]},{},[2]);
+},{"./support/isBuffer":24,"_process":22,"inherits":23}]},{},[2]);

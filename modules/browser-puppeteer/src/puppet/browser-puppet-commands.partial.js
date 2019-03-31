@@ -16,11 +16,6 @@ var DEFAULT_UPLOAD_FILE_MIME = 'application/octet-stream';
 exports = module.exports = BrowserPuppetCommands;
 
 /**
- * @type {Object} ElementAssertOptions
- * @property {Boolean} [assertVisibility = true]
- */
-
-/**
  * @class
  * @abstract
  */
@@ -150,12 +145,11 @@ BrowserPuppetCommands.prototype.waitWhileVisible = function (cmd) {
 
 /**
  * @param {ClickCommand} cmd
- * @param {ElementAssertOptions} [options]
  * @throws {Error}
  */
-BrowserPuppetCommands.prototype.click = function (cmd, options) {
+BrowserPuppetCommands.prototype.click = function (cmd) {
     var $el = this.$(cmd.selector);
-    this._assert$el($el, cmd, options);
+    this._assert$el($el, cmd, cmd.options);
 
     // TODO use dispatchEvent?
     $el[0].click();
@@ -207,12 +201,11 @@ BrowserPuppetCommands.prototype.setValue = function (cmd) {
 
 /**
  * @param {FocusCommand} cmd
- * @param {ElementAssertOptions} options
  * @throws {Error}
  */
-BrowserPuppetCommands.prototype.focus = function (cmd, options) {
+BrowserPuppetCommands.prototype.focus = function (cmd) {
     var $el = this.$(cmd.selector);
-    this._assert$el($el, cmd, options);
+    this._assert$el($el, cmd, cmd.options);
     $el[0].focus();
 };
 

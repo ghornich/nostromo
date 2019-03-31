@@ -21,6 +21,11 @@ exports = module.exports = {
 };
 
 /**
+ * @type {Object} ElementAssertOptions
+ * @property {Boolean} [assertVisibility = true]
+ */
+
+/**
  * @memberOf BrowserPuppetCommands
  * @typedef {Object} Command
  */
@@ -65,6 +70,7 @@ exports = module.exports = {
  * @typedef {Command} ClickCommand
  * @property {String} type - 'click'
  * @property {String} selector
+ * @property {ElementAssertOptions} [options]
  */
 
 /**
@@ -85,6 +91,7 @@ exports = module.exports = {
  * @typedef {Command} FocusCommand
  * @property {String} type - 'focus'
  * @property {String} selector
+ * @property {ElementAssertOptions} [options]
  */
 
 /**

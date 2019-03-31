@@ -721,13 +721,14 @@ class Testrunner extends EventEmitter {
         }
     }
 
-    async _clickDirect(selector) {
+    async _clickDirect(selector, options) {
         this._log.info(`click: "${ellipsis(selector)}"`);
 
         try {
             await this._browserPuppeteer.execCommand({
                 type: 'click',
                 selector: selector,
+                options,
             });
         }
         catch (err) {
@@ -814,12 +815,13 @@ class Testrunner extends EventEmitter {
         });
     }
 
-    async _focusDirect(selector) {
+    async _focusDirect(selector, options) {
         this._log.info(`focus: "${ellipsis(selector)}"`);
 
         return this._browserPuppeteer.execCommand({
             type: 'focus',
             selector: selector,
+            options,
         })
         .catch(err => {
             // TODO handle as error?
