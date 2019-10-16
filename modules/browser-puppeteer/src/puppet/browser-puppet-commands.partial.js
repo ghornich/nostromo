@@ -5,7 +5,6 @@ var Promise = require('bluebird');
 var promiseWhile = require('../../../../modules/promise-while')(Promise);
 var base64ToFile = require('../../../../modules/base64-to-file');
 var lodashSet = require('lodash.set');
-var COMMANDS = require('../commands');
 
 /**
  * @type {String}
@@ -59,7 +58,7 @@ BrowserPuppetCommands.prototype.waitForVisible = function (cmd) {
 
     return Promise.try(function () {
         var pollInterval = _defaultNum(cmd.pollInterval, 500);
-        var timeout = _defaultNum(cmd.timeout, 10000);
+        var timeout = _defaultNum(cmd.timeout, 20000);
 
         var isTimedOut = false;
 
@@ -106,7 +105,7 @@ BrowserPuppetCommands.prototype.waitWhileVisible = function (cmd) {
     return Promise.try(function () {
         var pollInterval = _defaultNum(cmd.pollInterval, 500);
         var initialDelay = _defaultNum(cmd.initialDelay, 500);
-        var timeout = _defaultNum(cmd.timeout, 10000);
+        var timeout = _defaultNum(cmd.timeout, 20000);
 
         var isTimedOut = false;
 
@@ -150,7 +149,7 @@ BrowserPuppetCommands.prototype.waitWhileVisible = function (cmd) {
  */
 BrowserPuppetCommands.prototype.click = function (cmd) {
     var $el = this.$(cmd.selector);
-    this._assert$el($el, cmd);
+    this._assert$el($el, cmd, cmd.options);
 
     // TODO use dispatchEvent?
     $el[0].click();
@@ -206,7 +205,7 @@ BrowserPuppetCommands.prototype.setValue = function (cmd) {
  */
 BrowserPuppetCommands.prototype.focus = function (cmd) {
     var $el = this.$(cmd.selector);
-    this._assert$el($el, cmd);
+    this._assert$el($el, cmd, cmd.options);
     $el[0].focus();
 };
 
@@ -252,11 +251,19 @@ BrowserPuppetCommands.prototype.isVisible = function (cmd) {
  * @throws {Error}
  */
 BrowserPuppetCommands.prototype.uploadFileAndAssign = function (cmd) {
-    cmd.fileData.mime = cmd.fileData.mime || DEFAULT_UPLOAD_FILE_MIME;
+    cmd.fileData.type = cmd.fileData.type || DEFAULT_UPLOAD_FILE_MIME;
     lodashSet(window, cmd.destinationVariable, base64ToFile(cmd.fileData));
 };
 
-BrowserPuppetCommands.prototype._assert$el = function ($el, cmd) {
+/**
+ * @param {*} $el
+ * @param {*} cmd
+ * @param {ElementAssertOptions} [options]
+ */
+BrowserPuppetCommands.prototype._assert$el = function ($el, cmd, options) {
+    options = options || {};
+    options.assertVisibility = defaultVal(options.assertVisibility, true);
+
     if ($el.length === 0) {
         throw new Error(cmd.type + ': selector not found: "' + cmd.selector + '"');
     }
@@ -265,10 +272,18 @@ BrowserPuppetCommands.prototype._assert$el = function ($el, cmd) {
         throw new Error(cmd.type + ': selector not unique: "' + cmd.selector + '"');
     }
 
-    if (!this._isJQueryElementsVisible($el)) {
+    if (options.assertVisibility && !this._isJQueryElementsVisible($el)) {
         throw new Error(cmd.type + ': selector not visible: "' + cmd.selector + '"');
     }
 };
+
+function defaultVal(val, def) {
+    if (val !== undefined) {
+        return val;
+    }
+
+    return def;
+}
 
 function _defaultNum(value, def) {
     var numValue = Number(value);

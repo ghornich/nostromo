@@ -5,11 +5,9 @@ var $ = require('jquery'); $.noConflict();
 var MESSAGES = require('../messages');
 var JSONF = require('../../../../modules/jsonf');
 var UniqueSelector = require('../../../../modules/get-unique-selector');
-var SS_MARKER_IMG = require('../screenshot-marker').base64;
 var debounce = require('lodash.debounce');
 var Ws4ever = require('../../../../modules/ws4ever');
 var defaults = require('lodash.defaults');
-var objectAssign = require('object-assign');
 var BrowserPuppetCommands = require('./browser-puppet-commands.partial');
 var Loggr = require('../../../../modules/loggr');
 var SelectorObserver = require('../../../../modules/selector-observer');
@@ -47,34 +45,28 @@ function BrowserPuppet(opts) {
     this._mouseoverSelector = null;
     this._activeElementBeforeWindowBlur = null;
 
+    this._puppetId = Math.floor(Math.random() * 10e12);
+
     this._log = new Loggr({
         namespace: 'BrowserPuppet',
         // TODO logLevel
         logLevel: Loggr.LEVELS.ALL,
     });
-
-    this._ssMarkerTopLeft = document.createElement('div');
-    this._ssMarkerTopLeft.className = 'browser-puppet--screenshot-marker--top-left';
-    this._ssMarkerTopLeft.setAttribute('style', 'position:absolute;top:0;left:0;width:4px;height:4px;z-index:16777000;');
-    this._ssMarkerTopLeft.style.background = 'url(' + SS_MARKER_IMG + ')';
-
-    this._ssMarkerBottomRight = document.createElement('div');
-    this._ssMarkerBottomRight.className = 'browser-puppet--screenshot-marker--bottom-right';
-    this._ssMarkerBottomRight.setAttribute('style', 'position:absolute;bottom:0;right:0;width:4px;height:4px;z-index:16777000;');
-    this._ssMarkerBottomRight.style.background = 'url(' + SS_MARKER_IMG + ')';
 }
 
-objectAssign(BrowserPuppet.prototype, BrowserPuppetCommands.prototype);
+Object.assign(BrowserPuppet.prototype, BrowserPuppetCommands.prototype);
 
 BrowserPuppet.prototype.start = function () {
     this._startWs();
     this._attachCaptureEventListeners();
+    this._attachConsolePipe();
 };
 
 BrowserPuppet.prototype._startWs = function () {
     var self = this;
 
-    self._wsConn = new Ws4ever(self._opts.serverUrl);
+    // TODO use url lib instead of concat
+    self._wsConn = new Ws4ever(self._opts.serverUrl + '?puppet-id=' + this._puppetId);
     self._wsConn.onmessage = function (e) {
         self._onMessage(e.data);
     };
@@ -139,11 +131,6 @@ BrowserPuppet.prototype._onMessage = function (rawData) {
 
             case MESSAGES.DOWNSTREAM.SET_SELECTOR_BECAME_VISIBLE_DATA:
                 return self.setOnSelectorBecameVisibleSelectors(data.selectors);
-
-            case MESSAGES.DOWNSTREAM.SHOW_SCREENSHOT_MARKER:
-                return self.setScreenshotMarkerState(true);
-            case MESSAGES.DOWNSTREAM.HIDE_SCREENSHOT_MARKER:
-                return self.setScreenshotMarkerState(false);
 
             case MESSAGES.DOWNSTREAM.SET_TRANSMIT_EVENTS:
                 return self.setTransmitEvents(data.value);
@@ -215,6 +202,51 @@ BrowserPuppet.prototype._attachCaptureEventListeners = function () {
     document.addEventListener('change', this._onChangeCapture.bind(this), true);
 
     window.addEventListener('blur', this._onWindowBlur.bind(this));
+};
+
+BrowserPuppet.prototype._attachConsolePipe = function () {
+    var self = this;
+    // var oldLog = console.log;
+    // var oldInfo = console.info;
+    var oldWarn = console.warn;
+    var oldError = console.error;
+
+    function sendConsoleMessageIfConnected(messageType, args) {
+        if (!self._wsConn.isConnected()) {
+            return;
+        }
+
+        var message = Array.prototype.map.call(args, function (arg) {
+            return String(arg);
+        })
+        .join(' ');
+
+        self._sendMessage({
+            type: MESSAGES.UPSTREAM.CONSOLE_PIPE,
+            messageType: messageType,
+            message: message,
+        });
+    }
+
+    // console.log = function () {
+    //     oldLog.apply(console, arguments);
+    //     sendConsoleMessageIfConnected('log', arguments);
+    // };
+
+    // console.info = function () {
+    //     oldInfo.apply(console, arguments);
+    //     sendConsoleMessageIfConnected('info', arguments);
+    // };
+
+    console.warn = function () {
+        oldWarn.apply(console, arguments);
+        sendConsoleMessageIfConnected('warn', arguments);
+    };
+
+    console.error = function () {
+        oldError.apply(console, arguments);
+        sendConsoleMessageIfConnected('error', arguments);
+    };
 };
 
 BrowserPuppet.prototype._attachMouseoverCaptureEventListener = function () {
@@ -548,17 +580,6 @@ BrowserPuppet.prototype.clearPersistentData = function () {
     window.localStorage.clear();
 };
 
-BrowserPuppet.prototype.setScreenshotMarkerState = function (state) {
-    if (state) {
-        document.body.appendChild(this._ssMarkerTopLeft);
-        document.body.appendChild(this._ssMarkerBottomRight);
-    }
-    else {
-        document.body.removeChild(this._ssMarkerTopLeft);
-        document.body.removeChild(this._ssMarkerBottomRight);
-    }
-};
-
 function getTargetNodeDTO(target) {
     var dto = {
         className: target.className,
@@ -574,10 +595,12 @@ function getTargetNodeDTO(target) {
         if (attr.name.indexOf('data-') === 0) {
             dto[attr.name] = attr.value;
         }
-    })
+    });
 
     if (target.tagName === 'INPUT' && target.type === 'file') {
-        dto.$fileNames = __map(target.files, function (file) { return file.name });
+        dto.$fileNames = __map(target.files, function (file) {
+            return file.name;
+        });
     }
 
     return dto;
@@ -590,17 +613,17 @@ function assert(v, m) {
 }
 
 function __map(arrayLike, iteratee) {
-    var result=[]
+    var result = [];
 
-    for (var i=0;i<arrayLike.length;i++){
-        result.push(iteratee(arrayLike[i], i, arrayLike))
+    for (var i = 0; i < arrayLike.length; i++) {
+        result.push(iteratee(arrayLike[i], i, arrayLike));
     }
 
     return result;
 }
 
 function __each(arrayLike, iteratee) {
-    for (var i=0;i<arrayLike.length;i++){
-        iteratee(arrayLike[i], i, arrayLike)
+    for (var i = 0; i < arrayLike.length; i++) {
+        iteratee(arrayLike[i], i, arrayLike);
     }
 }

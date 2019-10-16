@@ -1,40 +1,50 @@
 #!/usr/bin/env node
 
-/* eslint-disable no-console */
+/* eslint-disable no-console, max-statements */
 
-const Promise = require('bluebird');
-const fs = Promise.promisifyAll(require('fs'));
+const util = require('util');
+const fs = require('fs');
+const statAsync = util.promisify(fs.stat);
 const pathlib = require('path');
-const defaults = require('lodash.defaults');
 const args = require('minimist')(process.argv.slice(2));
 const BrowserSpawners = require('../modules/browser-spawners');
 const Loggr = require('../modules/loggr');
-const branchConf = require('../branch.conf.json');
-
-/*
-args:
-config | c ------- configuration base
-
-config overrides?
-
- */
 
 const DEFAULT_REC_CFG_FILE = 'nostromo.record.conf.js';
 const DEFAULT_RUN_CFG_FILE = 'nostromo.run.conf.js';
-const DEFAULT_DIFF_CFG_FILE = 'nostromo.diff.conf.js';
 
-(async function () {
+const HELP = `Nostromo usage:
+  Modes:
+    --record (--rec): start recorder server
+    --run: runs test
+      --filter: filter tests by name
+    --help (-h): prints this page
+  
+  Configuration:
+    --config (-c): path to run/record config file
+  
+  Development
+    --debug: shows runtime information about nostromo
+
+  Additional arguments will override respective config values, e.g.:
+    --logLevel 1
+    --referenceErrorsDir /path/to/dir
+`;
+
+run();
+
+async function run() {
     if (args.record || args.rec) {
         const configPath = args.config || args.c || DEFAULT_REC_CFG_FILE;
-        let baseConf = {};
+        let fileConf = {};
 
         try {
-            await fs.statAsync(configPath);
+            await statAsync(configPath);
             const absConfigPath = pathlib.resolve(configPath);
             process.chdir(pathlib.dirname(absConfigPath));
             const configFn = require(absConfigPath);
 
-            baseConf = configFn({
+            fileConf = configFn({
                 LOG_LEVELS: Loggr.LEVELS,
                 Loggr: Loggr,
             });
@@ -49,30 +59,21 @@ const DEFAULT_DIFF_CFG_FILE = 'nostromo.diff.conf.js';
             }
         }
 
-        const conf = defaults({}, baseConf, {
+        const defaultConf = {
             recorderAppPort: 7700,
             logLevel: Loggr.LEVELS.OFF,
-        });
+        };
+
+        const conf = Object.assign({}, defaultConf, fileConf, args);
+
+        if (args.debug) {
+            console.log(util.inspect(conf, true, 10));
+        }
 
         const RecorderServer = require('./recorder/recorder-server');
         const recServer = new RecorderServer(conf);
 
         recServer.start();
-    }
-    else if (args.diff) {
-        const configPath = args.config || args.c || DEFAULT_DIFF_CFG_FILE;
-        const absConfigPath = pathlib.resolve(configPath);
-        process.chdir(pathlib.dirname(absConfigPath));
-        const configFn = require(pathlib.resolve(absConfigPath));
-
-        const baseConf = configFn();
-
-        const conf = defaults({}, baseConf, {
-        });
-
-        const DiffServer = require('./differ/diff-server');
-        const ds = new DiffServer(conf);
-        ds.start();
     }
     else if (args.run) {
         try {
@@ -81,56 +82,47 @@ const DEFAULT_DIFF_CFG_FILE = 'nostromo.diff.conf.js';
             const absConfigPath = pathlib.resolve(configPath);
             process.chdir(pathlib.dirname(absConfigPath));
             const configFn = require(pathlib.resolve(absConfigPath));
-            const baseConf = configFn({
+            const fileConf = configFn({
                 browsers: BrowserSpawners,
                 LOG_LEVELS: Loggr.LEVELS,
             });
 
-            // const conf = defaults({}, baseConf, {
-            // });
+            const conf = Object.assign({}, fileConf, args);
+
+            if (args.grep || args.filter) {
+                conf.testFilter = args.grep || args.filter;
+            }
+
+            if (args.debug) {
+                console.log(util.inspect(conf, true, 10));
+            }
 
             const Testrunner = require('./testrunner/testrunner');
 
-            const tr = new Testrunner(baseConf);
+            const tr = new Testrunner(conf);
 
-            tr.run();
+            process.on('SIGINT', async () => {
+                console.log('Aborting Testrunner...');
+
+                try {
+                    await tr.abort();
+                }
+                catch (error) {
+                    console.log('Error while aborting Testrunner:', error);
+                }
+
+                process.exit(1);
+            });
+
+            await tr.run();
         }
         catch (err) {
             console.error(err);
+            process.exit(1);
         }
-    }
-    else if (args.update) {
-        console.log(`Updating Nostromo (branch: ${branchConf.branch})...`);
-
-        const cp = require('child_process');
-        const rimraf = require('rimraf');
-        const fs = require('fs');
-
-        try {
-            fs.unlinkSync('package-lock.json');
-        }
-        catch (error) {
-            // ignore
-        }
-
-        rimraf('node_modules', function (err) {
-            if (err) {
-                console.error(err);
-                process.exit(1);
-            }
-
-            cp.exec(`npm i ${branchConf.gitUrl}`, function (err) {
-                if (err) {
-                    console.log('FAILURE');
-                    console.error(err);
-                }
-                else {
-                    console.log('SUCCESS');
-                }
-            })
-        });
     }
     else {
-        console.log('Missing task type (run, diff, rec, update)');
+        console.log(HELP);
+        process.exit(1);
     }
-}());
+}

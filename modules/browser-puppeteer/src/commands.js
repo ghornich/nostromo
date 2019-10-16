@@ -1,4 +1,4 @@
-'use strict'
+'use strict';
 
 /**
  * Command type constants
@@ -19,6 +19,11 @@ exports = module.exports = {
     COMPOSITE: 'composite',
     UPLOAD_FILE_AND_ASSIGN: 'uploadFileAndAssign',
 };
+
+/**
+ * @type {Object} ElementAssertOptions
+ * @property {Boolean} [assertVisibility = true]
+ */
 
 /**
  * @memberOf BrowserPuppetCommands
@@ -49,7 +54,7 @@ exports = module.exports = {
  * @property {String} type - 'waitForVisible'
  * @property {String} selector
  * @property {Number} [pollInterval = 500]
- * @property {Number} [timeout = 10000]
+ * @property {Number} [timeout = 20000]
  */
 
 /**
@@ -58,13 +63,14 @@ exports = module.exports = {
  * @property {String} selector
  * @property {Number} [pollInterval = 500]
  * @property {Number} [initialDelay = 500]
- * @property {Number} [timeout = 10000]
+ * @property {Number} [timeout = 20000]
  */
 
 /**
  * @typedef {Command} ClickCommand
  * @property {String} type - 'click'
  * @property {String} selector
+ * @property {ElementAssertOptions} [options]
  */
 
 /**
@@ -85,6 +91,7 @@ exports = module.exports = {
  * @typedef {Command} FocusCommand
  * @property {String} type - 'focus'
  * @property {String} selector
+ * @property {ElementAssertOptions} [options]
  */
 
 /**

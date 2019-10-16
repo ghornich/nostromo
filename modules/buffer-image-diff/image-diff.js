@@ -1,62 +1,103 @@
 exports = module.exports = imageDiff;
 
-imageDiff.pixelSameEnough = pixelSameEnough;
+class DifferentSizeError extends Error {}
 
-const DIFFERENT_SIZE_ERROR = 'differentSizeError';
-
-imageDiff.DIFFERENT_SIZE_ERROR = DIFFERENT_SIZE_ERROR;
-
-// Image: {width, height, data:Buffer of pixel rgba's}
 // a, b: Image
-// return {same:Boolean, similarity:Number}
+// return {same:Boolean, difference:Number}
+
+/**
+ * @typedef {Object} ImageDiffResult
+ * @property {Boolean} same
+ * @property {Number} difference
+ * @property {Number} totalChangedPixels
+ * @property {Array<Number>} [diffBufferIndexes]
+ */
+
+/**
+ * @typedef {Object} ImageDiffOptions
+ * @property {Number} options.colorThreshold
+ * @property {Number} options.imageThreshold
+ * @property {Number} [options.equivalenceThreshold = 4]
+ * @property {Number} [options.grayscaleThreshold = 0] - Ignore grayscale differences. Zero disables this threshold
+ * @property {Number} [options.includeDiffBufferIndexes = false]
+ */
+
+/**
+ * @param {Bitmap} a
+ * @param {Bitmap} b
+ * @param {ImageDiffOptions} options
+ * @return {ImageDiffResult}
+ */
 function imageDiff(a, b, options) {
     const opts = options || {};
-    assert(opts.pixelThreshold !== undefined, 'pixelThreshold is missing');
+    assert(opts.colorThreshold !== undefined, 'colorThreshold is missing');
     assert(opts.imageThreshold !== undefined, 'imageThreshold is missing');
+
+    if (opts.equivalenceThreshold === undefined) {
+        opts.equivalenceThreshold = 4;
+    }
+
+    if (opts.grayscaleThreshold === undefined) {
+        opts.grayscaleThreshold = 0;
+    }
 
     // TODO what if images are different size?
     if (a.width !== b.width || a.height !== b.height) {
-        const e = new Error('width or height are different');
-        e.type = DIFFERENT_SIZE_ERROR;
-        throw e;
+        throw new DifferentSizeError('width or height are different');
     }
 
     if (a.data.equals(b.data)) {
-        return { same: true, difference: 0 };
+        return { same: true, difference: 0, totalChangedPixels: 0 };
     }
 
-    let diffCount = 0;
+    let diffPxCount = 0;
+    let totalChangedPixels = 0;
+    const diffBufferIndexes = [];
 
     for (let i = 0; i < a.data.length; i += 4) {
-        const px1 = { r: a.data[i], g: a.data[i + 1], b: a.data[i + 2], a: a.data[i + 3] };
-        const px2 = { r: b.data[i], g: b.data[i + 1], b: b.data[i + 2], a: b.data[i + 3] };
+        const px1Avg = (a.data[i] + a.data[i + 1] + a.data[i + 2]) / 3;
+        const px2Avg = (b.data[i] + b.data[i + 1] + b.data[i + 2]) / 3;
+        const colorDiff = Math.abs(px1Avg - px2Avg);
+        const colorDiffPercent = colorDiff / 255 * 100;
 
-        if (!pixelSameEnough(px1, px2, opts.pixelThreshold)) {
-            diffCount++;
+        if (colorDiff > 0) {
+            totalChangedPixels++;
+        }
+
+        if (colorDiff <= opts.equivalenceThreshold) {
+            continue;
+        }
+
+        if (opts.grayscaleThreshold > 0) {
+            const rDiff = Math.abs(a.data[i] - b.data[i]);
+            const gDiff = Math.abs(a.data[i + 1] - b.data[i + 1]);
+            const bDiff = Math.abs(a.data[i + 2] - b.data[i + 2]);
+            const diffIsGrayscale = rDiff === gDiff && gDiff === bDiff;
+
+            if (diffIsGrayscale && rDiff <= opts.grayscaleThreshold) {
+                continue;
+            }
+        }
+
+        if (colorDiffPercent > opts.colorThreshold) {
+            diffPxCount++;
+
+            if (opts.includeDiffBufferIndexes) {
+                diffBufferIndexes.push(i);
+            }
         }
     }
 
     const totalPxs = a.width * b.width;
-    const imgDifference = diffPc(totalPxs - diffCount, totalPxs);
+    const imgDifference = diffPxCount / totalPxs * 1e6;
     const same = imgDifference <= opts.imageThreshold;
+    const result = { same: same, difference: imgDifference, totalChangedPixels: totalChangedPixels };
 
-    return { same: same, difference: imgDifference };
-}
-
-function pixelSameEnough(px1, px2, threshold) {
-    if (px1.r === px2.r && px1.g === px2.g && px1.b === px2.b && px1.a === px2.a) {
-        return true;
+    if (opts.includeDiffBufferIndexes) {
+        result.diffBufferIndexes = diffBufferIndexes;
     }
 
-    const avg1 = (px1.r + px1.g + px1.b + px1.a) / 4;
-    const avg2 = (px2.r + px2.g + px2.b + px2.a) / 4;
-    const pixelDiffPc = diffPc(avg1, avg2);
-
-    return pixelDiffPc <= threshold;
-}
-
-function diffPc(a, b) {
-    return 2 * Math.abs(a - b) / (a + b);
+    return result;
 }
 
 function assert(v, m) {

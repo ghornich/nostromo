@@ -7,40 +7,21 @@ exports = module.exports = function (config) {
         testBailout: true,
         bailout: false,
 
-        defaultAppUrl: 'http://url-to-my-app.com',
-
-        referenceScreenshotDir: 'referenceScreenshots',
-
-        ensureBrowserVisible: true,
-
-        defaultBeforeSuite: async function () {
-        },
-
-        defaultAfterSuite: async function () {
-        },
-
-        defaultBeforeTest: async function (t) {
-        },
-
-        defaultAfterTest: async function (t) {
-        },
-
-        defaultBeforeCommand: async function (t) {
-        },
-
-        defaultAfterCommand: async function (t) {
-        },
+        referenceScreenshotsDir: 'reference-screenshots',
+        referenceErrorsDir: 'reference-errors',
+        referenceDiffsDir: 'reference-diffs',
 
         browsers: [
             new config.browsers.Chrome({
                 name: 'Chrome',
                 path: 'C:/Program Files (x86)/Google/Chrome/Application/chrome.exe',
-                bounds: { size: { width: 1024, height: 750 }, position: { x: 5, y: 5 } },
+                width: 1024,
+                height: 750
             }),
             new config.browsers.Firefox({
                 name: 'Firefox',
                 path: 'C:/Program Files (x86)/Mozilla Firefox/firefox.exe'
-                // no bounds means fullscreen
+                // no width/height: stretch to maximum size
             })
             // ...
         ],
@@ -63,11 +44,23 @@ exports = module.exports = function (config) {
                 afterTest: async function (t) {
                 },
 
+                beforeFirstCommand: async function (t) {
+                },
+
                 beforeCommand: async function (t) {
                 },
 
                 afterCommand: async function (t) {
-                }
+                },
+
+                afterLastCommand: async function (t) {
+                },
+
+                beforeAssert: async function (t) {
+                },
+
+                afterAssert: async function (t) {
+                },
             }
             // ...
         ]

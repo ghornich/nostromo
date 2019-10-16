@@ -7,31 +7,68 @@
             body, html {
                 margin:0;
                 padding:0;
+                font-size: 0;
             }
 
-            div {
-                position:absolute;
-                top:0;
-                right:0;
-                bottom:0;
-                left:0;
-                overflow:hidden;
+            body {
+                background: #656565;
+                overflow: hidden;
+            }
+
+            .outer-wrap {
+                position: absolute;
+                top: 0;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                width: 100%;
+                height: 100%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+
+            .inner-wrap {
+                width: 100vw;
+                height: 100vh;
             }
 
             iframe {
-                width:100%;
-                height:100%;
-                border:0;
+                width: calc(100vw - 8px);
+                height: calc(100vh - 8px);
+                border: 0;
+                margin-left: 4px;
+                background: #fff;
+            }
+
+            .marker-top-left {
+                width: 4px;
+                height: 4px;
+                background: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAIAAAAmkwkpAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAAbSURBVBhXYwCC////gygIgHBAJIIFAVD+//8A4WAU7De8PqQAAAAASUVORK5CYII=');
+            }
+
+            .marker-bottom-right {
+                width: 100%;
+                height: 4px;
+                background: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAIAAAAmkwkpAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAAbSURBVBhXYwCC////gygIgHBAJIIFAVD+//8A4WAU7De8PqQAAAAASUVORK5CYII=');
+                background-position: top right;
+                background-repeat: no-repeat;
             }
         </style>
     </head>
     <body>
-        <div>
-            <iframe id="ifr"></iframe>
+        <div class="outer-wrap">
+            <div class="inner-wrap">
+                <!-- NTH use screenshot-marker.js -->
+                <div class="marker-top-left"></div>
+                <iframe id="ifr"></iframe>
+                <div class="marker-bottom-right"></div>
+            </div>
         </div>
         <script>
             var wsConn=new WebSocket('ws://localhost:24556')
             var iframe=document.getElementById('ifr')
+            var innerWrap = document.querySelector('.inner-wrap');
 
             wsConn.onmessage = function(event){
                 try {
@@ -41,6 +78,12 @@
                         case 'open':
                             iframe.src='';
                             iframe.src = data.url;
+                            break;
+                        case 'set-iframe-size':
+                            iframe.style.width = data.width + 'px';
+                            iframe.style.height = data.height + 'px';
+                            innerWrap.style.width = data.width + 8 + 'px';
+                            innerWrap.style.height = data.height + 8 + 'px';
                             break;
                         default:
                             throw new Error('Unknown command type: '+data.type)

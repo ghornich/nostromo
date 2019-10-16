@@ -39,47 +39,45 @@ BrowserSpawnerFirefox.prototype._startBrowser = async function (spawnerControlUr
 
     // TODO what if folder exists?
 
-    const prefsPath = resolvePath(this._opts.tempDir, 'prefs.js');
-
-    let xulMainWindow = null;
-
-    if (this._opts.bounds) {
-        xulMainWindow = {
-            width: this._opts.bounds.size.width,
-            height: this._opts.bounds.size.height,
-        };
-
-        if (this._opts.bounds.position) {
-            xulMainWindow.screenX = this._opts.bounds.position.x;
-            xulMainWindow.screenY = this._opts.bounds.position.y;
-        }
-    }
-    else {
-        xulMainWindow = { sizemode: 'maximized' };
-    }
+    const prefsPath = resolvePath(this._conf.tempDir, 'prefs.js');
 
     const xulstoreObj = {
         'chrome://browser/content/browser.xul': {
-            'main-window': xulMainWindow,
+            'main-window': { sizemode: 'maximized' },
         },
     };
 
-    const xulstorePath = resolvePath(this._opts.tempDir, 'xulstore.json');
+    const xulstorePath = resolvePath(this._conf.tempDir, 'xulstore.json');
 
-    return mkdirpAsync(this._opts.tempDir)
-    .then(() => fs.writeFileAsync(prefsPath, PREF_DEFAULT))
-    .then(() => fs.writeFileAsync(xulstorePath, JSON.stringify(xulstoreObj)))
-    .then(() => {
-        this._process = spawn(this._opts.path, ['-profile', this._opts.tempDir, '-no-remote', spawnerControlUrl]);
+    await mkdirpAsync(this._conf.tempDir);
+    await fs.writeFileAsync(prefsPath, PREF_DEFAULT);
+    await fs.writeFileAsync(xulstorePath, JSON.stringify(xulstoreObj));
 
-        this._process.on('error', err => {
-            this.emit('error', err);
-        });
+    let selectedPath = this._conf.path;
 
-        this._process.on('close', () => {
-            this.emit('close');
-            this._deleteTempDir();
-        });
+    if (Array.isArray(selectedPath)) {
+        for (const path of this._conf.path) {
+            try {
+                await fs.statAsync(path);
+                selectedPath = path;
+            }
+            catch (error) {
+                // ignore
+            }
+        }
+    }
+
+    this._log.info(`using path "${selectedPath}"`);
+
+    this._process = spawn(selectedPath, ['-profile', this._conf.tempDir, '-no-remote', spawnerControlUrl]);
+
+    this._process.on('error', err => {
+        this.emit('error', err);
+    });
+
+    this._process.on('close', () => {
+        this.emit('close');
+        this._deleteTempDir();
     });
 };
 

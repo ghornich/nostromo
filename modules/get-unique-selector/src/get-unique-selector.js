@@ -45,7 +45,7 @@ UniqueSelector.prototype.get = function (node) {
 
     // traverse up until prefClass is found or max depth reached or body reached
     if (this._opts.preferredClass && this._opts.useClosestParentWithPreferredClass) {
-        var currentNode = _node
+        var currentNode = _node;
         var depth = 0;
         var depthLimit = 1000;
 
@@ -59,11 +59,11 @@ UniqueSelector.prototype.get = function (node) {
             }
 
             if (this._opts.preferredClass.test(currentNode.className)) {
-                _node = currentNode
-                break
+                _node = currentNode;
+                break;
             }
 
-            currentNode = currentNode.parentNode
+            currentNode = currentNode.parentNode;
             depth++;
         }
     }

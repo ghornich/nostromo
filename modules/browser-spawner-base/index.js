@@ -1,6 +1,7 @@
 'use strict';
 
-const resolvePath = require('path').resolve;
+const assert = require('assert');
+const pathlib = require('path');
 const EventEmitter = require('events').EventEmitter;
 const util = require('util');
 const rimraf = require('rimraf');
@@ -9,43 +10,53 @@ const http = require('http');
 const WS = require('ws');
 const truncateString = require('lodash.truncate');
 const treeKill = require('tree-kill');
+const delay = require('../delay');
+const screenshotMarkerImg = require('./screenshot-marker');
+const screenshotjs = require('../screenshot-js');
+const bufferImageSearch = require('../buffer-image-search');
 
-const TEMP_DELETE_RETRIES = BrowserSpawnerBase.TEMP_DELETE_RETRIES = 3;
+const TEMP_DELETE_RETRIES = BrowserSpawnerBase.TEMP_DELETE_RETRIES = 10;
 const TEMP_DELETE_TIMEOUT = BrowserSpawnerBase.TEMP_DELETE_TIMEOUT = 1000;
 
 const DEFAULT_SPAWNER_PORT = 24556;
 
-exports = module.exports = BrowserSpawnerBase;
+class TimeoutError extends Error {}
 
 /**
- * @typedef {Bounds}
- *
- * @property {Object} size - width and height properties as numbers
- * @property {Object} [position] - x and y properties as numbers. Defaults to 0, 0
- */
-
-/**
- * @typedef {BrowserSpawnerOptions}
+ * @typedef {BrowserSpawnerConfig}
  *
  * @property {String} name - Display name for this browser
  * @property {String} path - Path to browser executable
  * @property {String} [tempDir] - Temporary profile dir path. Defaults to a random directory in cwd
- * @property {Bounds} [bounds] - Browser size and position. Defaults to fullscreen
+ * @property {Number} width - Recorded app viewport width
+ * @property {Number} height - Recorded app viewport height
  * @property {Object} [logger] - Custom Loggr instance
+ * @property {Number} [waitForConnectionTimeoutMs = 60000]
+ * @property {Number} [waitForConnectionPollIntervalMs = 500]
+ * @property {Number} [visibilityTimeoutMs = 60000]
+ * @property {Number} [visibilityPollIntervalMs = 3000]
  */
+
+// TODO es6 class
 
 /**
- * 
- * @param {BrowserSpawnerOptions} options - 
+ * @param {BrowserSpawnerConfig} conf
  */
-function BrowserSpawnerBase(options) {
+function BrowserSpawnerBase(conf) {
     EventEmitter.call(this);
 
-    this._opts = options || {};
-    this._opts.bounds = this._opts.bounds || null;
-    this._opts.tempDir = resolvePath(this._opts.tempDir || this._getDefaultTempDir());
-    this._log = options.logger || new Loggr({
-        namespace: `BrowserSpawner ${this._opts.name}`,
+    assert(conf, 'BrowserSpawnerBase: missing conf');
+
+    this._conf = Object.assign({}, {
+        tempDir: pathlib.resolve(conf.tempDir || this._getDefaultTempDir()),
+        waitForConnectionTimeoutMs: 60000,
+        waitForConnectionPollIntervalMs: 500,
+        visibilityTimeoutMs: 60000,
+        visibilityPollIntervalMs: 3000,
+    }, conf);
+
+    this._log = conf.logger || new Loggr({
+        namespace: `BrowserSpawner ${this._conf.name}`,
         indent: '  ',
     });
 
@@ -55,9 +66,16 @@ function BrowserSpawnerBase(options) {
     this._wsServer = null;
     this._wsConn = null;
 
-    Object.defineProperty(this, 'name', {
-        get: function () {
-            return this._opts.name;
+    Object.defineProperties(this, {
+        name:  {
+            get: function () {
+                return this._conf.name;
+            },
+        },
+        path: {
+            get: function () {
+                return this._conf.path;
+            },
         },
     });
 }
@@ -74,20 +92,70 @@ BrowserSpawnerBase.prototype.start = async function () {
 
     this._wsServer.on('connection', this._onWsConnection.bind(this));
 
+    this._wsServer.on('error', err => {
+        this._log.error(err.stack || err.message);
+    });
+
     await new Promise(res => this._httpServer.listen(DEFAULT_SPAWNER_PORT, res));
 
-    await this._startBrowser(resolvePath(__dirname, 'browser-spawner-context.html'));
+    await this._startBrowser(pathlib.resolve(__dirname, 'browser-spawner-context.html'));
     await this._waitForConnection();
+
+    // TODO await this with events?
+    this._sendWsMessage({
+        type: 'set-iframe-size',
+        width: this._conf.width,
+        height: this._conf.height,
+    });
+    await delay(500);
+};
+
+BrowserSpawnerBase.prototype._isConnected = function () {
+    return this._wsConn !== null;
 };
 
 BrowserSpawnerBase.prototype._waitForConnection = async function () {
-    while (this._wsConn === null) {
-        await new Promise(res => setTimeout(res, 500));
+    const startTime = Date.now();
+    const timeoutMs = this._conf.waitForConnectionTimeoutMs;
+
+    while (!this._isConnected()) {
+        if (startTime + timeoutMs < Date.now()) {
+            throw new TimeoutError(`BrowserSpawnerBase._waitForConnection: timeout after ${timeoutMs}ms`);
+        }
+
+        await delay(this._conf.waitForConnectionPollIntervalMs);
     }
 };
 
 BrowserSpawnerBase.prototype._onWsConnection = function (conn) {
     this._wsConn = conn;
+};
+
+BrowserSpawnerBase.prototype.isBrowserVisible = async function () {
+    const screenshot = await screenshotjs();
+    const markerPositions = bufferImageSearch(screenshot, screenshotMarkerImg);
+    const isVisible = markerPositions.length === 2;
+
+    if (markerPositions.length !== 0 && markerPositions.length !== 2) {
+        this._log.warn(`isBrowserVisible: invalid marker position count: ${markerPositions.length}`);
+    }
+
+    this._log.debug(`isBrowserVisible: ${isVisible}`);
+
+    return isVisible;
+};
+
+BrowserSpawnerBase.prototype.waitForBrowserVisible = async function () {
+    const startTime = Date.now();
+    const timeoutMs = this._conf.visibilityTimeoutMs;
+
+    while (!this.isBrowserVisible()) {
+        if (startTime + timeoutMs < Date.now()) {
+            throw new TimeoutError(`BrowserSpawnerBase.waitForBrowserVisible: timeout after ${timeoutMs}ms`);
+        }
+
+        await delay(this._conf.visibilityPollIntervalMs);
+    }
 };
 
 /**
@@ -96,12 +164,12 @@ BrowserSpawnerBase.prototype._onWsConnection = function (conn) {
  * @return {Promise}
  */
 BrowserSpawnerBase.prototype._startBrowser = async function () {
-    throw new Error('BrowserSpawnerBase::_startBrowser: not implemented');
+    throw new Error('BrowserSpawnerBase._startBrowser: not implemented');
 };
 
-BrowserSpawnerBase.prototype.open = function (url) {
+BrowserSpawnerBase.prototype.open = async function (url) {
     if (!this._wsConn) {
-        throw new Error('BrowserSpawnerBase::open: not connected');
+        throw new Error('BrowserSpawnerBase.open: not connected');
     }
 
     const truncatedUrl = truncateString(url, {
@@ -116,6 +184,9 @@ BrowserSpawnerBase.prototype.open = function (url) {
     }
 
     this._sendWsMessage({ type: 'open', url: url });
+
+    // hack await
+    await delay(500);
 };
 
 BrowserSpawnerBase.prototype._sendWsMessage = function (msgArg) {
@@ -128,17 +199,26 @@ BrowserSpawnerBase.prototype._sendWsMessage = function (msgArg) {
 };
 
 BrowserSpawnerBase.prototype.stop = async function () {
-    if (this._process) {
-        await new Promise((resolve, reject) => {
-            treeKill(this._process.pid, err => err ? reject(err) : resolve());
+    if (this._process && this._wsServer) {
+        await new Promise(resolve => {
+            this._wsServer.close(resolve);
         });
+
+        try {
+            await new Promise((resolve, reject) => {
+                treeKill(this._process.pid, err => err ? reject(err) : resolve());
+            });
+        }
+        catch (error) {
+            this._log.error(`failed to stop browser: ${error.stack || error.message}`);
+        }
 
         await new Promise(res => this._httpServer.close(res));
         this._wsConn = null;
         this._process = null;
     }
     else {
-        throw new Error('Process is not running');
+        throw new Error('Process or WS Server not running');
     }
 };
 
@@ -148,11 +228,11 @@ BrowserSpawnerBase.prototype.stop = async function () {
  * @param {Function} callback - Params: 'close' event: none; 'error' event: error
  */
 // BrowserSpawnerBase.prototype.on = function () {
-//     return Promise.reject(new Error('BrowserSpawnerBase::on: not implemented'))
+//     return Promise.reject(new Error('BrowserSpawnerBase.on: not implemented'))
 // };
 
 BrowserSpawnerBase.prototype._getDefaultTempDir = function () {
-    throw new Error('BrowserSpawnerBase::_getDefaultTempDir: not implemented');
+    throw new Error('BrowserSpawnerBase._getDefaultTempDir: not implemented');
 };
 
 BrowserSpawnerBase.prototype._deleteTempDir = function () {
@@ -167,12 +247,12 @@ BrowserSpawnerBase.prototype._deleteTempDir = function () {
             attempts++;
 
             if (attempts > TEMP_DELETE_RETRIES) {
-                throw new Error('BrowserSpawnerBase: maximum retries reached');
+                throw new Error('BrowserSpawnerBase: maximum temp dir delete retries reached');
             }
 
-            rimraf(this._opts.tempDir, (maybeError) => {
+            rimraf(this._conf.tempDir, (maybeError) => {
                 if (maybeError) {
-                    this._log.debug(`BrowserSpawnerBase: deleting temp dir failed: ${maybeError}`);
+                    this._log.error(`BrowserSpawnerBase: deleting temp dir failed: ${maybeError}`);
 
                     setTimeout(loop, TEMP_DELETE_TIMEOUT);
                 }
@@ -185,3 +265,6 @@ BrowserSpawnerBase.prototype._deleteTempDir = function () {
         loop();
     });
 };
+
+exports = module.exports = BrowserSpawnerBase;
+BrowserSpawnerBase.TimeoutError = TimeoutError;

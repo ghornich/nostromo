@@ -175,8 +175,8 @@ RecorderServer.prototype.start = async function () {
 };
 
 RecorderServer.prototype.stop = async function () {
-    await this._puppeteer.stop()
-    await new Promise(resolve=>this._recorderAppServer.close(resolve));
+    await this._puppeteer.stop();
+    await new Promise(resolve => this._recorderAppServer.close(resolve));
 };
 
 RecorderServer.prototype._proxyMessage = function (data, rawData) {

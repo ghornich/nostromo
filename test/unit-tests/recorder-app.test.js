@@ -1,16 +1,16 @@
 'use strict';
 
-const rfr = require('rfr')
-const test=require('tape')
+const rfr = require('rfr');
+const test = require('tape');
 const Chrome = rfr('modules/browser-spawner-chrome');
-const RecorderServer=rfr('src/recorder/recorder-server')
-const BrowserPuppeteer=rfr('modules/browser-puppeteer').BrowserPuppeteer
-const MESSAGES=rfr('modules/browser-puppeteer').MESSAGES
-const COMMANDS=rfr('modules/browser-puppeteer').COMMANDS
+const RecorderServer = rfr('src/recorder/recorder-server');
+const BrowserPuppeteer = rfr('modules/browser-puppeteer').BrowserPuppeteer;
+const MESSAGES = rfr('modules/browser-puppeteer').MESSAGES;
+const COMMANDS = rfr('modules/browser-puppeteer').COMMANDS;
 
 // TODO test all aspects of recorder app
 
-test('recorder-app: composite events: defaults', async t=>{
+test('recorder-app: composite events: defaults', async t => {
     const recorderServer = new RecorderServer({
         _preEnableRecording: true,
         _mockMessages: [
@@ -32,8 +32,8 @@ test('recorder-app: composite events: defaults', async t=>{
                     $fullSelectorPath: 'div .a span',
                     target: {
                         className: '', id: '', innerText: '', tagName: 'SPAN', type: '',
-                    }
-                }
+                    },
+                },
             },
             {
                 type: MESSAGES.UPSTREAM.CAPTURED_EVENT,
@@ -44,18 +44,19 @@ test('recorder-app: composite events: defaults', async t=>{
                     $fullSelectorPath: 'div .a',
                     target: {
                         className: 'a', id: '', innerText: '', tagName: 'DIV', type: '',
-                    }
-                }
+                    },
+                },
             },
 
-        ]
-    })
+        ],
+    });
 
     const browser = new Chrome({
         name: 'Chrome',
         path: 'C:/Program Files (x86)/Google/Chrome/Application/chrome.exe',
-        bounds: { size: { width: 1024, height: 750 }, position: { x: 5, y: 5 } },
-    })
+        width: 1024,
+        height: 750,
+    });
 
     // await recorderServer.start()
     // await browser.start()
@@ -69,7 +70,7 @@ test('recorder-app: composite events: defaults', async t=>{
 
     // TODO finish test
 
-    t.end()
+    t.end();
 
 
-})
+});

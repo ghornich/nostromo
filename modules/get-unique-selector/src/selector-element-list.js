@@ -24,7 +24,7 @@ SelectorElementList.prototype.getSelectorPath = function () {
     .replace(/>{2,}/g, ' ')
     .replace(/^>|>$/, '')
     .replace(/>/g, ' > ')
-    .trim()
+    .trim();
 };
 
 SelectorElementList.prototype.toString = SelectorElementList.prototype.getSelectorPath;
@@ -77,58 +77,62 @@ SelectorElementList.prototype.simplifyClasses = function (enableUsePreferredClas
             continue;
         }
 
-        var originalSelector = selectorElement.rawSelector
-        var classList = new ClassList(originalSelector)
+        var originalSelector = selectorElement.rawSelector;
+        var classList = new ClassList(originalSelector);
 
         if (classList.length > 1) {
             for (var classIdx = classList.length - 1; classIdx >= 0; classIdx--) {
-                var classListElement = classList.get(classIdx)
+                var classListElement = classList.get(classIdx);
 
                 if (enableUsePreferredClass && this._opts.preferredClass && this._opts.preferredClass.test(classListElement.className)) {
                     continue;
                 }
 
-                classListElement.enabled = false
-                selectorElement.rawSelector = classList.getSelector()
+                classListElement.enabled = false;
+                selectorElement.rawSelector = classList.getSelector();
 
                 if (selectorElement.rawSelector === '' || this.getAmbiguity() > 1) {
-                    classListElement.enabled = true
+                    classListElement.enabled = true;
                 }
             }
 
-            selectorElement.rawSelector = classList.getSelector()
+            selectorElement.rawSelector = classList.getSelector();
         }
     }
 
 };
 
-function ClassList(classSelector){
+function ClassList(classSelector) {
     this.classListElements = classSelector.split(/(?=\.)/g).map(function (className) {
-        return new ClassListElement(className)
-    })
+        return new ClassListElement(className);
+    });
 
     Object.defineProperty(this, 'length', {
-        get: function () {return this.classListElements.length}
-    })
+        get: function () {
+            return this.classListElements.length;
+        },
+    });
 }
 
-ClassList.prototype.get=function(i){
-    return this.classListElements[i]
-}
+ClassList.prototype.get = function (i) {
+    return this.classListElements[i];
+};
 
-ClassList.prototype.getSelector=function(){
-    return this.classListElements.map(function (cle){
+ClassList.prototype.getSelector = function () {
+    return this.classListElements.map(function (cle) {
         return cle.enabled
             ? cle.className
-            : null
+            : null;
     })
-    .filter(function(s){return s})
-    .join('')
-}
+    .filter(function (s) {
+        return s;
+    })
+    .join('');
+};
 
 function ClassListElement(className) {
     this.enabled = true;
-    this.className=className;
+    this.className = className;
 }
 
 /**

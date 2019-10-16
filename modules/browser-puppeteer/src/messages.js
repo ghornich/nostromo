@@ -10,6 +10,7 @@ exports.UPSTREAM = {
     ACK: 'ack',
     NAK: 'nak',
     INSERT_ASSERTION: 'insert-assertion',
+    CONSOLE_PIPE: 'console-pipe',
 };
 
 /**
@@ -21,8 +22,6 @@ exports.DOWNSTREAM = {
     // { type, ??? }
     EXEC_FUNCTION: 'exec-function',
     SET_SELECTOR_BECAME_VISIBLE_DATA: 'set-selector-became-visible-data',
-    SHOW_SCREENSHOT_MARKER: 'show-screenshot-marker',
-    HIDE_SCREENSHOT_MARKER: 'hide-screenshot-marker',
     SET_TRANSMIT_EVENTS: 'set-transmit-events',
     TERMINATE_PUPPET: 'terminate-puppet',
     CLEAR_PERSISTENT_DATA: 'clear-persistent-data',
@@ -81,6 +80,13 @@ exports.DOWNSTREAM = {
  */
 
 /**
+ * @typedef {UpstreamControlMessage} ConsolePipeMessage
+ * @property {String} type - 'console-pipe'
+ * @property {String} messageType - 'info', 'log', 'warn', 'error'
+ * @property {String} message
+ */
+
+/**
  * @typedef {DownstreamControlMessage} ExecCommandMessage
  * @property {String} type - 'exec-command'
  * @property {Command} command
@@ -100,24 +106,9 @@ exports.DOWNSTREAM = {
  */
 
 /**
- * @typedef {DownstreamControlMessage} ShowScreenshotMarkerMessage
- * @property {String} type - 'show-screenshot-marker'
- */
-
-/**
- * @typedef {DownstreamControlMessage} HideScreenshotMarkerMessage
- * @property {String} type - 'hide-screenshot-marker'
- */
-
-/**
  * @typedef {DownstreamControlMessage} SetTransmitEventsMessage
  * @property {String} type - 'set-transmit-events'
  * @property {Boolean} value
- */
-
-/**
- * @typedef {DownstreamControlMessage} TerminatePuppetMessage
- * @property {String} type - 'terminate-puppet'
  */
 
 /**
