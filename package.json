@@ -14,8 +14,7 @@
     "lint": "eslint **/*.js **/*.jsx",
     "test": "npm run unit-test && npm run self-test",
     "unit-test": "tape test/**/*.test.js modules/**/*.test.js",
-    "self-test": "node src/cli.js --run -c test/self-tests/nostromo.run.conf.js",
-    "prepush": "npm test"
+    "self-test": "node src/cli.js --run -c test/self-tests/nostromo.run.conf.js"
   },
   "author": "ghornich",
   "dependencies": {
@@ -45,7 +44,6 @@
     "browserify": "^14.3.0",
     "eslint": "^4.2.0",
     "http-server": "^0.10.0",
-    "husky": "^0.14.3",
     "rfr": "^1.2.3",
     "tape": "^4.7.0",
     "watchmen": "github:ghornich/watchmen"
