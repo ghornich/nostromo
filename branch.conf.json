@@ -1,4 +1,4 @@
 {
-	"branch": "v3-dev",
-	"gitUrl": "git://github.com/ghornich/nostromo.git#v3-dev"
+	"branch": "master",
+	"gitUrl": "git://github.com/ghornich/nostromo.git#master"
 }
