@@ -34,6 +34,16 @@ BrowserPuppetCommands.prototype.scroll = function (cmd) {
 };
 
 /**
+ * @param {ScrollToCommand} cmd
+ * @throws {Error}
+ */
+BrowserPuppetCommands.prototype.scrollTo = function (cmd) {
+    var $el = this.$(cmd.selector);
+    this._assert$el($el, cmd, { assertVisibility: false });
+    $el[0].scrollIntoView();
+};
+
+/**
  * @param {MouseoverCommand} cmd
  * @throws {Error}
  */

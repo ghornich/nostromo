@@ -543,6 +543,7 @@ BrowserPuppet.prototype.execCommand = Promise.method(function (command) {
         case 'focus':
         case 'isVisible':
         case 'scroll':
+        case 'scrollTo':
         case 'mouseover':
         case 'uploadFileAndAssign':
             return this[command.type](command);

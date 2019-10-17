@@ -19,15 +19,15 @@ module.exports = function (config) {
                 width: 750,
                 height: 550,
             }),
-            new config.browsers.Firefox({
-                name: 'Firefox',
-                path: [
-                    'C:/Program Files/Mozilla Firefox/firefox.exe',
-                    'C:/Program Files (x86)/Mozilla Firefox/firefox.exe',
-                ],
-                width: 950,
-                height: 650,
-            }),
+            // new config.browsers.Firefox({
+            //     name: 'Firefox',
+            //     path: [
+            //         'C:/Program Files/Mozilla Firefox/firefox.exe',
+            //         'C:/Program Files (x86)/Mozilla Firefox/firefox.exe',
+            //     ],
+            //     width: 950,
+            //     height: 650,
+            // }),
         ],
 
         suites: [

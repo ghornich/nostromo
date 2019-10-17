@@ -191,6 +191,16 @@ BrowserPuppetCommands.prototype.scroll = function (cmd) {
 };
 
 /**
+ * @param {ScrollToCommand} cmd
+ * @throws {Error}
+ */
+BrowserPuppetCommands.prototype.scrollTo = function (cmd) {
+    var $el = this.$(cmd.selector);
+    this._assert$el($el, cmd, { assertVisibility: false });
+    $el[0].scrollIntoView();
+};
+
+/**
  * @param {MouseoverCommand} cmd
  * @throws {Error}
  */
@@ -998,6 +1008,7 @@ BrowserPuppet.prototype.execCommand = Promise.method(function (command) {
         case 'focus':
         case 'isVisible':
         case 'scroll':
+        case 'scrollTo':
         case 'mouseover':
         case 'uploadFileAndAssign':
             return this[command.type](command);

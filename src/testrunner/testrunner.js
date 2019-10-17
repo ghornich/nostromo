@@ -229,6 +229,7 @@ class Testrunner extends EventEmitter {
             isVisible: this._isVisibleDirect.bind(this),
             focus: this._focusDirect.bind(this),
             scroll: this._scrollDirect.bind(this),
+            scrollTo: this._scrollToDirect.bind(this),
             delay: this._delay.bind(this),
             comment: this._comment.bind(this),
             assert: this._assert.bind(this),
@@ -838,6 +839,18 @@ class Testrunner extends EventEmitter {
             type: 'scroll',
             selector: selector,
             scrollTop: scrollTop,
+        })
+        .catch(async err => {
+            await this._handleCommandError(err);
+        });
+    }
+
+    async _scrollToDirect(selector) {
+        this._log.debug(`scrollTo: "${ellipsis(selector)}"`);
+
+        return this._browserPuppeteer.execCommand({
+            type: 'scrollTo',
+            selector: selector,
         })
         .catch(async err => {
             await this._handleCommandError(err);

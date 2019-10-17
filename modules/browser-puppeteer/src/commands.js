@@ -10,6 +10,7 @@ exports = module.exports = {
     GET_VALUE: 'getValue',
     PRESS_KEY: 'pressKey',
     SCROLL: 'scroll',
+    SCROLL_TO: 'scrollTo',
     MOUSEOVER: 'mouseover',
     WAIT_FOR_VISIBLE: 'waitForVisible',
     WAIT_WHILE_VISIBLE: 'waitWhileVisible',
@@ -41,6 +42,12 @@ exports = module.exports = {
  * @property {String} type - 'scroll'
  * @property {String} selector
  * @property {Number} scrollTop
+ */
+
+/**
+ * @typedef {Command} ScrollToCommand
+ * @property {String} type - 'scrollTo'
+ * @property {String} selector
  */
 
 /**
