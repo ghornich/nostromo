@@ -1,5 +1,7 @@
 'use strict';
 
+/* eslint-disable max-statements */
+
 exports = module.exports = function (test, _testrunnerInstance) {
     test('browser-puppeteer commands', async t => {
         await t.click('.click-test-jq');
@@ -34,6 +36,18 @@ exports = module.exports = function (test, _testrunnerInstance) {
 
         await t.pressKey('.pressKey-test', 65);
         t.equal(await t.getValue('.pressKey-test'), 'pressKey65OK');
+
+        await t.scrollTo('#scroll-test--n');
+
+        const scrollToTop = await t.execFunction(function () {
+            // eslint-disable-next-line no-undef
+            return $('.scroll-test')[0].scrollTop;
+        });
+
+        t.equal(scrollToTop, 234);
+
+        // reset scroll
+        await t.scroll('.scroll-test', 0);
 
         await t.scroll('.scroll-test', 190);
 
