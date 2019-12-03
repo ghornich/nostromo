@@ -113,6 +113,7 @@ class TestFailedError extends Error {
  * @property {Boolean} [bailout = false] - Bailout from the entire test program if an assert fails
  * @property {String} [referenceScreenshotsDir = DEFAULT_REF_SCREENSHOTS_DIR]
  * @property {String} [referenceErrorsDir = DEFAULT_REF_ERRORS_DIR]
+ * @property {string} [workspaceDir]
  * @property {Array<BrowserSpawner>} browsers - see example run config file
  * @property {ImageDiffOptions} [imageDiffOptions] - options for the built-in, screenshot-based asserter
  * @property {Array<Suite>} suites
@@ -140,6 +141,7 @@ class Testrunner extends EventEmitter {
             referenceScreenshotsDir: DEFAULT_REF_SCREENSHOTS_DIR,
             referenceErrorsDir: DEFAULT_REF_ERRORS_DIR,
             referenceDiffsDir: DEFAULT_REF_DIFFS_DIR,
+            workspaceDir: process.cwd(),
             browsers: [],
             suites: [],
             testFilter: null, // TODO use regex instead of string
@@ -282,6 +284,12 @@ class Testrunner extends EventEmitter {
         this._currentBrowser = null;
         this._foundTestsCount = 0;
         this._okTestsCount = 0;
+
+        /**
+         * @type {{ errorImage: { path: string, relativePath: string }, diffImage: { path: string, relativePath: string },
+         *          referenceImage: { path: string, relativePath: string }, attempt: number, assertIndex: number, suite: string, testName: string }[]}
+         */
+        this._screenshotCatalog = [];
     }
 
     async run() {
@@ -363,6 +371,13 @@ class Testrunner extends EventEmitter {
             }
             else {
                 this._tapWriter.diagnostic('SUCCESS');
+            }
+
+            try {
+                await fs.writeFileAsync(pathlib.resolve(this._conf.workspaceDir, 'screenshot-catalog.json'), JSON.stringify(this._screenshotCatalog, null, 4));
+            }
+            catch (err) {
+                console.error(err);
             }
 
             this._isRunning = false;
@@ -992,8 +1007,10 @@ class Testrunner extends EventEmitter {
         await mkdirpAsync(failedImgDir);
         await mkdirpAsync(this._conf.referenceDiffsDir);
 
-        // region write failed images
-        for (const [i, image] of screenshots.entries()) {
+        for (const [i, diffResult] of diffResults.entries()) {
+            const failedImage = screenshots[i];
+
+            // region write failed images
 
             const failedImgName = i === 0
                 ? `${this._assertCount}.png`
@@ -1001,31 +1018,48 @@ class Testrunner extends EventEmitter {
 
             const failedImgPath = pathlib.resolve(failedImgDir, failedImgName);
             const failedImgPathRelative = pathlib.relative(pathlib.resolve(this._conf.referenceErrorsDir), failedImgPath);
-            await image.toPNGFile(failedImgPath);
+            await failedImage.toPNGFile(failedImgPath);
             this._log.info(`failed screenshot added: ${failedImgPathRelative}`);
-        }
-        // endregion
 
-        // region write diff images
-        for (const [i, diffResult] of diffResults.entries()) {
-            const image = screenshots[i];
+            // endregion
+
+            // region write diff images
+
 
             const diffImgPath = pathlib.resolve(
                 this._conf.referenceDiffsDir,
-                this._currentBrowser.name.toLowerCase() + '___' + this._currentTest.id + '___' + this._assertCount + `__attempt_${i + 1}.png`
+                this._currentBrowser.name.toLowerCase() + '___' + this._currentTest.id + '___' + this._assertCount + `__attempt_${i + 1}.png`,
             );
             const diffImgPathRelative = pathlib.relative(pathlib.resolve(this._conf.referenceDiffsDir), diffImgPath);
 
             for (const bufIdx of diffResult.diffBufferIndexes) {
-                image.data[bufIdx] = 255;
-                image.data[bufIdx + 1] = 0;
-                image.data[bufIdx + 2] = 0;
+                failedImage.data[bufIdx] = 255;
+                failedImage.data[bufIdx + 1] = 0;
+                failedImage.data[bufIdx + 2] = 0;
             }
 
-            await image.toPNGFile(diffImgPath);
+            await failedImage.toPNGFile(diffImgPath);
             this._log.info(`diff screenshot added: ${diffImgPathRelative}`);
+            // endregion
+
+            this._screenshotCatalog.push({
+                assertIndex: this._assertCount,
+                attempt: i + 1,
+                diffImage: {
+                    path: diffImgPath,
+                    relativePath: diffImgPathRelative,
+                },
+                errorImage: {
+                    path: failedImgPath,
+                    relativePath: failedImgPathRelative,
+                },
+                referenceImage: {
+                    path: refImgPath,
+                    relativePath: refImgPathRelative,
+                },
+                testName: this._currentTest.id,
+            });
         }
-        // endregion
 
         await this._runCurrentAfterAssertTasks();
     }
