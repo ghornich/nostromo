@@ -18,9 +18,6 @@ const globAsync = Promise.promisify(require('glob'));
 const bufferImageDiff = require(MODULES_PATH + 'buffer-image-diff');
 const accessAsync = util.promisify(fs.access);
 
-// TODO standard tape API (sync), rename current equal() to valueEquals()
-// TODO convert to es6 class
-
 const TEST_STATE = {
     SCHEDULED: 0,
     PASSED: 1,
@@ -37,6 +34,8 @@ const DEFAULT_SUITE_NAME = '(Unnamed suite)';
 const DEFAULT_REF_SCREENSHOTS_DIR = 'reference-screenshots';
 const DEFAULT_REF_ERRORS_DIR = 'reference-errors';
 const DEFAULT_REF_DIFFS_DIR = 'reference-diffs';
+
+const REPORT_FILE_NAME = 'test-run-report.json';
 
 // TODO use es6 class to inherit Error
 const ERRORS = {
@@ -103,6 +102,28 @@ class TestFailedError extends Error {
  * @property {DirectAPICallback} [afterLastCommand]
  * @property {DirectAPICallback} [beforeAssert]
  * @property {DirectAPICallback} [afterAssert]
+ */
+
+/**
+ * @typedef {Object} screenshotItem
+ * @property {{ path: string, relativePath: string }} errorImage
+ * @property {{ path: string, relativePath: string }} diffImage
+ * @property {{ path: string, relativePath: string }} referenceImage
+ * @property {number} attempt
+ * @property {number} assertIndex
+ * @property {string} suite
+ * @property {string} testName
+ */
+
+/**
+ * @typedef {Object} TestRunReport
+ * @property {screenshotItem[]} screenshots
+ * @property {number} testsCount
+ * @property {number} passedCount
+ * @property {number} failedCount
+ * @property {string[]} failedTestNames
+ * @property {number} runTimeMs
+ * @property {boolean} passed
  */
 
 /**
@@ -286,10 +307,17 @@ class Testrunner extends EventEmitter {
         this._okTestsCount = 0;
 
         /**
-         * @type {{ errorImage: { path: string, relativePath: string }, diffImage: { path: string, relativePath: string },
-         *          referenceImage: { path: string, relativePath: string }, attempt: number, assertIndex: number, suite: string, testName: string }[]}
+         * @type {TestRunReport}
          */
-        this._screenshotCatalog = [];
+        this._testRunReport = {
+            screenshots: [],
+            failedCount: null,
+            failedTestNames: [],
+            testsCount: null,
+            passedCount: null,
+            passed: false,
+            runTimeMs: null,
+        };
     }
 
     async run() {
@@ -350,10 +378,10 @@ class Testrunner extends EventEmitter {
             this._tapWriter.diagnostic(`tests ${effectiveTestsCount}`);
             this._tapWriter.diagnostic(`pass ${this._okTestsCount}`);
 
+            const failedTestNames = [];
+
             if (effectiveTestsCount !== this._okTestsCount) {
                 process.exitCode = 1;
-
-                const failedTestNames = [];
 
                 conf.suites.forEach(suite => {
                     suite.tests.forEach(test => {
@@ -373,8 +401,15 @@ class Testrunner extends EventEmitter {
                 this._tapWriter.diagnostic('SUCCESS');
             }
 
+            this._testRunReport.testsCount = effectiveTestsCount;
+            this._testRunReport.passedCount = this._okTestsCount;
+            this._testRunReport.failedCount = this._testRunReport.testsCount - this._testRunReport.passedCount;
+            this._testRunReport.passed = this._testRunReport.testsCount === this._testRunReport.passedCount;
+            this._testRunReport.runTimeMs = Date.now() - runStartTime;
+            this._testRunReport.failedTestNames = failedTestNames;
+
             try {
-                await fs.writeFileAsync(pathlib.resolve(this._conf.workspaceDir, 'screenshot-catalog.json'), JSON.stringify(this._screenshotCatalog, null, 4));
+                await fs.writeFileAsync(pathlib.resolve(this._conf.workspaceDir, REPORT_FILE_NAME), JSON.stringify(this._testRunReport, null, 4));
             }
             catch (err) {
                 console.error(err);
@@ -488,6 +523,11 @@ class Testrunner extends EventEmitter {
 
             try {
                 await this._runTest({ suite, test });
+
+                // cleanup: remove potential failed screenshots from catalog for this test
+                // TODO delete screenshots from disk? or don't write them until test fails
+                this._testRunReport.screenshots = this._testRunReport.screenshots.filter(screenshotItem => screenshotItem.testName !== test.name);
+
                 this._log.trace(`_runTestWithRetries: success, test '${test.name}' passed`);
                 break;
             }
@@ -931,7 +971,6 @@ class Testrunner extends EventEmitter {
         }
     }
 
-    // TODO remove sync codes
     async _assert() {
         const refImgDir = pathlib.resolve(this._conf.referenceScreenshotsDir, this._currentBrowser.name.toLowerCase(), this._currentTest.id);
         const failedImgDir = pathlib.resolve(this._conf.referenceErrorsDir, this._currentBrowser.name.toLowerCase(), this._currentTest.id);
@@ -1042,7 +1081,7 @@ class Testrunner extends EventEmitter {
             this._log.info(`diff screenshot added: ${diffImgPathRelative}`);
             // endregion
 
-            this._screenshotCatalog.push({
+            this._testRunReport.screenshots.push({
                 assertIndex: this._assertCount,
                 attempt: i + 1,
                 diffImage: {
@@ -1097,7 +1136,7 @@ class Testrunner extends EventEmitter {
     }
 }
 
-function noop() {}
+function noop() { }
 
 // TODO use es6 classes for errors
 function createError(type, msg) {
