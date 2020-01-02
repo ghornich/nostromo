@@ -616,7 +616,7 @@ class Testrunner extends EventEmitter {
             this._currentAfterAssert = suite.afterAssert || noop;
 
             try {
-                await test.testFn(this.tAPI, { directAPI: this.directAPI });
+                await test.testFn(this.tAPI, { suite: suite, directAPI: this.directAPI });
 
                 if (test.runErrors.length > 0) {
                     throw new TestFailedError({
