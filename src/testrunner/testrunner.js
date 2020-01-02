@@ -409,6 +409,9 @@ class Testrunner extends EventEmitter {
             this._testRunReport.failedTestNames = failedTestNames;
 
             try {
+                // TODO deprecated, remove in future
+                await fs.writeFileAsync(pathlib.resolve(this._conf.workspaceDir, 'screenshot-catalog.json'), JSON.stringify(this._testRunReport.screenshots, null, 4));
+
                 await fs.writeFileAsync(pathlib.resolve(this._conf.workspaceDir, REPORT_FILE_NAME), JSON.stringify(this._testRunReport, null, 4));
             }
             catch (err) {
