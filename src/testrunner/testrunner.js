@@ -111,7 +111,6 @@ class TestFailedError extends Error {
  * @property {{ path: string, relativePath: string }} referenceImage
  * @property {number} attempt
  * @property {number} assertIndex
- * @property {string} suite
  * @property {string} testName
  */
 
