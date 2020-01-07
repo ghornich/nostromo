@@ -1,5 +1,6 @@
 'use strict';
 
+const fs = require('fs');
 const assert = require('assert');
 const pathlib = require('path');
 const EventEmitter = require('events').EventEmitter;
@@ -35,6 +36,7 @@ class TimeoutError extends Error {}
  * @property {Number} [waitForConnectionPollIntervalMs = 500]
  * @property {Number} [visibilityTimeoutMs = 60000]
  * @property {Number} [visibilityPollIntervalMs = 3000]
+ * @property {Number} [spawnerPort = DEFAULT_SPAWNER_PORT]
  */
 
 // TODO es6 class
@@ -53,6 +55,7 @@ function BrowserSpawnerBase(conf) {
         waitForConnectionPollIntervalMs: 500,
         visibilityTimeoutMs: 60000,
         visibilityPollIntervalMs: 3000,
+        spawnerPort: DEFAULT_SPAWNER_PORT,
     }, conf);
 
     this._log = conf.logger || new Loggr({
@@ -62,7 +65,7 @@ function BrowserSpawnerBase(conf) {
 
     this._process = null;
 
-    this._httpServer = http.createServer((request, response) => response.end('404'));
+    this._httpServer = http.createServer(this._onHttpRequest.bind(this));
     this._wsServer = null;
     this._wsConn = null;
 
@@ -83,8 +86,6 @@ function BrowserSpawnerBase(conf) {
 util.inherits(BrowserSpawnerBase, EventEmitter);
 
 /**
- * 
- * @param {String} url - URL to open
  * @return {Promise}
  */
 BrowserSpawnerBase.prototype.start = async function () {
@@ -96,9 +97,9 @@ BrowserSpawnerBase.prototype.start = async function () {
         this._log.error(err.stack || err.message);
     });
 
-    await new Promise(res => this._httpServer.listen(DEFAULT_SPAWNER_PORT, res));
+    await new Promise(res => this._httpServer.listen(this._conf.spawnerPort, res));
 
-    await this._startBrowser(pathlib.resolve(__dirname, 'browser-spawner-context.html'));
+    await this._startBrowser(`http://localhost:${ this._conf.spawnerPort }/browser-spawner-context.html`);
     await this._waitForConnection();
 
     // TODO await this with events?
@@ -196,6 +197,18 @@ BrowserSpawnerBase.prototype._sendWsMessage = function (msgArg) {
     }
 
     this._wsConn.send(msg);
+};
+
+BrowserSpawnerBase.prototype._onHttpRequest = async function (request, response) {
+    if (request.url === '/browser-spawner-context.html') {
+        let html = await fs.promises.readFile(pathlib.resolve(__dirname, 'browser-spawner-context.html'), 'utf8');
+        response.setHeader('content-type', 'text/html');
+        response.end(html.replace('{{spawnerPort}}', this._conf.spawnerPort));
+        return;
+    }
+
+    response.status = 404;
+    response.end('404');
 };
 
 BrowserSpawnerBase.prototype.stop = async function () {

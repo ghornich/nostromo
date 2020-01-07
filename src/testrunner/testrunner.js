@@ -286,6 +286,7 @@ class Testrunner extends EventEmitter {
         this._browserPuppeteer = new BrowserPuppeteer({
             logger: this._log.fork('BrowserPuppeteer'),
             deferredMessaging: true,
+            port: this._conf.testPort,
         });
 
         this._consolePipeLog = new Loggr({
@@ -984,7 +985,15 @@ class Testrunner extends EventEmitter {
         await this._currentBeforeAssert(this.directAPI);
         await mkdirpAsync(refImgDir);
 
-        let screenshotBitmap = await screenshotjs({ cropMarker: screenshotMarkerImg });
+        let screenshotBitmap;
+        
+        if ('getScreenshot' in this._currentBrowser) {
+            screenshotBitmap=await this._currentBrowser.getScreenshot({ cropMarker: screenshotMarkerImg })
+        }
+        else {
+            screenshotBitmap = await screenshotjs({ cropMarker: screenshotMarkerImg });
+        }
+        
         const screenshots = [screenshotBitmap];
         const diffResults = [];
 
@@ -1025,7 +1034,13 @@ class Testrunner extends EventEmitter {
             this._log.warn(`screenshot assert failed: ${refImgPathRelative}, ppm: ${formattedPPM}, totalChangedPixels: ${imgDiffResult.totalChangedPixels}, attempt#: ${assertAttempt}`);
 
             if (assertAttempt < assertRetryMaxAttempts) {
-                screenshotBitmap = await screenshotjs({ cropMarker: screenshotMarkerImg });
+                if ('getScreenshot' in this._currentBrowser) {
+                    screenshotBitmap=await this._currentBrowser.getScreenshot({ cropMarker: screenshotMarkerImg })
+                }
+                else {
+                    screenshotBitmap = await screenshotjs({ cropMarker: screenshotMarkerImg });
+                }
+
                 screenshots.push(screenshotBitmap);
                 await Promise.delay(this._conf.assertRetryInterval);
             }
