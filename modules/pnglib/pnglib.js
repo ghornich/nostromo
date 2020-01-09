@@ -9,8 +9,9 @@ const Jimp = require('jimp');
 
 class Bitmap {
     /**
-     * @param {Number} options.width
-     * @param {Number} options.height
+     * @param {Object} options
+     * @param {number} options.width
+     * @param {number} options.height
      * @param {Buffer} options.data
      */
     constructor({ width, height, data }) {
@@ -20,7 +21,7 @@ class Bitmap {
     }
 
     /**
-     * @return {Buffer}
+     * @return {Promise<Buffer>}
      */
     async toPNGBuffer() {
         return new Jimp({ width: this.width, height: this.height, data: this.data }).getBufferAsync(Jimp.MIME_PNG);
@@ -45,7 +46,7 @@ class Bitmap {
 
 /**
  * @param {String|Buffer} source
- * @return {Bitmap}
+ * @return {Promise<Bitmap>}
  */
 Bitmap.from = async function (source) {
     const jimpImage = await Jimp.read(source);

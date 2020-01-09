@@ -15,8 +15,8 @@ const screenshotjs = require(MODULES_PATH + 'screenshot-js');
 const mkdirpAsync = Promise.promisify(require('mkdirp'));
 const Bitmap = require(MODULES_PATH + 'pnglib').Bitmap;
 const globAsync = Promise.promisify(require('glob'));
-const bufferImageDiff = require(MODULES_PATH + 'buffer-image-diff');
 const accessAsync = util.promisify(fs.access);
+const builtInPlugins = require('./builtin-plugins');
 
 const TEST_STATE = {
     SCHEDULED: 0,
@@ -66,6 +66,8 @@ class TestFailedError extends Error {
         this.name = 'TestFailedError';
     }
 }
+
+/** @typedef {(pluggables: Object) => void } Plugin */
 
 /**
  * test assert API (without before/after side effects, "directAPI"), TODO define
@@ -144,6 +146,7 @@ class TestFailedError extends Error {
  * @property {RegExp} [testRetryFilter = /.+/] - retry failed tests only if test name matches this filter
  * @property {TestrunnerCallback} [onCommandError]
  * @property {TestrunnerCallback} [onAssertError]
+ * @property {Plugin[]} [plugins]
  */
 
 class Testrunner extends EventEmitter {
@@ -172,12 +175,13 @@ class Testrunner extends EventEmitter {
             testRetryFilter: /.+/,
             onCommandError: null,
             onAssertError: null,
+            plugins: [],
+
         };
 
         const defaultImageDiffOptions = {
             colorThreshold: 3,
-            imageThreshold: 20,
-            includeDiffBufferIndexes: true,
+            pixelThresholdPercent: 0.002,
         };
 
         for (const key of Reflect.ownKeys(conf)) {
@@ -318,6 +322,12 @@ class Testrunner extends EventEmitter {
             passed: false,
             runTimeMs: null,
         };
+
+        this._pluggables = {
+            imageDiffer: builtInPlugins.imageDiffer,
+        };
+
+        this._conf.plugins.forEach(plugin => plugin(this._pluggables));
     }
 
     async run() {
@@ -986,14 +996,14 @@ class Testrunner extends EventEmitter {
         await mkdirpAsync(refImgDir);
 
         let screenshotBitmap;
-        
+
         if ('getScreenshot' in this._currentBrowser) {
-            screenshotBitmap=await this._currentBrowser.getScreenshot({ cropMarker: screenshotMarkerImg })
+            screenshotBitmap = await this._currentBrowser.getScreenshot({ cropMarker: screenshotMarkerImg });
         }
         else {
             screenshotBitmap = await screenshotjs({ cropMarker: screenshotMarkerImg });
         }
-        
+
         const screenshots = [screenshotBitmap];
         const diffResults = [];
 
@@ -1016,26 +1026,25 @@ class Testrunner extends EventEmitter {
 
         const assertRetryMaxAttempts = this._conf.assertRetryCount + 1;
         let imgDiffResult;
-        let formattedPPM;
+        let formattedPercent;
 
         for (let assertAttempt = 0; assertAttempt < assertRetryMaxAttempts; assertAttempt++) {
-            imgDiffResult = bufferImageDiff(screenshotBitmap, refImg, this._conf.imageDiffOptions);
+            imgDiffResult = await this._pluggables.imageDiffer(screenshotBitmap, refImg, this._conf.imageDiffOptions);
             diffResults.push(imgDiffResult);
-            formattedPPM = String(imgDiffResult.difference).replace(/\.(\d)\d+/, '.$1');
+            formattedPercent = imgDiffResult.differencePercent.toFixed(5);
 
             if (imgDiffResult.same) {
-                // this._tapWriter.ok(`screenshot assert (${formattedPPM} ppm): ${refImgPathRelative}, retries: ${assertAttempt}`);
-                this._log.info(`OK screenshot assert (${formattedPPM} ppm): ${refImgPathRelative}, totalChangedPixels: ${imgDiffResult.totalChangedPixels}, retries: ${assertAttempt}`);
+                this._log.info(`OK screenshot assert (difference: ${formattedPercent}): ${refImgPathRelative}, retries: ${assertAttempt}`);
 
                 await this._runCurrentAfterAssertTasks();
                 return;
             }
 
-            this._log.warn(`screenshot assert failed: ${refImgPathRelative}, ppm: ${formattedPPM}, totalChangedPixels: ${imgDiffResult.totalChangedPixels}, attempt#: ${assertAttempt}`);
+            this._log.warn(`screenshot assert failed: ${refImgPathRelative} (difference: ${formattedPercent}) attempt#: ${assertAttempt}`);
 
             if (assertAttempt < assertRetryMaxAttempts) {
                 if ('getScreenshot' in this._currentBrowser) {
-                    screenshotBitmap=await this._currentBrowser.getScreenshot({ cropMarker: screenshotMarkerImg })
+                    screenshotBitmap = await this._currentBrowser.getScreenshot({ cropMarker: screenshotMarkerImg });
                 }
                 else {
                     screenshotBitmap = await screenshotjs({ cropMarker: screenshotMarkerImg });
@@ -1046,9 +1055,9 @@ class Testrunner extends EventEmitter {
             }
         }
 
-        this._currentTest.runErrors.push(new AssertError(`FAIL screenshot assert (${formattedPPM} ppm): ${refImgPathRelative}, totalChangedPixels: ${imgDiffResult.totalChangedPixels}`));
+        this._currentTest.runErrors.push(new AssertError(`FAIL screenshot assert (difference: ${formattedPercent}): ${refImgPathRelative}`));
 
-        this._log.error(`FAIL screenshot assert (${formattedPPM} ppm): ${refImgPathRelative}, totalChangedPixels: ${imgDiffResult.totalChangedPixels}`);
+        this._log.error(`FAIL screenshot assert (difference: ${formattedPercent}): ${refImgPathRelative}`);
 
         if (this._conf.onAssertError !== null) {
             try {
@@ -1065,6 +1074,7 @@ class Testrunner extends EventEmitter {
 
         for (const [i, diffResult] of diffResults.entries()) {
             const failedImage = screenshots[i];
+            const diffImage = diffResult.diffBitmap;
 
             // region write failed images
 
@@ -1088,13 +1098,7 @@ class Testrunner extends EventEmitter {
             );
             const diffImgPathRelative = pathlib.relative(pathlib.resolve(this._conf.referenceDiffsDir), diffImgPath);
 
-            for (const bufIdx of diffResult.diffBufferIndexes) {
-                failedImage.data[bufIdx] = 255;
-                failedImage.data[bufIdx + 1] = 0;
-                failedImage.data[bufIdx + 2] = 0;
-            }
-
-            await failedImage.toPNGFile(diffImgPath);
+            await diffImage.toPNGFile(diffImgPath);
             this._log.info(`diff screenshot added: ${diffImgPathRelative}`);
             // endregion
 

@@ -2,13 +2,10 @@ exports = module.exports = imageDiff;
 
 class DifferentSizeError extends Error {}
 
-// a, b: Image
-// return {same:Boolean, difference:Number}
-
 /**
  * @typedef {Object} ImageDiffResult
  * @property {Boolean} same
- * @property {Number} difference
+ * @property {Number} differencePercent
  * @property {Number} totalChangedPixels
  * @property {Array<Number>} [diffBufferIndexes]
  */
@@ -16,7 +13,7 @@ class DifferentSizeError extends Error {}
 /**
  * @typedef {Object} ImageDiffOptions
  * @property {Number} options.colorThreshold
- * @property {Number} options.imageThreshold
+ * @property {Number} options.pixelThresholdPercent
  * @property {Number} [options.equivalenceThreshold = 4]
  * @property {Number} [options.grayscaleThreshold = 0] - Ignore grayscale differences. Zero disables this threshold
  * @property {Number} [options.includeDiffBufferIndexes = false]
@@ -31,7 +28,7 @@ class DifferentSizeError extends Error {}
 function imageDiff(a, b, options) {
     const opts = options || {};
     assert(opts.colorThreshold !== undefined, 'colorThreshold is missing');
-    assert(opts.imageThreshold !== undefined, 'imageThreshold is missing');
+    assert(opts.pixelThresholdPercent !== undefined, 'pixelThresholdPercent is missing');
 
     if (opts.equivalenceThreshold === undefined) {
         opts.equivalenceThreshold = 4;
@@ -47,7 +44,7 @@ function imageDiff(a, b, options) {
     }
 
     if (a.data.equals(b.data)) {
-        return { same: true, difference: 0, totalChangedPixels: 0 };
+        return { same: true, differencePercent: 0, totalChangedPixels: 0 };
     }
 
     let diffPxCount = 0;
@@ -89,9 +86,9 @@ function imageDiff(a, b, options) {
     }
 
     const totalPxs = a.width * b.width;
-    const imgDifference = diffPxCount / totalPxs * 1e6;
-    const same = imgDifference <= opts.imageThreshold;
-    const result = { same: same, difference: imgDifference, totalChangedPixels: totalChangedPixels };
+    const differencePercent = diffPxCount / totalPxs * 100;
+    const same = differencePercent <= opts.pixelThresholdPercent;
+    const result = { same: same, differencePercent, totalChangedPixels: totalChangedPixels };
 
     if (opts.includeDiffBufferIndexes) {
         result.diffBufferIndexes = diffBufferIndexes;
