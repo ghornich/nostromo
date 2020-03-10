@@ -986,14 +986,14 @@ class Testrunner extends EventEmitter {
         await mkdirpAsync(refImgDir);
 
         let screenshotBitmap;
-        
+
         if ('getScreenshot' in this._currentBrowser) {
-            screenshotBitmap=await this._currentBrowser.getScreenshot({ cropMarker: screenshotMarkerImg })
+            screenshotBitmap = await this._currentBrowser.getScreenshot({ cropMarker: screenshotMarkerImg });
         }
         else {
             screenshotBitmap = await screenshotjs({ cropMarker: screenshotMarkerImg });
         }
-        
+
         const screenshots = [screenshotBitmap];
         const diffResults = [];
 
@@ -1035,7 +1035,7 @@ class Testrunner extends EventEmitter {
 
             if (assertAttempt < assertRetryMaxAttempts) {
                 if ('getScreenshot' in this._currentBrowser) {
-                    screenshotBitmap=await this._currentBrowser.getScreenshot({ cropMarker: screenshotMarkerImg })
+                    screenshotBitmap = await this._currentBrowser.getScreenshot({ cropMarker: screenshotMarkerImg });
                 }
                 else {
                     screenshotBitmap = await screenshotjs({ cropMarker: screenshotMarkerImg });
