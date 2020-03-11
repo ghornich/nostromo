@@ -142,6 +142,8 @@ class TestFailedError extends Error {
  * @property {String} [testFilter] - regular expression string
  * @property {Number} [testRetryCount = 0] - retry failed tests n times
  * @property {RegExp} [testRetryFilter = /.+/] - retry failed tests only if test name matches this filter
+ * @property {number} [commandRetryCount = 4]
+ * @property {number} [commandRetryInterval = 250]
  * @property {TestrunnerCallback} [onCommandError]
  * @property {TestrunnerCallback} [onAssertError]
  */
@@ -172,6 +174,8 @@ class Testrunner extends EventEmitter {
             testRetryFilter: /.+/,
             onCommandError: null,
             onAssertError: null,
+            commandRetryCount: 4,
+            commandRetryInterval: 250,
         };
 
         const defaultImageDiffOptions = {
@@ -760,6 +764,34 @@ class Testrunner extends EventEmitter {
         return Promise.each(cmds, cmd => this._execCommandSideEffect(cmd));
     }
 
+    async _execCommandWithRetries(command) {
+        let retries = 0;
+
+        // eslint-disable-next-line no-constant-condition
+        while (true) {
+            this._log.trace(`_execCommandWithRetries - attempt: ${retries}, command: ${util.inspect(command)}`);
+
+            try {
+                await this._browserPuppeteer.execCommand(command);
+                this._log.trace('_execCommandWithRetries - success');
+                break;
+            }
+            catch (err) {
+                if (retries < this._conf.commandRetryCount) {
+                    this._log.warn(`Ignoring ${command.type} error, retrying`);
+                    this._log.debug(err);
+                    retries++;
+                    await Promise.delay(this._conf.commandRetryInterval);
+                    continue;
+                }
+
+                this._log.trace('_execCommandWithRetries - failure, max retries reached');
+
+                throw err;
+            }
+        }
+    }
+
     async _equal(actual, expected, description) {
         if (isEqual(actual, expected)) {
             this._log.info('equal OK: ' + (description || '(unnamed)'));
@@ -784,7 +816,7 @@ class Testrunner extends EventEmitter {
         this._log.info(`click: "${ellipsis(selector)}"`);
 
         try {
-            await this._browserPuppeteer.execCommand({
+            await this._execCommandWithRetries({
                 type: 'click',
                 selector: selector,
                 options,
@@ -815,7 +847,7 @@ class Testrunner extends EventEmitter {
     async _setValueDirect(selector, value) {
         this._log.info(`setValue: "${ellipsis(value)}", "${ellipsis(selector)}"`);
 
-        return this._browserPuppeteer.execCommand({
+        return this._execCommandWithRetries({
             type: 'setValue',
             selector: selector,
             value: value,
@@ -828,7 +860,7 @@ class Testrunner extends EventEmitter {
     async _pressKeyDirect(selector, keyCode) {
         this._log.info(`pressKey: ${keyCode}, "${ellipsis(selector)}"`);
 
-        return this._browserPuppeteer.execCommand({
+        await this._execCommandWithRetries({
             type: 'pressKey',
             selector: selector,
             keyCode: keyCode,
@@ -877,7 +909,7 @@ class Testrunner extends EventEmitter {
     async _focusDirect(selector, options) {
         this._log.info(`focus: "${ellipsis(selector)}"`);
 
-        return this._browserPuppeteer.execCommand({
+        return this._execCommandWithRetries({
             type: 'focus',
             selector: selector,
             options,
