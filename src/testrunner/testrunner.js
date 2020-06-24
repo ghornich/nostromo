@@ -18,9 +18,6 @@ const globAsync = Promise.promisify(require('glob'));
 const bufferImageDiff = require(MODULES_PATH + 'buffer-image-diff');
 const accessAsync = util.promisify(fs.access);
 
-// TODO standard tape API (sync), rename current equal() to valueEquals()
-// TODO convert to es6 class
-
 const TEST_STATE = {
     SCHEDULED: 0,
     PASSED: 1,
@@ -37,6 +34,8 @@ const DEFAULT_SUITE_NAME = '(Unnamed suite)';
 const DEFAULT_REF_SCREENSHOTS_DIR = 'reference-screenshots';
 const DEFAULT_REF_ERRORS_DIR = 'reference-errors';
 const DEFAULT_REF_DIFFS_DIR = 'reference-diffs';
+
+const REPORT_FILE_NAME = 'test-run-report.json';
 
 // TODO use es6 class to inherit Error
 const ERRORS = {
@@ -106,6 +105,27 @@ class TestFailedError extends Error {
  */
 
 /**
+ * @typedef {Object} screenshotItem
+ * @property {{ path: string, relativePath: string }} errorImage
+ * @property {{ path: string, relativePath: string }} diffImage
+ * @property {{ path: string, relativePath: string }} referenceImage
+ * @property {number} attempt
+ * @property {number} assertIndex
+ * @property {string} testName
+ */
+
+/**
+ * @typedef {Object} TestRunReport
+ * @property {screenshotItem[]} screenshots
+ * @property {number} testsCount
+ * @property {number} passedCount
+ * @property {number} failedCount
+ * @property {string[]} failedTestNames
+ * @property {number} runTimeMs
+ * @property {boolean} passed
+ */
+
+/**
  * @typedef {Object} TestrunnerConfig
  * @property {Number} [testPort = 47225]
  * @property {Number|String} [logLevel] - See Logger.LEVELS
@@ -113,6 +133,7 @@ class TestFailedError extends Error {
  * @property {Boolean} [bailout = false] - Bailout from the entire test program if an assert fails
  * @property {String} [referenceScreenshotsDir = DEFAULT_REF_SCREENSHOTS_DIR]
  * @property {String} [referenceErrorsDir = DEFAULT_REF_ERRORS_DIR]
+ * @property {string} [workspaceDir]
  * @property {Array<BrowserSpawner>} browsers - see example run config file
  * @property {ImageDiffOptions} [imageDiffOptions] - options for the built-in, screenshot-based asserter
  * @property {Array<Suite>} suites
@@ -121,6 +142,8 @@ class TestFailedError extends Error {
  * @property {String} [testFilter] - regular expression string
  * @property {Number} [testRetryCount = 0] - retry failed tests n times
  * @property {RegExp} [testRetryFilter = /.+/] - retry failed tests only if test name matches this filter
+ * @property {number} [commandRetryCount = 4]
+ * @property {number} [commandRetryInterval = 250]
  * @property {TestrunnerCallback} [onCommandError]
  * @property {TestrunnerCallback} [onAssertError]
  */
@@ -140,6 +163,7 @@ class Testrunner extends EventEmitter {
             referenceScreenshotsDir: DEFAULT_REF_SCREENSHOTS_DIR,
             referenceErrorsDir: DEFAULT_REF_ERRORS_DIR,
             referenceDiffsDir: DEFAULT_REF_DIFFS_DIR,
+            workspaceDir: process.cwd(),
             browsers: [],
             suites: [],
             testFilter: null, // TODO use regex instead of string
@@ -150,6 +174,8 @@ class Testrunner extends EventEmitter {
             testRetryFilter: /.+/,
             onCommandError: null,
             onAssertError: null,
+            commandRetryCount: 4,
+            commandRetryInterval: 250,
         };
 
         const defaultImageDiffOptions = {
@@ -264,6 +290,7 @@ class Testrunner extends EventEmitter {
         this._browserPuppeteer = new BrowserPuppeteer({
             logger: this._log.fork('BrowserPuppeteer'),
             deferredMessaging: true,
+            port: this._conf.testPort,
         });
 
         this._consolePipeLog = new Loggr({
@@ -282,6 +309,19 @@ class Testrunner extends EventEmitter {
         this._currentBrowser = null;
         this._foundTestsCount = 0;
         this._okTestsCount = 0;
+
+        /**
+         * @type {TestRunReport}
+         */
+        this._testRunReport = {
+            screenshots: [],
+            failedCount: null,
+            failedTestNames: [],
+            testsCount: null,
+            passedCount: null,
+            passed: false,
+            runTimeMs: null,
+        };
     }
 
     async run() {
@@ -342,10 +382,10 @@ class Testrunner extends EventEmitter {
             this._tapWriter.diagnostic(`tests ${effectiveTestsCount}`);
             this._tapWriter.diagnostic(`pass ${this._okTestsCount}`);
 
+            const failedTestNames = [];
+
             if (effectiveTestsCount !== this._okTestsCount) {
                 process.exitCode = 1;
-
-                const failedTestNames = [];
 
                 conf.suites.forEach(suite => {
                     suite.tests.forEach(test => {
@@ -363,6 +403,23 @@ class Testrunner extends EventEmitter {
             }
             else {
                 this._tapWriter.diagnostic('SUCCESS');
+            }
+
+            this._testRunReport.testsCount = effectiveTestsCount;
+            this._testRunReport.passedCount = this._okTestsCount;
+            this._testRunReport.failedCount = this._testRunReport.testsCount - this._testRunReport.passedCount;
+            this._testRunReport.passed = this._testRunReport.testsCount === this._testRunReport.passedCount;
+            this._testRunReport.runTimeMs = Date.now() - runStartTime;
+            this._testRunReport.failedTestNames = failedTestNames;
+
+            try {
+                // TODO deprecated, remove in future
+                await fs.writeFileAsync(pathlib.resolve(this._conf.workspaceDir, 'screenshot-catalog.json'), JSON.stringify(this._testRunReport.screenshots, null, 4));
+
+                await fs.writeFileAsync(pathlib.resolve(this._conf.workspaceDir, REPORT_FILE_NAME), JSON.stringify(this._testRunReport, null, 4));
+            }
+            catch (err) {
+                console.error(err);
             }
 
             this._isRunning = false;
@@ -473,6 +530,11 @@ class Testrunner extends EventEmitter {
 
             try {
                 await this._runTest({ suite, test });
+
+                // cleanup: remove potential failed screenshots from catalog for this test
+                // TODO delete screenshots from disk? or don't write them until test fails
+                this._testRunReport.screenshots = this._testRunReport.screenshots.filter(screenshotItem => screenshotItem.testName !== test.name);
+
                 this._log.trace(`_runTestWithRetries: success, test '${test.name}' passed`);
                 break;
             }
@@ -559,7 +621,7 @@ class Testrunner extends EventEmitter {
             this._currentAfterAssert = suite.afterAssert || noop;
 
             try {
-                await test.testFn(this.tAPI, { directAPI: this.directAPI });
+                await test.testFn(this.tAPI, { suite: suite, directAPI: this.directAPI });
 
                 if (test.runErrors.length > 0) {
                     throw new TestFailedError({
@@ -702,6 +764,34 @@ class Testrunner extends EventEmitter {
         return Promise.each(cmds, cmd => this._execCommandSideEffect(cmd));
     }
 
+    async _execCommandWithRetries(command) {
+        let retries = 0;
+
+        // eslint-disable-next-line no-constant-condition
+        while (true) {
+            this._log.trace(`_execCommandWithRetries - attempt: ${retries}, command: ${util.inspect(command)}`);
+
+            try {
+                await this._browserPuppeteer.execCommand(command);
+                this._log.trace('_execCommandWithRetries - success');
+                break;
+            }
+            catch (err) {
+                if (retries < this._conf.commandRetryCount) {
+                    this._log.warn(`Ignoring ${command.type} error, retrying`);
+                    this._log.debug(err);
+                    retries++;
+                    await Promise.delay(this._conf.commandRetryInterval);
+                    continue;
+                }
+
+                this._log.trace('_execCommandWithRetries - failure, max retries reached');
+
+                throw err;
+            }
+        }
+    }
+
     async _equal(actual, expected, description) {
         if (isEqual(actual, expected)) {
             this._log.info('equal OK: ' + (description || '(unnamed)'));
@@ -726,7 +816,7 @@ class Testrunner extends EventEmitter {
         this._log.info(`click: "${ellipsis(selector)}"`);
 
         try {
-            await this._browserPuppeteer.execCommand({
+            await this._execCommandWithRetries({
                 type: 'click',
                 selector: selector,
                 options,
@@ -757,7 +847,7 @@ class Testrunner extends EventEmitter {
     async _setValueDirect(selector, value) {
         this._log.info(`setValue: "${ellipsis(value)}", "${ellipsis(selector)}"`);
 
-        return this._browserPuppeteer.execCommand({
+        return this._execCommandWithRetries({
             type: 'setValue',
             selector: selector,
             value: value,
@@ -770,7 +860,7 @@ class Testrunner extends EventEmitter {
     async _pressKeyDirect(selector, keyCode) {
         this._log.info(`pressKey: ${keyCode}, "${ellipsis(selector)}"`);
 
-        return this._browserPuppeteer.execCommand({
+        await this._execCommandWithRetries({
             type: 'pressKey',
             selector: selector,
             keyCode: keyCode,
@@ -819,7 +909,7 @@ class Testrunner extends EventEmitter {
     async _focusDirect(selector, options) {
         this._log.info(`focus: "${ellipsis(selector)}"`);
 
-        return this._browserPuppeteer.execCommand({
+        return this._execCommandWithRetries({
             type: 'focus',
             selector: selector,
             options,
@@ -916,7 +1006,6 @@ class Testrunner extends EventEmitter {
         }
     }
 
-    // TODO remove sync codes
     async _assert() {
         const refImgDir = pathlib.resolve(this._conf.referenceScreenshotsDir, this._currentBrowser.name.toLowerCase(), this._currentTest.id);
         const failedImgDir = pathlib.resolve(this._conf.referenceErrorsDir, this._currentBrowser.name.toLowerCase(), this._currentTest.id);
@@ -928,7 +1017,15 @@ class Testrunner extends EventEmitter {
         await this._currentBeforeAssert(this.directAPI);
         await mkdirpAsync(refImgDir);
 
-        let screenshotBitmap = await screenshotjs({ cropMarker: screenshotMarkerImg });
+        let screenshotBitmap;
+
+        if ('getScreenshot' in this._currentBrowser) {
+            screenshotBitmap = await this._currentBrowser.getScreenshot({ cropMarker: screenshotMarkerImg });
+        }
+        else {
+            screenshotBitmap = await screenshotjs({ cropMarker: screenshotMarkerImg });
+        }
+
         const screenshots = [screenshotBitmap];
         const diffResults = [];
 
@@ -969,7 +1066,13 @@ class Testrunner extends EventEmitter {
             this._log.warn(`screenshot assert failed: ${refImgPathRelative}, ppm: ${formattedPPM}, totalChangedPixels: ${imgDiffResult.totalChangedPixels}, attempt#: ${assertAttempt}`);
 
             if (assertAttempt < assertRetryMaxAttempts) {
-                screenshotBitmap = await screenshotjs({ cropMarker: screenshotMarkerImg });
+                if ('getScreenshot' in this._currentBrowser) {
+                    screenshotBitmap = await this._currentBrowser.getScreenshot({ cropMarker: screenshotMarkerImg });
+                }
+                else {
+                    screenshotBitmap = await screenshotjs({ cropMarker: screenshotMarkerImg });
+                }
+
                 screenshots.push(screenshotBitmap);
                 await Promise.delay(this._conf.assertRetryInterval);
             }
@@ -992,8 +1095,10 @@ class Testrunner extends EventEmitter {
         await mkdirpAsync(failedImgDir);
         await mkdirpAsync(this._conf.referenceDiffsDir);
 
-        // region write failed images
-        for (const [i, image] of screenshots.entries()) {
+        for (const [i, diffResult] of diffResults.entries()) {
+            const failedImage = screenshots[i];
+
+            // region write failed images
 
             const failedImgName = i === 0
                 ? `${this._assertCount}.png`
@@ -1001,31 +1106,48 @@ class Testrunner extends EventEmitter {
 
             const failedImgPath = pathlib.resolve(failedImgDir, failedImgName);
             const failedImgPathRelative = pathlib.relative(pathlib.resolve(this._conf.referenceErrorsDir), failedImgPath);
-            await image.toPNGFile(failedImgPath);
+            await failedImage.toPNGFile(failedImgPath);
             this._log.info(`failed screenshot added: ${failedImgPathRelative}`);
-        }
-        // endregion
 
-        // region write diff images
-        for (const [i, diffResult] of diffResults.entries()) {
-            const image = screenshots[i];
+            // endregion
+
+            // region write diff images
+
 
             const diffImgPath = pathlib.resolve(
                 this._conf.referenceDiffsDir,
-                this._currentBrowser.name.toLowerCase() + '___' + this._currentTest.id + '___' + this._assertCount + `__attempt_${i + 1}.png`
+                this._currentBrowser.name.toLowerCase() + '___' + this._currentTest.id + '___' + this._assertCount + `__attempt_${i + 1}.png`,
             );
             const diffImgPathRelative = pathlib.relative(pathlib.resolve(this._conf.referenceDiffsDir), diffImgPath);
 
             for (const bufIdx of diffResult.diffBufferIndexes) {
-                image.data[bufIdx] = 255;
-                image.data[bufIdx + 1] = 0;
-                image.data[bufIdx + 2] = 0;
+                failedImage.data[bufIdx] = 255;
+                failedImage.data[bufIdx + 1] = 0;
+                failedImage.data[bufIdx + 2] = 0;
             }
 
-            await image.toPNGFile(diffImgPath);
+            await failedImage.toPNGFile(diffImgPath);
             this._log.info(`diff screenshot added: ${diffImgPathRelative}`);
+            // endregion
+
+            this._testRunReport.screenshots.push({
+                assertIndex: this._assertCount,
+                attempt: i + 1,
+                diffImage: {
+                    path: diffImgPath,
+                    relativePath: diffImgPathRelative,
+                },
+                errorImage: {
+                    path: failedImgPath,
+                    relativePath: failedImgPathRelative,
+                },
+                referenceImage: {
+                    path: refImgPath,
+                    relativePath: refImgPathRelative,
+                },
+                testName: this._currentTest.id,
+            });
         }
-        // endregion
 
         await this._runCurrentAfterAssertTasks();
     }
@@ -1063,7 +1185,7 @@ class Testrunner extends EventEmitter {
     }
 }
 
-function noop() {}
+function noop() { }
 
 // TODO use es6 classes for errors
 function createError(type, msg) {

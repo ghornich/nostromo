@@ -1,0 +1,9 @@
+{
+	"compileOnSave": false,
+	"compilerOptions": {
+		"allowJs": true,
+		"checkJs": true,
+		"noEmit": true
+	}
+
+}

@@ -1,4 +1,4 @@
-const MAX_LINE_LEN = 140;
+const MAX_LINE_LEN = 190;
 const INDENT_DEPTH = 4;
 
 exports = module.exports = {
@@ -101,17 +101,17 @@ exports = module.exports = {
         'jsx-quotes': ['error'],
         'key-spacing': ['error', { mode: 'minimum' }],
         'keyword-spacing': ['error'],
-        'line-comment-position': ['error'],
+        'line-comment-position': [0],
         'linebreak-style': ['error'],
         'max-depth': ['error'],
         'max-len': ['error', MAX_LINE_LEN],
         'max-params': ['error'],
-        'max-statements': ['warn'],
+        'max-statements': [0],
         'new-cap': ['error'],
         'new-parens': ['error'],
         'no-array-constructor': ['error'],
         'no-bitwise': ['error'],
-        'no-inline-comments': ['error'],
+        'no-inline-comments': [0],
         'no-lonely-if': ['error'],
         'no-nested-ternary': ['error'],
         'no-new-object': ['error'],
