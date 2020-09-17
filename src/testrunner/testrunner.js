@@ -792,7 +792,7 @@ class Testrunner extends EventEmitter {
         }
     }
 
-    async _equal(actual, expected, description) {
+    _equal(actual, expected, description) {
         if (isEqual(actual, expected)) {
             this._log.info('equal OK: ' + (description || '(unnamed)'));
             // this._tapWriter.ok({
