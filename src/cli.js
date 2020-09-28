@@ -44,7 +44,7 @@ async function run() {
             process.chdir(pathlib.dirname(absConfigPath));
             const configFn = require(absConfigPath);
 
-            fileConf = configFn({
+            fileConf = await configFn({
                 LOG_LEVELS: Loggr.LEVELS,
                 Loggr: Loggr,
             });
@@ -82,7 +82,7 @@ async function run() {
             const absConfigPath = pathlib.resolve(configPath);
             process.chdir(pathlib.dirname(absConfigPath));
             const configFn = require(pathlib.resolve(absConfigPath));
-            const fileConf = configFn({
+            const fileConf = await configFn({
                 browsers: BrowserSpawners,
                 LOG_LEVELS: Loggr.LEVELS,
             });
