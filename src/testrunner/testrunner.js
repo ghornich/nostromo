@@ -19,9 +19,9 @@ const bufferImageDiff = require(MODULES_PATH + 'buffer-image-diff');
 const accessAsync = util.promisify(fs.access);
 
 const TEST_STATE = {
-    SCHEDULED: 0,
-    PASSED: 1,
-    FAILED: 2,
+    SCHEDULED: 'scheduled',
+    PASSED: 'passed',
+    FAILED: 'failed',
 };
 
 const DEFAULT_TEST_PORT = 47225;
@@ -575,7 +575,7 @@ class Testrunner extends EventEmitter {
                 this._log.trace('running afterTest');
 
                 try {
-                    await suite.afterTest(this.directAPI);
+                    await suite.afterTest(this.directAPI, { test });
                 }
                 catch (error) {
                     this._log.error('error while running afterTest: ', error);
