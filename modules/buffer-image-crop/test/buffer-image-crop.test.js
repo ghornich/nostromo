@@ -1,10 +1,8 @@
-const test = require('tape');
 const Bitmap = require('../../pnglib').Bitmap;
 const bic = require('../');
 const resolve = require('path').resolve;
-const fs = require('fs');
 
-test(async t => {
+test('buffer image crop', async () => {
     const fullImg = await Bitmap.from(resolve(__dirname, './m82.png'));
     const ref1 = await Bitmap.from(resolve(__dirname, './m82_crop1.png'));
     const ref2 = await Bitmap.from(resolve(__dirname, './m82_crop2.png'));
@@ -14,11 +12,9 @@ test(async t => {
     const cropped2 = bic(fullImg, { x: 0, y: 0, width: 245, height: 157 });
     const cropped3 = bic(fullImg, { x: 379, y: 307, width: 261, height: 192 });
 
-    t.ok(imgcmp(ref1, cropped1), 'crop 1');
-    t.ok(imgcmp(ref2, cropped2), 'crop 2');
-    t.ok(imgcmp(ref3, cropped3), 'crop 3');
-
-    t.end();
+    expect(imgcmp(ref1, cropped1)).toBe(true);
+    expect(imgcmp(ref2, cropped2)).toBe(true);
+    expect(imgcmp(ref3, cropped3)).toBe(true);
 });
 
 function imgcmp(a, b) {

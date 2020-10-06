@@ -2,10 +2,19 @@
 	"ignore": [
 		"node_modules"
 	],
-    "presets": ["es2015"],
-    "plugins": [
-        ["transform-react-jsx", {
-            "pragma": "m"
-        }]
+    "presets": [
+        [
+            "@babel/preset-env",
+            {
+                "targets": {
+                    "node": "current"
+                }
+            }
+        ],
+        "@babel/preset-typescript",
+        [
+            "@babel/preset-react",
+            { "pragma": "m" }
+        ]
     ]
 }

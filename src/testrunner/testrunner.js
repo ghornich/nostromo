@@ -140,6 +140,7 @@ class TestFailedError extends Error {
  * @property {Number} [assertRetryCount = 0]
  * @property {Number} [assertRetryInterval = 1000]
  * @property {String} [testFilter] - regular expression string
+ * @property {import('stream').Writable} [outStream]
  * @property {Number} [testRetryCount = 0] - retry failed tests n times
  * @property {RegExp} [testRetryFilter = /.+/] - retry failed tests only if test name matches this filter
  * @property {number} [commandRetryCount = 4]

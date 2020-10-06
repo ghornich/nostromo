@@ -1,7 +1,8 @@
 'use strict';
-const test = require('tape');
+
 const Loggr = require('../loggr');
-test('Loggr newline handling', t => {
+
+test('Loggr newline handling', () => {
     let output = '';
     const outStream = { write: v => {
         output += v;
@@ -30,9 +31,7 @@ test('Loggr newline handling', t => {
 
     output = output.replace(/\[\d{2}:\d{2}:\d{2}\.\d{3}\]/, '[00:00:00.000]');
 
-    t.equals(output, expected);
-
-    t.end();
+    expect(output).toBe(expected);
 });
 
 

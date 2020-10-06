@@ -1,9 +1,12 @@
 {
 	"compileOnSave": false,
 	"compilerOptions": {
+		"module": "commonjs",
+		"moduleResolution": "node",
 		"allowJs": true,
 		"checkJs": true,
-		"noEmit": true
+		"noEmit": true,
+        "lib": ["es6"],
+		"target": "es2017",
 	}
-
 }

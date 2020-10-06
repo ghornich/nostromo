@@ -1,15 +1,14 @@
 'use strict';
 
-const test = require('tape');
 const promiseWhile = require('../promise-while')(Promise);
 
-test('promise while', t => {
+test('promise while', async () => {
     let i = 0;
     const abc = 'abcdefgh'.split('');
     let result = '';
     const startTime = Date.now();
 
-    promiseWhile(
+    await promiseWhile(
         function () {
             return i <= 7;
         },
@@ -25,8 +24,7 @@ test('promise while', t => {
     .then(() => {
         const elapsed = Date.now() - startTime;
 
-        t.equal(result, 'abcdefgh');
-        t.ok(elapsed >= 700, 'delay was correct');
-        t.end();
+        expect(result).toBe('abcdefgh');
+        expect(elapsed).toBeGreaterThanOrEqual(700);
     });
 });

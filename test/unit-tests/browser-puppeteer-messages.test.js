@@ -1,20 +1,17 @@
 'use strict';
 
-const test = require('tape');
-const Promise = require('bluebird');
-const Chrome = require('../../modules/browser-spawner-chrome');
-const BrowserPuppeteer = require('../../modules/browser-puppeteer').BrowserPuppeteer;
-const MESSAGES = require('../../modules/browser-puppeteer').MESSAGES;
+const Chromium = require('../../modules/browser-spawner-chromium');
+const BrowserPuppeteer = require('../../modules/browser-puppeteer/src/puppeteer/browser-puppeteer');
+const MESSAGES = require('../../modules/browser-puppeteer/src/messages');
 const Loggr = require('../../modules/loggr');
-const HttpServer = require('http-server');
+const http = require('http-server');
 
 const HTTP_PORT = 49309;
 const testHtmlURL = `http://localhost:${HTTP_PORT}/browser-puppeteer-messages.test.html`;
 
-test('browser puppeteer messages', async t => {
-    const browser = new Chrome({
+test('browser puppeteer messages', async () => {
+    const browser = new Chromium({
         name: 'Chrome',
-        path: 'C:/Program Files (x86)/Google/Chrome/Application/chrome.exe',
         width: 1024,
         height: 750,
     });
@@ -22,12 +19,12 @@ test('browser puppeteer messages', async t => {
     const puppeteer = new BrowserPuppeteer({
         logger: new Loggr({
             namespace: 'BrowserPuppeteer',
-            logLevel: Loggr.LEVELS.TRACE,
+            logLevel: Loggr.LEVELS.OFF,
             indent: '  ',
         }),
     });
 
-    const httpServer = HttpServer.createServer({
+    const httpServer = http.createServer({
         root: __dirname,
         cache: -1,
         showDir: 'false',
@@ -49,8 +46,8 @@ test('browser puppeteer messages', async t => {
     }
 
     async function assertPersistentDataEmpty() {
-        t.equal(await getCookies(), '', 'ClearPersistentData: cookies are empty');
-        t.equal(await isLocalStorageEmpty(), true, 'ClearPersistentData: localStorage is empty');
+        expect(await getCookies()).toBe(''); // ClearPersistentData: cookies are empty
+        expect(await isLocalStorageEmpty()).toBe(true); // ClearPersistentData: localStorage is empty
     }
 
     try {
@@ -72,7 +69,7 @@ test('browser puppeteer messages', async t => {
 
         const execCommandTestValue = await puppeteer.execCommand({ type: 'getValue', selector: '#input' });
 
-        t.equal(execCommandTestValue, 'newInputValue', 'execCommand test');
+        expect(execCommandTestValue).toBe('newInputValue');
 
 
         // ExecFunctionMessage
@@ -83,7 +80,7 @@ test('browser puppeteer messages', async t => {
             return arg1 + arg2 * domTestNum;
         }, 20, 30);
 
-        t.equal(execFunctionResult, 2270, 'execFunction test');
+        expect(execFunctionResult).toBe(2270);
 
         // SetSelectorBecameVisibleDataMessage
         // see UPSTREAM SelectorBecameVisibleMessage
@@ -119,10 +116,10 @@ test('browser puppeteer messages', async t => {
 
         try {
             await capturedEventPromise;
-            t.ok(true, 'SetTransmitEventsMessage ON');
         }
         catch (error) {
-            t.ok(false, error.message);
+            console.error(error);
+            expect(false).toBe(true);
         }
 
 
@@ -135,7 +132,7 @@ test('browser puppeteer messages', async t => {
             return browserPuppet._transmitEvents;
         });
 
-        t.equal(transmitEventsValue, false, 'SetTransmitEventsMessage OFF test');
+        expect(transmitEventsValue).toBe(false); // SetTransmitEventsMessage OFF test
 
         // ClearPersistentDataMessage
 
@@ -151,8 +148,8 @@ test('browser puppeteer messages', async t => {
             return localStorage.length === 1 && localStorage.getItem('testLS') === 'testLSVal';
         });
 
-        t.equal(await getCookies(), 'testcookie1=123; testcookie2=asdf', 'ClearPersistentData: cookies are set');
-        t.equal(hasLocalStorageItem, true, 'ClearPersistentData: localStorage is set');
+        expect(await getCookies()).toBe('testcookie1=123; testcookie2=asdf');
+        expect(hasLocalStorageItem).toBe(true);
 
         await puppeteer.clearPersistentData();
 
@@ -192,10 +189,10 @@ test('browser puppeteer messages', async t => {
 
         try {
             await capturedMouseEventPromise;
-            t.ok(true, 'SetMouseoverSelectorsMessage');
         }
         catch (error) {
-            t.ok(false, 'SetMouseoverSelectorsMessage ' + error.message);
+            console.error(error);
+            expect(false).toBe(true);
         }
 
         await browser.open(testHtmlURL);
@@ -208,7 +205,7 @@ test('browser puppeteer messages', async t => {
             return browserPuppet._uniqueSelector.get(document.querySelector('.ignored-class'));
         });
 
-        t.equal(beforeIgnoreClassesUniqueSelector, '.ignored-class', 'before setting ignored class');
+        expect(beforeIgnoreClassesUniqueSelector).toBe('.ignored-class');
 
         await puppeteer.sendMessage({
             type: 'set-ignored-classes',
@@ -220,7 +217,7 @@ test('browser puppeteer messages', async t => {
             return browserPuppet._uniqueSelector.get(document.querySelector('.ignored-class'));
         });
 
-        t.equal(afterIgnoreClassesUniqueSelector, '#ignoredClassTest > span:nth-child(2)', 'after setting ignored class');
+        expect(afterIgnoreClassesUniqueSelector).toBe('#ignoredClassTest > span:nth-child(2)');
 
         // UPSTREAM
 
@@ -254,10 +251,10 @@ test('browser puppeteer messages', async t => {
 
         try {
             await selectorBecameVisiblePromise;
-            t.ok(true, 'selectorBecameVisiblePromise');
         }
         catch (error) {
-            t.ok(false, error.message);
+            console.error(error);
+            expect(false).toBe(true);
         }
 
         // CapturedEventMessage
@@ -277,7 +274,8 @@ test('browser puppeteer messages', async t => {
         // TODO check for reconnection bugs
     }
     catch (error) {
-        t.fail(error.message);
+        console.error(error);
+        expect(false).toBe(true);
     }
     finally {
         try {
@@ -288,7 +286,5 @@ test('browser puppeteer messages', async t => {
         catch (error) {
             console.error('Failed to stop server(s)', error);
         }
-
-        t.end();
     }
-});
+}, 120 * 1000);

@@ -1,0 +1,5 @@
+{
+    "name": "browser-spawner-chromium",
+    "main": "./chromium.ts",
+    "version": "1.0.0"
+}
