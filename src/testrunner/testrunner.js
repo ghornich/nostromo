@@ -1106,7 +1106,7 @@ class Testrunner extends EventEmitter {
                 : `${this._assertCount}__attempt_${i + 1}.png`;
 
             const failedImgPath = pathlib.resolve(failedImgDir, failedImgName);
-            const failedImgPathRelative = pathlib.relative(pathlib.resolve(this._conf.referenceErrorsDir), failedImgPath);
+            const failedImgPathRelative = pathlib.relative(pathlib.resolve(this._conf.workspaceDir), failedImgPath);
             await failedImage.toPNGFile(failedImgPath);
             this._log.info(`failed screenshot added: ${failedImgPathRelative}`);
 
@@ -1119,7 +1119,7 @@ class Testrunner extends EventEmitter {
                 this._conf.referenceDiffsDir,
                 this._currentBrowser.name.toLowerCase() + '___' + this._currentTest.id + '___' + this._assertCount + `__attempt_${i + 1}.png`,
             );
-            const diffImgPathRelative = pathlib.relative(pathlib.resolve(this._conf.referenceDiffsDir), diffImgPath);
+            const diffImgPathRelative = pathlib.relative(pathlib.resolve(this._conf.workspaceDir), diffImgPath);
 
             for (const bufIdx of diffResult.diffBufferIndexes) {
                 failedImage.data[bufIdx] = 255;
