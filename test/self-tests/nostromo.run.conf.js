@@ -3,7 +3,7 @@ const createServer = require('../utils/create-server').default;
 
 module.exports = function (config) {
     return {
-        logLevel: config.LOG_LEVELS.WARN,
+        logLevel: config.LOG_LEVELS.INFO,
         testBailout: true,
         referenceScreenshotsDir: 'reference-screenshots',
 

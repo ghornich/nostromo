@@ -17,6 +17,7 @@ const Bitmap = require(MODULES_PATH + 'pnglib').Bitmap;
 const globAsync = Promise.promisify(require('glob'));
 const bufferImageDiff = require(MODULES_PATH + 'buffer-image-diff');
 const accessAsync = util.promisify(fs.access);
+const prettyMs = require('pretty-ms');
 
 const TEST_STATE = {
     SCHEDULED: 'scheduled',
@@ -122,6 +123,7 @@ class TestFailedError extends Error {
  * @property {number} failedCount
  * @property {string[]} failedTestNames
  * @property {number} runTimeMs
+ * @property {Object<string, number>} runtimes
  * @property {boolean} passed
  */
 
@@ -322,6 +324,7 @@ class Testrunner extends EventEmitter {
             passedCount: null,
             passed: false,
             runTimeMs: null,
+            runtimes: {},
         };
     }
 
@@ -509,11 +512,11 @@ class Testrunner extends EventEmitter {
             try {
                 this._tapWriter.diagnostic(test.name);
                 await this._runTestWithRetries({ suite, test });
-                this._tapWriter.ok(test.name);
+                this._tapWriter.ok(`${test.name} (${prettyMs(this._testRunReport.runtimes[test.name])})`);
                 this._okTestsCount++;
             }
             catch (error) {
-                this._tapWriter.notOk(test.name);
+                this._tapWriter.notOk(`${test.name} (${prettyMs(this._testRunReport.runtimes[test.name])})`);
                 this._log.error(error);
             }
         }
@@ -595,6 +598,7 @@ class Testrunner extends EventEmitter {
     }
 
     /**
+     * @param {Object} options
      * @param  {Object} options.suite
      * @param  {Object} options.test
      * @throws {}
@@ -607,6 +611,8 @@ class Testrunner extends EventEmitter {
 
         test.runErrors = [];
         test.state = TEST_STATE.SCHEDULED;
+
+        let testStartTime;
 
         try {
             await this._currentBrowser.open(suite.appUrl);
@@ -622,6 +628,8 @@ class Testrunner extends EventEmitter {
             this._currentAfterAssert = suite.afterAssert || noop;
 
             try {
+                testStartTime = Date.now();
+
                 await test.testFn(this.tAPI, { suite: suite, directAPI: this.directAPI });
 
                 if (test.runErrors.length > 0) {
@@ -631,9 +639,13 @@ class Testrunner extends EventEmitter {
                     });
                 }
 
+                this._testRunReport.runtimes[test.name] = Date.now() - testStartTime;
+
                 test.state = TEST_STATE.PASSED;
             }
             catch (error) {
+                this._testRunReport.runtimes[test.name] = Date.now() - testStartTime;
+
                 test.state = TEST_STATE.FAILED;
                 this._log.error(error);
 
