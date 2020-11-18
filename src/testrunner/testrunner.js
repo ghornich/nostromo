@@ -17,7 +17,7 @@ const Bitmap = require(MODULES_PATH + 'pnglib').Bitmap;
 const globAsync = Promise.promisify(require('glob'));
 const bufferImageDiff = require(MODULES_PATH + 'buffer-image-diff');
 const accessAsync = util.promisify(fs.access);
-const prettyMs = require('pretty-ms');
+const unsafePrettyMs = require('pretty-ms');
 
 const TEST_STATE = {
     SCHEDULED: 'scheduled',
@@ -378,7 +378,7 @@ class Testrunner extends EventEmitter {
         }
         finally {
             // TODO run time, TAP msg
-            this._log.info(`finished in ${formatDuration(Math.floor((Date.now() - runStartTime) / 1000))}`);
+            this._log.info(`finished in ${prettyMs(Date.now() - runStartTime, { verbose: true })}`);
 
             const effectiveTestsCount = this._foundTestsCount * this._conf.browsers.length;
 
@@ -1223,27 +1223,12 @@ async function multiGlobAsync(globs) {
     return paths;
 }
 
-function formatDuration(val) {
-    if (val < 60) {
-        return `${val}s`;
-    }
-    else if (val >= 60 && val < 60 * 60) {
-        const m = Math.floor(val / 60);
-        const s = val - m * 60;
-
-        return `${m}m ${s}s`;
-    }
-
-    const h = Math.floor(val / 60 / 60);
-    const m = Math.floor((val - h * 60 * 60) / 60);
-    const s = val - m * 60 - h * 60 * 60;
-
-    return `${h}h ${m}m ${s}s`;
-
-}
-
 function getIdFromName(name) {
     return name.replace(/[^a-z0-9()._-]/gi, '_');
+}
+
+function prettyMs(ms, opts) {
+    return typeof ms === 'number' && ms >= 0 ? unsafePrettyMs(ms, opts) : '? ms';
 }
 
 exports = module.exports = Testrunner;
