@@ -1,6 +1,6 @@
 {
   "name": "nostromo",
-  "version": "4.2.0",
+  "version": "4.2.1",
   "description": "",
   "main": "src/cli.js",
   "scripts": {
@@ -39,7 +39,9 @@
     "ws": "^3.0.0"
   },
   "license": "MIT",
-  "bin": "src/cli.js",
+  "bin": {
+    "nostromo": "src/cli.js"
+  },
   "devDependencies": {
     "@babel/cli": "^7.11.6",
     "@babel/core": "^7.11.6",
