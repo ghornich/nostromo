@@ -1,12 +1,12 @@
 'use strict';
 
-global.retryLogicTestRuns = 0;
-
 exports = module.exports = function (test) {
-    test('testrunner-test--testfile-retry-logic', async t => {
-        global.retryLogicTestRuns++;
+    let retryLogicTestRuns = 0;
 
-        if (global.retryLogicTestRuns % 3 === 0) {
+    test('testrunner-test--testfile-retry-logic', async t => {
+        retryLogicTestRuns++;
+
+        if (retryLogicTestRuns % 3 === 0) {
             await t.click('#show-dialog');
         }
         else {

@@ -1,8 +1,9 @@
 const pathlib = require('path');
+const createServer = require('../utils/create-server').default;
 
 module.exports = function (config) {
     return {
-        logLevel: config.LOG_LEVELS.WARN,
+        logLevel: config.LOG_LEVELS.INFO,
         testBailout: true,
         referenceScreenshotsDir: 'reference-screenshots',
 
@@ -13,37 +14,40 @@ module.exports = function (config) {
         },
 
         browsers: [
-            new config.browsers.Chrome({
+            new config.browsers.Chromium({
                 name: 'Chrome',
-                path: 'C:/Program Files (x86)/Google/Chrome/Application/chrome.exe',
                 width: 750,
                 height: 550,
+                headless: true,
             }),
-            // new config.browsers.Firefox({
-            //     name: 'Firefox',
-            //     path: [
-            //         'C:/Program Files/Mozilla Firefox/firefox.exe',
-            //         'C:/Program Files (x86)/Mozilla Firefox/firefox.exe',
-            //     ],
-            //     width: 950,
-            //     height: 650,
-            // }),
         ],
 
         suites: [
             {
                 name: 'getUniqueSelector',
-                appUrl: 'file:///' + pathlib.resolve(__dirname, 'get-unique-selector/test.html'),
+                appUrl: 'http://localhost:31667/test/self-tests/get-unique-selector/test.html',
                 testFiles: ['get-unique-selector/test.js'],
+                beforeTest: async function () {
+                    this.server = await createServer({ dirToServe: pathlib.resolve(__dirname, '../../'), port: 31667 });
+                },
+                afterTest: async function () {
+                    return new Promise(resolve => this.server.close(resolve));
+                },
             },
             {
                 name: 'browser-puppeteer',
-                appUrl: 'file:///' + pathlib.resolve(__dirname, 'browser-puppeteer/index.html'),
+                appUrl: 'http://localhost:31667/index.html',
                 testFiles: ['browser-puppeteer/test.js'],
+                beforeTest: async function () {
+                    this.server = await createServer({ dirToServe: pathlib.resolve(__dirname, 'browser-puppeteer'), port: 31667 });
+                },
+                afterTest: async function () {
+                    return new Promise(resolve => this.server.close(resolve));
+                },
             },
             {
                 name: 'test-testapp',
-                appUrl: 'file:///' + pathlib.resolve(__dirname, 'testapp/index.html'),
+                appUrl: 'http://localhost:31667/index.html',
                 testFiles: ['./test-testapp.js'],
                 beforeCommand: function (t, command) {
                     if (command.type !== 'assert') {
@@ -51,6 +55,12 @@ module.exports = function (config) {
                     }
 
                     return t.waitWhileVisible('.loading');
+                },
+                beforeTest: async function () {
+                    this.server = await createServer({ dirToServe: pathlib.resolve(__dirname, 'testapp'), port: 31667 });
+                },
+                afterTest: async function () {
+                    return new Promise(resolve => this.server.close(resolve));
                 },
             },
         ],

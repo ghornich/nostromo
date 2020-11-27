@@ -17,11 +17,12 @@ const Bitmap = require(MODULES_PATH + 'pnglib').Bitmap;
 const globAsync = Promise.promisify(require('glob'));
 const bufferImageDiff = require(MODULES_PATH + 'buffer-image-diff');
 const accessAsync = util.promisify(fs.access);
+const unsafePrettyMs = require('pretty-ms');
 
 const TEST_STATE = {
-    SCHEDULED: 0,
-    PASSED: 1,
-    FAILED: 2,
+    SCHEDULED: 'scheduled',
+    PASSED: 'passed',
+    FAILED: 'failed',
 };
 
 const DEFAULT_TEST_PORT = 47225;
@@ -122,6 +123,7 @@ class TestFailedError extends Error {
  * @property {number} failedCount
  * @property {string[]} failedTestNames
  * @property {number} runTimeMs
+ * @property {Object<string, number>} runtimes
  * @property {boolean} passed
  */
 
@@ -140,6 +142,7 @@ class TestFailedError extends Error {
  * @property {Number} [assertRetryCount = 0]
  * @property {Number} [assertRetryInterval = 1000]
  * @property {String} [testFilter] - regular expression string
+ * @property {import('stream').Writable} [outStream]
  * @property {Number} [testRetryCount = 0] - retry failed tests n times
  * @property {RegExp} [testRetryFilter = /.+/] - retry failed tests only if test name matches this filter
  * @property {number} [commandRetryCount = 4]
@@ -321,6 +324,7 @@ class Testrunner extends EventEmitter {
             passedCount: null,
             passed: false,
             runTimeMs: null,
+            runtimes: {},
         };
     }
 
@@ -374,7 +378,7 @@ class Testrunner extends EventEmitter {
         }
         finally {
             // TODO run time, TAP msg
-            this._log.info(`finished in ${formatDuration(Math.floor((Date.now() - runStartTime) / 1000))}`);
+            this._log.info(`finished in ${prettyMs(Date.now() - runStartTime, { verbose: true })}`);
 
             const effectiveTestsCount = this._foundTestsCount * this._conf.browsers.length;
 
@@ -508,11 +512,11 @@ class Testrunner extends EventEmitter {
             try {
                 this._tapWriter.diagnostic(test.name);
                 await this._runTestWithRetries({ suite, test });
-                this._tapWriter.ok(test.name);
+                this._tapWriter.ok(`${test.name} (${prettyMs(this._testRunReport.runtimes[test.name])})`);
                 this._okTestsCount++;
             }
             catch (error) {
-                this._tapWriter.notOk(test.name);
+                this._tapWriter.notOk(`${test.name} (${prettyMs(this._testRunReport.runtimes[test.name])})`);
                 this._log.error(error);
             }
         }
@@ -575,7 +579,7 @@ class Testrunner extends EventEmitter {
                 this._log.trace('running afterTest');
 
                 try {
-                    await suite.afterTest(this.directAPI);
+                    await suite.afterTest(this.directAPI, { test });
                 }
                 catch (error) {
                     this._log.error('error while running afterTest: ', error);
@@ -594,6 +598,7 @@ class Testrunner extends EventEmitter {
     }
 
     /**
+     * @param {Object} options
      * @param  {Object} options.suite
      * @param  {Object} options.test
      * @throws {}
@@ -606,6 +611,8 @@ class Testrunner extends EventEmitter {
 
         test.runErrors = [];
         test.state = TEST_STATE.SCHEDULED;
+
+        let testStartTime;
 
         try {
             await this._currentBrowser.open(suite.appUrl);
@@ -621,6 +628,8 @@ class Testrunner extends EventEmitter {
             this._currentAfterAssert = suite.afterAssert || noop;
 
             try {
+                testStartTime = Date.now();
+
                 await test.testFn(this.tAPI, { suite: suite, directAPI: this.directAPI });
 
                 if (test.runErrors.length > 0) {
@@ -630,9 +639,13 @@ class Testrunner extends EventEmitter {
                     });
                 }
 
+                this._testRunReport.runtimes[test.name] = Date.now() - testStartTime;
+
                 test.state = TEST_STATE.PASSED;
             }
             catch (error) {
+                this._testRunReport.runtimes[test.name] = Date.now() - testStartTime;
+
                 test.state = TEST_STATE.FAILED;
                 this._log.error(error);
 
@@ -792,7 +805,7 @@ class Testrunner extends EventEmitter {
         }
     }
 
-    async _equal(actual, expected, description) {
+    _equal(actual, expected, description) {
         if (isEqual(actual, expected)) {
             this._log.info('equal OK: ' + (description || '(unnamed)'));
             // this._tapWriter.ok({
@@ -1105,7 +1118,7 @@ class Testrunner extends EventEmitter {
                 : `${this._assertCount}__attempt_${i + 1}.png`;
 
             const failedImgPath = pathlib.resolve(failedImgDir, failedImgName);
-            const failedImgPathRelative = pathlib.relative(pathlib.resolve(this._conf.referenceErrorsDir), failedImgPath);
+            const failedImgPathRelative = pathlib.relative(pathlib.resolve(this._conf.workspaceDir), failedImgPath);
             await failedImage.toPNGFile(failedImgPath);
             this._log.info(`failed screenshot added: ${failedImgPathRelative}`);
 
@@ -1118,7 +1131,7 @@ class Testrunner extends EventEmitter {
                 this._conf.referenceDiffsDir,
                 this._currentBrowser.name.toLowerCase() + '___' + this._currentTest.id + '___' + this._assertCount + `__attempt_${i + 1}.png`,
             );
-            const diffImgPathRelative = pathlib.relative(pathlib.resolve(this._conf.referenceDiffsDir), diffImgPath);
+            const diffImgPathRelative = pathlib.relative(pathlib.resolve(this._conf.workspaceDir), diffImgPath);
 
             for (const bufIdx of diffResult.diffBufferIndexes) {
                 failedImage.data[bufIdx] = 255;
@@ -1210,27 +1223,12 @@ async function multiGlobAsync(globs) {
     return paths;
 }
 
-function formatDuration(val) {
-    if (val < 60) {
-        return `${val}s`;
-    }
-    else if (val >= 60 && val < 60 * 60) {
-        const m = Math.floor(val / 60);
-        const s = val - m * 60;
-
-        return `${m}m ${s}s`;
-    }
-
-    const h = Math.floor(val / 60 / 60);
-    const m = Math.floor((val - h * 60 * 60) / 60);
-    const s = val - m * 60 - h * 60 * 60;
-
-    return `${h}h ${m}m ${s}s`;
-
-}
-
 function getIdFromName(name) {
     return name.replace(/[^a-z0-9()._-]/gi, '_');
+}
+
+function prettyMs(ms, opts) {
+    return typeof ms === 'number' && ms >= 0 ? unsafePrettyMs(ms, opts) : '? ms';
 }
 
 exports = module.exports = Testrunner;

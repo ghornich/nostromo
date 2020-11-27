@@ -1,35 +1,32 @@
 'use strict';
 
-const test = require('tape');
 const TapWriter = require('../index.js');
 
-test('version', t => {
+test('version', () => {
     const outStream = createDummyWriteStream();
     const writer = new TapWriter({ eol: '\n', outStream: outStream });
 
     writer.version(12);
 
-    t.equal(outStream.data, 'TAP version 12\n');
+    expect(outStream.data).toBe('TAP version 12\n');
 
     outStream.data = '';
 
     writer.version();
 
-    t.equal(outStream.data, 'TAP version 13\n');
-    t.end();
+    expect(outStream.data).toBe('TAP version 13\n');
 });
 
-test('diagnostic', t => {
+test('diagnostic', () => {
     const outStream = createDummyWriteStream();
     const writer = new TapWriter({ eol: '\n', outStream: outStream });
 
     writer.diagnostic('Space, it says, is big. Really big.');
 
-    t.equal(outStream.data, '# Space, it says, is big. Really big.\n');
-    t.end();
+    expect(outStream.data).toBe('# Space, it says, is big. Really big.\n');
 });
 
-test('pass 1', t => {
+test('pass 1', () => {
     const outStream = createDummyWriteStream();
     const writer = new TapWriter({ eol: '\n', outStream: outStream });
 
@@ -52,11 +49,10 @@ test('pass 1', t => {
         'ok 7 should throw\n' +
         'ok 8 shouldn\'t throw\n';
 
-    t.equal(outStream.data, expected);
-    t.end();
+    expect(outStream.data).toBe(expected);
 });
 
-test('pass 2', t => {
+test('pass 2', () => {
     const outStream = createDummyWriteStream();
     const writer = new TapWriter({ eol: '\n', outStream: outStream });
 
@@ -79,11 +75,10 @@ test('pass 2', t => {
         'ok 7 g\n' +
         'ok 8 h\n';
 
-    t.equal(outStream.data, expected);
-    t.end();
+    expect(outStream.data).toBe(expected);
 });
 
-test('fail', t => {
+test('fail', () => {
     const outStream = createDummyWriteStream();
     const writer = new TapWriter({ eol: '\n', outStream: outStream });
 
@@ -146,11 +141,10 @@ test('fail', t => {
             '    actual:   "b"\n' +
             '  ...\n';
 
-    t.equal(outStream.data, expected);
-    t.end();
+    expect(outStream.data).toBe(expected);
 });
 
-test('plan', t => {
+test('plan', () => {
     const outStream = createDummyWriteStream();
     const writer = new TapWriter({ eol: '\n', outStream: outStream });
 
@@ -163,32 +157,29 @@ test('plan', t => {
     writer.plan();
     writer.plan(45);
 
-    t.equal(outStream.data, '1..3\n1..45\n');
-    t.end();
+    expect(outStream.data).toBe('1..3\n1..45\n');
 });
 
-test('bailout', t => {
+test('bailout', () => {
     const outStream = createDummyWriteStream();
     const writer = new TapWriter({ eol: '\n', outStream: outStream });
 
     writer.bailout();
     writer.bailout('Oops!');
 
-    t.equal(outStream.data, 'Bail out!\nBail out! Oops!\n');
-    t.end();
+    expect(outStream.data).toBe('Bail out!\nBail out! Oops!\n');
 });
 
-test('comment', t => {
+test('comment', () => {
     const outStream = createDummyWriteStream();
     const writer = new TapWriter({ eol: '\n', outStream: outStream });
 
     writer.comment('Speedy thing goes in, speedy thing comes out.');
 
-    t.equal(outStream.data, '  Speedy thing goes in, speedy thing comes out.\n');
-    t.end();
+    expect(outStream.data).toBe('  Speedy thing goes in, speedy thing comes out.\n');
 });
 
-test('options', t => {
+test('options', () => {
     const outStream = createDummyWriteStream();
     const writer = new TapWriter({ eol: '\r\n', indent: '    ', outStream: outStream });
 
@@ -201,8 +192,7 @@ test('options', t => {
         '        actual:   2\r\n' +
         '    ...\r\n';
 
-    t.equal(expected, outStream.data);
-    t.end();
+    expect(expected).toBe(outStream.data);
 });
 
 /* test('', t=>{
@@ -214,7 +204,7 @@ test('options', t => {
     t.end()
 })*/
 
-test('_aliasedMap', t => {
+test('_aliasedMap', () => {
     const map = TapWriter._aliasedMap({
         a: 5,
         'b, c': 10,
@@ -222,7 +212,7 @@ test('_aliasedMap', t => {
         'asdf,    qwerty,   uiop': 20,
     });
 
-    t.deepEqual(map, {
+    expect(map).toStrictEqual({
         a: 5,
         b: 10,
         c: 10,
@@ -234,7 +224,6 @@ test('_aliasedMap', t => {
         uiop: 20,
     });
 
-    t.end();
 });
 
 function createDummyWriteStream() {

@@ -1,7 +1,6 @@
 const SelectorElement = require('../src/selector-element');
-const test = require('tape');
 
-test('SelectorElement::ctor', t => {
+test('SelectorElement::ctor', () => {
     const mockNode = {
         tagName: 'DIV',
         className: 'dummy class',
@@ -20,18 +19,15 @@ test('SelectorElement::ctor', t => {
 
     const se = new SelectorElement(mockNode);
 
-    t.equal(se.node, mockNode);
-    t.equal(se.selector, '.dummy.class');
-    t.equal(se.type, SelectorElement.TYPE.CLASS);
-    t.equal(se.active, true);
-    t.equal(se.useNthChild, false);
-    t.equal(se._nthChild, 3);
-
-    t.end();
+    expect(se.node).toBe(mockNode);
+    expect(se.selector).toBe('.dummy.class');
+    expect(se.type).toBe(SelectorElement.TYPE.CLASS);
+    expect(se.active).toBe(true);
+    expect(se.useNthChild).toBe(false);
+    expect(se._nthChild).toBe(3);
 });
 
-
-test('SelectorElement::ctor 2', t => {
+test('SelectorElement::ctor 2', () => {
     const mockNode = {
         tagName: 'INPUT',
         className: '  ',
@@ -59,21 +55,10 @@ test('SelectorElement::ctor 2', t => {
 
     const se = new SelectorElement(mockNode);
 
-    t.equal(se.node, mockNode);
-    t.equal(se.selector, 'input[name="password"]');
-    t.equal(se.type, SelectorElement.TYPE.ATTR);
-    t.equal(se.active, true);
-    t.equal(se.useNthChild, false);
-    t.equal(se._nthChild, 4);
-
-    t.end();
+    expect(se.node).toBe(mockNode);
+    expect(se.selector).toBe('input[name="password"]');
+    expect(se.type).toBe(SelectorElement.TYPE.ATTR);
+    expect(se.active).toBe(true);
+    expect(se.useNthChild).toBe(false);
+    expect(se._nthChild).toBe(4);
 });
-
-
-
-// test('SelectorElement::', t => {
-
-
-//     t.end()
-// })
-

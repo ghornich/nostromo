@@ -1,16 +1,13 @@
 'use strict';
 
 const rfr = require('rfr');
-const test = require('tape');
-const Chrome = rfr('modules/browser-spawner-chrome');
+const Chromium = require('../../modules/browser-spawner-chromium');
 const RecorderServer = rfr('src/recorder/recorder-server');
-const BrowserPuppeteer = rfr('modules/browser-puppeteer').BrowserPuppeteer;
 const MESSAGES = rfr('modules/browser-puppeteer').MESSAGES;
-const COMMANDS = rfr('modules/browser-puppeteer').COMMANDS;
 
 // TODO test all aspects of recorder app
 
-test('recorder-app: composite events: defaults', async t => {
+test('recorder-app: composite events: defaults', async () => {
     const recorderServer = new RecorderServer({
         _preEnableRecording: true,
         _mockMessages: [
@@ -51,9 +48,8 @@ test('recorder-app: composite events: defaults', async t => {
         ],
     });
 
-    const browser = new Chrome({
+    const browser = new Chromium({
         name: 'Chrome',
-        path: 'C:/Program Files (x86)/Google/Chrome/Application/chrome.exe',
         width: 1024,
         height: 750,
     });
@@ -69,8 +65,4 @@ test('recorder-app: composite events: defaults', async t => {
     // recorderServer.stop()
 
     // TODO finish test
-
-    t.end();
-
-
 });

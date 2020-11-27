@@ -2,7 +2,10 @@ const MAX_LINE_LEN = 190;
 const INDENT_DEPTH = 4;
 
 exports = module.exports = {
-    parserOptions: { 'ecmaVersion': 8 },
+    parserOptions: {
+        'ecmaVersion': 8,
+        sourceType: 'module',
+    },
     extends: 'eslint:recommended',
     env: {
         node: true,
@@ -102,7 +105,7 @@ exports = module.exports = {
         'key-spacing': ['error', { mode: 'minimum' }],
         'keyword-spacing': ['error'],
         'line-comment-position': [0],
-        'linebreak-style': ['error'],
+        'linebreak-style': [0],
         'max-depth': ['error'],
         'max-len': ['error', MAX_LINE_LEN],
         'max-params': ['error'],

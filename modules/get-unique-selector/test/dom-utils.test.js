@@ -1,34 +1,25 @@
 const DOMUtils = require('../src/dom-utils');
-const test = require('tape');
 
-test('DOMUtils::hasId', t => {
-    t.ok(DOMUtils.hasId({ id: 'testId' }));
+test('DOMUtils::hasId', () => {
+    expect(DOMUtils.hasId({ id: 'testId' })).toBe(true);
 
-    t.notOk(DOMUtils.hasId({ id: '' }));
-    t.notOk(DOMUtils.hasId({ id: null }));
-    t.notOk(DOMUtils.hasId({ id: undefined }));
-
-    t.end();
+    expect(DOMUtils.hasId({ id: '' })).toBe(false);
+    expect(DOMUtils.hasId({ id: null })).toBe(false);
+    expect(DOMUtils.hasId({ id: undefined })).toBe(false);
 });
 
-test('DOMUtils::getId', t => {
-    t.equal(DOMUtils.getId({ id: 'testId' }), 'testId');
-
-    t.end();
+test('DOMUtils::getId', () => {
+    expect(DOMUtils.getId({ id: 'testId' })).toBe('testId');
 });
 
-test('DOMUtils::hasClass', t => {
-    t.ok(DOMUtils.hasClass({ className: 'test class' }));
+test('DOMUtils::hasClass', () => {
+    expect(DOMUtils.hasClass({ className: 'test class' })).toBe(true);
 
-    t.notOk(DOMUtils.hasClass({ className: '' }));
-    t.notOk(DOMUtils.hasClass({ className: null }));
-    t.notOk(DOMUtils.hasClass({ className: undefined }));
-
-    t.end();
+    expect(DOMUtils.hasClass({ className: '' })).toBe(false);
+    expect(DOMUtils.hasClass({ className: null })).toBe(false);
+    expect(DOMUtils.hasClass({ className: undefined })).toBe(false);
 });
 
-test('DOMUtils::getClass', t => {
-    t.equal(DOMUtils.getClass({ className: 'test class' }), 'test class');
-
-    t.end();
+test('DOMUtils::getClass', () => {
+    expect(DOMUtils.getClass({ className: 'test class' })).toBe('test class');
 });

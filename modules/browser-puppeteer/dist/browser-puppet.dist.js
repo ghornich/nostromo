@@ -360,10 +360,15 @@ BrowserPuppetCommands.prototype.setValue = function (cmd) {
         throw new Error('Unable to set value of "' + cmd.selector + '": unsupported tag "' + tagName + '"');
     }
 
-    $el.val(cmd.value);
+    try {
+        setNativeValue(el, cmd.value);
+    }
+    catch (err){
+        // ignore error, fallback to directly setting value
+        el.value = cmd.value;
+    }
 
-    var inputEvent = new Event('input');
-    el.dispatchEvent(inputEvent);
+    el.dispatchEvent(new Event('input', { bubbles: true }));
 };
 
 /**
@@ -462,6 +467,18 @@ function _defaultNum(value, def) {
     return def;
 }
 
+// https://github.com/facebook/react/issues/10135#issuecomment-314441175
+function setNativeValue(element, value) {
+    var valueSetter = Object.getOwnPropertyDescriptor(element, 'value').set;
+    var prototype = Object.getPrototypeOf(element);
+    var prototypeValueSetter = Object.getOwnPropertyDescriptor(prototype, 'value').set;
+    
+    if (valueSetter && valueSetter !== prototypeValueSetter) {
+        prototypeValueSetter.call(element, value);
+    } else {
+      valueSetter.call(element, value);
+    }
+  }
 },{"../../../../modules/base64-to-file":1,"../../../../modules/promise-while":12,"assert":15,"bluebird":19,"lodash.set":24}],5:[function(require,module,exports){
 'use strict';
 
