@@ -546,7 +546,7 @@ class Testrunner extends EventEmitter {
                 this._log.error('_runTestWithRetries: error when running _runTest:');
                 this._log.error(error);
 
-                if (attempt === maxAttempts || !(error instanceof TestFailedError)) {
+                if (attempt === maxAttempts) {
                     throw error;
                 }
 
