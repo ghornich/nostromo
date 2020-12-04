@@ -47,6 +47,8 @@
     "@babel/preset-react": "^7.10.4",
     "@babel/preset-typescript": "^7.10.4",
     "@types/jest": "^26.0.14",
+    "@types/puppeteer": "^5.4.0",
+    "babel-eslint": "^10.1.0",
     "babel-jest": "^26.5.0",
     "browserify": "^14.3.0",
     "eslint": "^7.10.0",

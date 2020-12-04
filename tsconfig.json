@@ -1,12 +1,13 @@
 {
 	"compileOnSave": false,
 	"compilerOptions": {
-		"module": "commonjs",
-		"moduleResolution": "node",
+		"module": "CommonJS",
+		"moduleResolution": "Node",
 		"allowJs": true,
 		"checkJs": true,
 		"noEmit": true,
-        "lib": ["es6"],
-		"target": "es2017",
+        "lib": ["ESNext"],
+		"target": "ESNext",
+		"esModuleInterop": true
 	}
 }

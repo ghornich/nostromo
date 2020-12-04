@@ -1,6 +1,6 @@
 'use strict';
 
-const Chromium = require('../../modules/browser-spawner-chromium');
+import Chromium from '../../modules/browsers/chromium';
 const BrowserPuppeteer = require('../../modules/browser-puppeteer/src/puppeteer/browser-puppeteer');
 const MESSAGES = require('../../modules/browser-puppeteer/src/messages');
 const Loggr = require('../../modules/loggr');
@@ -9,7 +9,7 @@ const http = require('http-server');
 const HTTP_PORT = 49309;
 const testHtmlURL = `http://localhost:${HTTP_PORT}/browser-puppeteer-messages.test.html`;
 
-test('browser puppeteer messages', async () => {
+test.skip('browser puppeteer messages', async () => {
     const browser = new Chromium({
         name: 'Chrome',
         width: 1024,
@@ -53,8 +53,7 @@ test('browser puppeteer messages', async () => {
     try {
         await puppeteer.start();
         await browser.start();
-        await browser.waitForBrowserVisible();
-        await browser.open(testHtmlURL);
+        await browser.navigateTo(testHtmlURL);
         await puppeteer.waitForConnection();
 
         // DOWNSTREAM

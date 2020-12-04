@@ -1,5 +1,6 @@
 const pathlib = require('path');
 const createServer = require('../utils/create-server').default;
+const Chromium = require('../../modules/browsers/chromium').default;
 
 module.exports = function (config) {
     return {
@@ -14,11 +15,9 @@ module.exports = function (config) {
         },
 
         browsers: [
-            new config.browsers.Chromium({
-                name: 'Chrome',
+            new Chromium({
                 width: 750,
                 height: 550,
-                headless: true,
             }),
         ],
 

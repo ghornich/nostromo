@@ -1,7 +1,7 @@
 'use strict';
 
 const rfr = require('rfr');
-const Chromium = require('../../modules/browser-spawner-chromium');
+// const Chromium = require('../../modules/browsers/chromium');
 const RecorderServer = rfr('src/recorder/recorder-server');
 const MESSAGES = rfr('modules/browser-puppeteer').MESSAGES;
 
@@ -48,11 +48,11 @@ test('recorder-app: composite events: defaults', async () => {
         ],
     });
 
-    const browser = new Chromium({
-        name: 'Chrome',
-        width: 1024,
-        height: 750,
-    });
+    // const browser = new Chromium({
+    //     name: 'Chrome',
+    //     width: 1024,
+    //     height: 750,
+    // });
 
     // await recorderServer.start()
     // await browser.start()

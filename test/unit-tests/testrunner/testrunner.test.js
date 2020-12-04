@@ -1,12 +1,11 @@
 'use strict';
 
-const rfr = require('rfr');
 const pathlib = require('path');
 const WebSocket = require('ws');
 const Testrunner = require('../../../src/testrunner/testrunner');
 const stream = require('stream');
-const Chromium = rfr('modules/browser-spawner-chromium');
 import createServer from '../../utils/create-server';
+import Chromium from '../../../modules/browsers/chromium';
 
 class NullStream extends stream.Writable {
     _write(chunk, encoding, cb) {
@@ -100,13 +99,12 @@ test('Testrunner: test retries', async () => {
         testBailout: true,
         bailout: false,
 
-        outStream: new NullStream(),
-        logLevel: 'off',
+        // outStream: new NullStream(),
+        // logLevel: 'off',
         testRetryCount: 4,
 
         browsers: [
             new Chromium({
-                name: 'Chrome',
                 width: 750,
                 height: 550,
                 headless: true,
@@ -120,8 +118,8 @@ test('Testrunner: test retries', async () => {
                 testFiles: [
                     pathlib.resolve(__dirname, 'testrunner-test--testfile-retry-logic.js'),
                 ],
-                beforeCommand: function (beforeCommandT) {
-                    return beforeCommandT.waitWhileVisible('.loading, #toast');
+                beforeCommand: async function (t) {
+                    await t.waitWhileVisible('.loading, #toast');
                 },
                 beforeTest: async function () {
                     this.server = await createServer({ dirToServe: pathlib.resolve(__dirname, '../../self-tests/testapp'), port: 16743 });
@@ -134,7 +132,7 @@ test('Testrunner: test retries', async () => {
     });
 
     await testrunner.run();
-
+    console.log('process.exicode', process.exitCode);
     expect(process.exitCode === undefined || process.exitCode === 0).toBe(true);
 }, 60 * 1000);
 

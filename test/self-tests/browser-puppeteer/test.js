@@ -10,14 +10,6 @@ exports = module.exports = function (test, _testrunnerInstance) {
         await t.click('.click-test-dom');
         t.equal(await t.getValue('.click-test-dom'), 'domClickOK');
 
-        await t.composite([
-            { type: 'click', selector: '.composite-test-click' },
-            { type: 'setValue', selector: '.composite-test-setValue', value: 'compositeValOK' },
-        ]);
-
-        t.equal(await t.getValue('.composite-test-click'), 'compositeClickOK');
-        t.equal(await t.getValue('.composite-test-setValue'), 'compositeValOK');
-
         await t.focus('.focus-test');
 
         const activeElClass = await t.execFunction(function () {
@@ -32,9 +24,11 @@ exports = module.exports = function (test, _testrunnerInstance) {
         t.equal(await t.isVisible('.isVisible-test-hidden'), false);
 
         await t.mouseover('.mouseover-test');
+        await t.delay(250); // getValue happens so fast after mouseover, that the field is still empty
         t.equal(await t.getValue('.mouseover-test'), 'mouseoverOK');
 
-        await t.pressKey('.pressKey-test', 65);
+        await t.focus('.pressKey-test');
+        await t.pressKey('A');
         t.equal(await t.getValue('.pressKey-test'), 'pressKey65OK');
 
         await t.scrollTo('#scroll-test--n');
@@ -63,20 +57,20 @@ exports = module.exports = function (test, _testrunnerInstance) {
 
         // @region waitForVisible test
 
-        const waitForVisibleStart = Date.now();
 
         await t.execFunction(function () {
             setTimeout(function () {
                 // eslint-disable-next-line no-undef
                 $('.waitForVisible-test').removeClass('hidden');
-            }, 2000);
+            }, 500);
         });
 
+        const waitForVisibleStart = Date.now();
         await t.waitForVisible('.waitForVisible-test');
         const waitForVisibleTestDuration = Date.now() - waitForVisibleStart;
 
         t.comment('waitForVisible test duration: ' + waitForVisibleTestDuration);
-        t.equal(waitForVisibleTestDuration > 2000, true);
+        t.equal(waitForVisibleTestDuration >= 500, true);
 
         // @endregion
 
@@ -88,36 +82,31 @@ exports = module.exports = function (test, _testrunnerInstance) {
             setTimeout(function () {
                 // eslint-disable-next-line no-undef
                 $('.waitWhileVisible-test').addClass('hidden');
-            }, 2000);
+            }, 500);
         });
 
         await t.waitWhileVisible('.waitWhileVisible-test');
         const waitWhileVisibleTestDuration = Date.now() - waitWhileVisibleStart;
 
         t.comment('waitWhileVisible test duration: ' + waitWhileVisibleTestDuration);
-        t.equal(waitWhileVisibleTestDuration > 2000, true);
+        t.equal(waitWhileVisibleTestDuration >= 500, true);
 
         // @endregion
 
         // @region waitForVisible timeout test
 
         try {
-            const wfvPromise = _testrunnerInstance._browserPuppeteer.execCommand({
-                type: 'waitForVisible',
-                selector: '.no-such-selector',
-                pollInterval: 300,
-                timeout: 3000,
-            });
+            const wfvPromise = t.waitForVisible('.no-such-selector', { timeout: 1000 });
 
-            const timeoutPromise = new Promise(r => setTimeout(r, 4000)).then(() => {
-                throw new Error('failed to time out after 3s');
+            const timeoutPromise = new Promise(r => setTimeout(r, 1500)).then(() => {
+                throw new Error('failed to time out after 1s');
             });
 
             await Promise.race([wfvPromise, timeoutPromise]);
             throw new Error('Unexpected resolve');
         }
         catch (error) {
-            if (error.message.indexOf('waitForVisible: timed out') >= 0) {
+            if (error.message.indexOf('waitForVisible: timeout') >= 0) {
                 t.equal(true, true, 'waitForVisible timeout');
             }
             else {

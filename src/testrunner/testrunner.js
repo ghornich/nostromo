@@ -1,23 +1,18 @@
 const MODULES_PATH = '../../modules/';
-const Promise = require('bluebird');
-Promise.config({ longStackTraces: true });
 const Loggr = require(MODULES_PATH + 'loggr');
 const isEqual = require('lodash.isequal');
-const fs = Promise.promisifyAll(require('fs'));
+const fs = require('fs');
+const fsp = require('fs').promises;
 const pathlib = require('path');
 const util = require('util');
 const TapWriter = require(MODULES_PATH + 'tap-writer');
 const EventEmitter = require('events').EventEmitter;
-const BrowserPuppeteer = require(MODULES_PATH + 'browser-puppeteer').BrowserPuppeteer;
-const MESSAGES = require(MODULES_PATH + 'browser-puppeteer').MESSAGES;
-const screenshotMarkerImg = require(MODULES_PATH + 'browser-spawner-base/screenshot-marker');
-const screenshotjs = require(MODULES_PATH + 'screenshot-js');
-const mkdirpAsync = Promise.promisify(require('mkdirp'));
+const mkdirpAsync = util.promisify(require('mkdirp'));
 const Bitmap = require(MODULES_PATH + 'pnglib').Bitmap;
-const globAsync = Promise.promisify(require('glob'));
+const globAsync = util.promisify(require('glob'));
 const bufferImageDiff = require(MODULES_PATH + 'buffer-image-diff');
-const accessAsync = util.promisify(fs.access);
 const unsafePrettyMs = require('pretty-ms');
+const delay = require('../../modules/delay');
 
 const TEST_STATE = {
     SCHEDULED: 'scheduled',
@@ -136,7 +131,7 @@ class TestFailedError extends Error {
  * @property {String} [referenceScreenshotsDir = DEFAULT_REF_SCREENSHOTS_DIR]
  * @property {String} [referenceErrorsDir = DEFAULT_REF_ERRORS_DIR]
  * @property {string} [workspaceDir]
- * @property {Array<BrowserSpawner>} browsers - see example run config file
+ * @property {Array<import('../../modules/browsers/browser-interface')>} browsers
  * @property {ImageDiffOptions} [imageDiffOptions] - options for the built-in, screenshot-based asserter
  * @property {Array<Suite>} suites
  * @property {Number} [assertRetryCount = 0]
@@ -263,10 +258,8 @@ class Testrunner extends EventEmitter {
             comment: this._comment.bind(this),
             assert: this._assert.bind(this),
             pressKey: this._pressKeyDirect.bind(this),
-            composite: this._compositeDirect.bind(this),
             mouseover: this._mouseoverDirect.bind(this),
             execFunction: this._execFunctionDirect.bind(this),
-            uploadFileAndAssign: this._uploadFileAndAssignDirect.bind(this),
         };
 
         this.sideEffectAPI = {};
@@ -290,12 +283,6 @@ class Testrunner extends EventEmitter {
             equals: this._equal.bind(this),
         });
 
-        this._browserPuppeteer = new BrowserPuppeteer({
-            logger: this._log.fork('BrowserPuppeteer'),
-            deferredMessaging: true,
-            port: this._conf.testPort,
-        });
-
         this._consolePipeLog = new Loggr({
             logLevel: this._conf.logLevel,
             showTime: true,
@@ -304,11 +291,9 @@ class Testrunner extends EventEmitter {
             outStream: this._conf.outStream,
         });
 
-        this._browserPuppeteer.on(MESSAGES.UPSTREAM.CONSOLE_PIPE, consolePipeMessage => {
-            this._consolePipeLog.debug(consolePipeMessage.messageType + ': ' + consolePipeMessage.message);
-        });
-
         this._assertCount = 0;
+
+        /** @type {import('../../modules/browsers/browser-interface').IBrowser} */
         this._currentBrowser = null;
         this._foundTestsCount = 0;
         this._okTestsCount = 0;
@@ -362,15 +347,7 @@ class Testrunner extends EventEmitter {
             // endregion
             this._log.info(testCountInfo);
 
-            await this._browserPuppeteer.start();
-
-            try {
-                await this._runBrowsers();
-            }
-            finally {
-                await this._browserPuppeteer.stop();
-            }
-
+            await this._runBrowsers();
         }
         catch (error) {
             process.exitCode = 1;
@@ -418,9 +395,9 @@ class Testrunner extends EventEmitter {
 
             try {
                 // TODO deprecated, remove in future
-                await fs.writeFileAsync(pathlib.resolve(this._conf.workspaceDir, 'screenshot-catalog.json'), JSON.stringify(this._testRunReport.screenshots, null, 4));
+                await fsp.writeFile(pathlib.resolve(this._conf.workspaceDir, 'screenshot-catalog.json'), JSON.stringify(this._testRunReport.screenshots, null, 4));
 
-                await fs.writeFileAsync(pathlib.resolve(this._conf.workspaceDir, REPORT_FILE_NAME), JSON.stringify(this._testRunReport, null, 4));
+                await fsp.writeFile(pathlib.resolve(this._conf.workspaceDir, REPORT_FILE_NAME), JSON.stringify(this._testRunReport, null, 4));
             }
             catch (err) {
                 console.error(err);
@@ -443,7 +420,7 @@ class Testrunner extends EventEmitter {
         this._log.info('aborting...');
 
         while (this._isRunning) {
-            await Promise.delay(500);
+            await delay(500);
         }
 
         this._isAborting = false;
@@ -547,6 +524,7 @@ class Testrunner extends EventEmitter {
                 this._log.error(error);
 
                 if (attempt === maxAttempts || !(error instanceof TestFailedError)) {
+                    this._log.error('_runTestWithRetries: max retries reached or error is not TestFailedError');
                     throw error;
                 }
 
@@ -561,9 +539,8 @@ class Testrunner extends EventEmitter {
 
         const browser = this._currentBrowser;
 
-        this._log.info(`starting browser "${browser.name}" from "${browser.path}"`);
+        this._log.info(`starting browser "${browser.name}"`);
         await browser.start();
-        await browser.waitForBrowserVisible();
 
         try {
             if (suite.beforeTest) {
@@ -614,56 +591,48 @@ class Testrunner extends EventEmitter {
 
         let testStartTime;
 
+        await this._currentBrowser.navigateTo(suite.appUrl);
+
+        if (suite.beforeFirstCommand) {
+            await suite.beforeFirstCommand(this.directAPI);
+        }
+
+        this._currentBeforeCommand = suite.beforeCommand || noop;
+        this._currentAfterCommand = suite.afterCommand || noop;
+        this._currentBeforeAssert = suite.beforeAssert || noop;
+        this._currentAfterAssert = suite.afterAssert || noop;
+
         try {
-            await this._currentBrowser.open(suite.appUrl);
-            await this._browserPuppeteer.waitForConnection();
+            testStartTime = Date.now();
 
-            if (suite.beforeFirstCommand) {
-                await suite.beforeFirstCommand(this.directAPI);
-            }
+            await test.testFn(this.tAPI, { suite: suite, directAPI: this.directAPI });
 
-            this._currentBeforeCommand = suite.beforeCommand || noop;
-            this._currentAfterCommand = suite.afterCommand || noop;
-            this._currentBeforeAssert = suite.beforeAssert || noop;
-            this._currentAfterAssert = suite.afterAssert || noop;
-
-            try {
-                testStartTime = Date.now();
-
-                await test.testFn(this.tAPI, { suite: suite, directAPI: this.directAPI });
-
-                if (test.runErrors.length > 0) {
-                    throw new TestFailedError({
-                        message: `Test "${test.name}" failed`,
-                        testErrors: test.runErrors,
-                    });
-                }
-
-                this._testRunReport.runtimes[test.name] = Date.now() - testStartTime;
-
-                test.state = TEST_STATE.PASSED;
-            }
-            catch (error) {
-                this._testRunReport.runtimes[test.name] = Date.now() - testStartTime;
-
-                test.state = TEST_STATE.FAILED;
-                this._log.error(error);
-
-                // TODO this seems incorrect, should throw TestFailedError from the original places
+            if (test.runErrors.length > 0) {
                 throw new TestFailedError({
-                    message: error.message,
+                    message: `Test "${test.name}" failed`,
+                    testErrors: test.runErrors,
                 });
             }
-            finally {
-                if (suite.afterLastCommand) {
-                    await suite.afterLastCommand(this.directAPI);
-                }
-            }
+
+            this._testRunReport.runtimes[test.name] = Date.now() - testStartTime;
+
+            test.state = TEST_STATE.PASSED;
+        }
+        catch (error) {
+            this._testRunReport.runtimes[test.name] = Date.now() - testStartTime;
+
+            test.state = TEST_STATE.FAILED;
+            this._log.error(error);
+
+            // TODO this seems incorrect, should throw TestFailedError from the original places
+            throw new TestFailedError({
+                message: error.message,
+            });
         }
         finally {
-            await this._browserPuppeteer.clearPersistentData();
-            await this._browserPuppeteer.closeConnection();
-            await this._currentBrowser.open('');
+            if (suite.afterLastCommand) {
+                await suite.afterLastCommand(this.directAPI);
+            }
         }
     }
 
@@ -692,7 +661,7 @@ class Testrunner extends EventEmitter {
 
     /**
      * @param {Array<String>} testFilePaths
-     * @return {Array<Test>}
+     * @return {Promise<Test[]>}
      */
     async _parseTestFiles(testFilePaths) {
         const tests = [];
@@ -770,31 +739,36 @@ class Testrunner extends EventEmitter {
     }
 
     async _execCommandsDirect(cmds) {
-        return Promise.each(cmds, cmd => this._execCommandDirect(cmd));
+        for (const cmd of cmds) {
+            await this._execCommandsDirect(cmd);
+        }
     }
 
     async _execCommandsSideEffect(cmds) {
-        return Promise.each(cmds, cmd => this._execCommandSideEffect(cmd));
+        for (const cmd of cmds) {
+            await this._execCommandSideEffect(cmd);
+        }
     }
 
-    async _execCommandWithRetries(command) {
+    async _runBrowserCommandWithRetries(/** @type {string} */ browserFnName, /** @type {any[]} */ args) {
         let retries = 0;
 
         // eslint-disable-next-line no-constant-condition
         while (true) {
-            this._log.trace(`_execCommandWithRetries - attempt: ${retries}, command: ${util.inspect(command)}`);
+            this._log.trace(`_execCommandWithRetries - attempt: ${retries}, command: ${browserFnName}, args: ${util.inspect(args)}`);
 
             try {
-                await this._browserPuppeteer.execCommand(command);
+                await this._currentBrowser[browserFnName](...args);
+
                 this._log.trace('_execCommandWithRetries - success');
                 break;
             }
             catch (err) {
                 if (retries < this._conf.commandRetryCount) {
-                    this._log.warn(`Ignoring ${command.type} error, retrying`);
+                    this._log.warn(`Ignoring ${browserFnName} error, retrying`);
                     this._log.debug(err);
                     retries++;
-                    await Promise.delay(this._conf.commandRetryInterval);
+                    await delay(this._conf.commandRetryInterval);
                     continue;
                 }
 
@@ -825,174 +799,138 @@ class Testrunner extends EventEmitter {
         }
     }
 
-    async _clickDirect(selector, options) {
+    async _clickDirect(selector/* , options*/) {
         this._log.info(`click: "${ellipsis(selector)}"`);
 
         try {
-            await this._execCommandWithRetries({
-                type: 'click',
-                selector: selector,
-                options,
-            });
+            await this._runBrowserCommandWithRetries('click', [selector]);
         }
         catch (err) {
             await this._handleCommandError(err);
         }
     }
 
-    // TODO wtf is this? use _getValueDirect?
-    async _getValue(selector) {
-        return this._browserPuppeteer.execCommand({
-            type: 'getValue',
-            selector: selector,
-        });
-    }
-
     async _getValueDirect(selector) {
         this._log.info(`getValue: "${ellipsis(selector)}"`);
 
-        return this._browserPuppeteer.execCommand({
-            type: 'getValue',
-            selector: selector,
-        });
+        return this._currentBrowser.getValue(selector);
     }
 
     async _setValueDirect(selector, value) {
         this._log.info(`setValue: "${ellipsis(value)}", "${ellipsis(selector)}"`);
 
-        return this._execCommandWithRetries({
-            type: 'setValue',
-            selector: selector,
-            value: value,
-        })
-        .catch(async err => {
+        try {
+            await this._runBrowserCommandWithRetries('type', [selector, value]);
+        }
+        catch (err) {
             await this._handleCommandError(err);
-        });
+        }
     }
 
-    async _pressKeyDirect(selector, keyCode) {
-        this._log.info(`pressKey: ${keyCode}, "${ellipsis(selector)}"`);
+    /**
+     * @param {string} keyCode See https://github.com/puppeteer/puppeteer/blob/main/src/common/USKeyboardLayout.ts
+     * @return {Promise<void>}
+     */
+    async _pressKeyDirect(keyCode) {
+        this._log.info(`pressKey: ${keyCode}`);
 
-        await this._execCommandWithRetries({
-            type: 'pressKey',
-            selector: selector,
-            keyCode: keyCode,
-        });
+        if (arguments.length > 1) {
+            throw new TypeError('Selector is removed, pressKey only accepts keyCode.');
+        }
+
+        if (typeof keyCode !== 'string') {
+            throw new TypeError('Expected string keyCode');
+        }
+
+        await this._runBrowserCommandWithRetries('pressKey', [keyCode]);
     }
 
     async _waitForVisibleDirect(selector, opts = {}) {
         this._log.info(`waitForVisible: "${ellipsis(selector)}"`);
 
-        return this._browserPuppeteer.execCommand({
-            type: 'waitForVisible',
-            selector: selector,
-            pollInterval: opts.pollInterval,
-            timeout: opts.timeout,
-        })
-        .catch(async err => {
+        try {
+            await this._currentBrowser.waitForVisible(selector, opts);
+        }
+        catch (err) {
             await this._handleCommandError(err);
-        });
+        }
     }
 
     async _waitWhileVisibleDirect(selector, opts = {}) {
         this._log.info(`waitWhileVisible: "${ellipsis(selector)}"`);
 
-        return this._browserPuppeteer.execCommand({
-            type: 'waitWhileVisible',
-            selector: selector,
-            pollInterval: opts.pollInterval,
-            initialDelay: opts.initialDelay,
-            timeout: opts.timeout,
-        })
-        .catch(async err => {
+        try {
+            await this._currentBrowser.waitWhileVisible(selector, opts);
+        }
+        catch (err) {
             await this._handleCommandError(err);
-        });
+        }
     }
 
     async _isVisibleDirect(selector) {
-        return this._browserPuppeteer.execCommand({
-            type: 'isVisible',
-            selector: selector,
-        })
-        .catch(async err => {
+        try {
+            const result = await this._currentBrowser.isVisible(selector);
+            return result;
+        }
+        catch (err) {
             await this._handleCommandError(err);
-        });
+        }
     }
 
-    async _focusDirect(selector, options) {
+    async _focusDirect(selector /* , options*/) {
         this._log.info(`focus: "${ellipsis(selector)}"`);
 
-        return this._execCommandWithRetries({
-            type: 'focus',
-            selector: selector,
-            options,
-        })
-        .catch(err => {
+        try {
+            await this._currentBrowser.focus(selector);
+        }
+        catch (err) {
             // TODO handle as error?
-            this._log.warn(`WARNING - focus - ${err.message}`);
-
-            // this._handleCommandError(err);
-        });
+            this._log.warn(`WARNING - focus failed - ${err.message}`);
+        }
     }
 
     async _scrollDirect(selector, scrollTop) {
         this._log.debug(`scroll: ${scrollTop}, "${ellipsis(selector)}"`);
 
-        return this._browserPuppeteer.execCommand({
-            type: 'scroll',
-            selector: selector,
-            scrollTop: scrollTop,
-        })
-        .catch(async err => {
+        try {
+            await this._currentBrowser.scroll(selector, scrollTop);
+        }
+        catch (err) {
             await this._handleCommandError(err);
-        });
+        }
     }
 
     async _scrollToDirect(selector) {
         this._log.debug(`scrollTo: "${ellipsis(selector)}"`);
 
-        return this._browserPuppeteer.execCommand({
-            type: 'scrollTo',
-            selector: selector,
-        })
-        .catch(async err => {
+        try {
+            await this._currentBrowser.scrollIntoView(selector);
+        }
+        catch (err) {
             await this._handleCommandError(err);
-        });
-    }
-
-    async _compositeDirect(commands) {
-        this._log.debug(`composite: ${commands.map(cmd => cmd.type).join(', ')}`);
-
-        return this._browserPuppeteer.execCommand({
-            type: 'composite',
-            commands: commands,
-        })
-        .catch(async err => {
-            await this._handleCommandError(err);
-        });
+        }
     }
 
     async _mouseoverDirect(selector) {
         this._log.debug(`mouseover: ${selector}`);
 
-        return this._browserPuppeteer.execCommand({
-            type: 'mouseover',
-            selector: selector,
-        })
-        .catch(async err => {
+        try {
+            this._currentBrowser.hover(selector);
+        }
+        catch (err) {
             await this._handleCommandError(err);
-        });
+        }
     }
 
     async _execFunctionDirect(fn, ...args) {
         this._log.debug(`execFunction: ${fn.name || '(anonymous)'}`);
 
-        return this._browserPuppeteer.execFunction(fn, ...args);
+        return this._currentBrowser.execFunction(fn, ...args);
     }
 
     async _delay(ms) {
         this._log.debug(`delay ${ms}`);
-        return Promise.delay(ms);
+        return delay(ms);
     }
 
     async _comment(comment) {
@@ -1030,21 +968,14 @@ class Testrunner extends EventEmitter {
         await this._currentBeforeAssert(this.directAPI);
         await mkdirpAsync(refImgDir);
 
-        let screenshotBitmap;
-
-        if ('getScreenshot' in this._currentBrowser) {
-            screenshotBitmap = await this._currentBrowser.getScreenshot({ cropMarker: screenshotMarkerImg });
-        }
-        else {
-            screenshotBitmap = await screenshotjs({ cropMarker: screenshotMarkerImg });
-        }
+        let screenshotBitmap = await Bitmap.from(await this._currentBrowser.screenshot());
 
         const screenshots = [screenshotBitmap];
         const diffResults = [];
 
         // region save new ref img
         try {
-            await accessAsync(refImgPath, fs.constants.F_OK);
+            await fsp.access(refImgPath, fs.constants.F_OK);
         }
         catch (error) {
             await screenshotBitmap.toPNGFile(refImgPath);
@@ -1079,15 +1010,10 @@ class Testrunner extends EventEmitter {
             this._log.warn(`screenshot assert failed: ${refImgPathRelative}, ppm: ${formattedPPM}, totalChangedPixels: ${imgDiffResult.totalChangedPixels}, attempt#: ${assertAttempt}`);
 
             if (assertAttempt < assertRetryMaxAttempts) {
-                if ('getScreenshot' in this._currentBrowser) {
-                    screenshotBitmap = await this._currentBrowser.getScreenshot({ cropMarker: screenshotMarkerImg });
-                }
-                else {
-                    screenshotBitmap = await screenshotjs({ cropMarker: screenshotMarkerImg });
-                }
+                screenshotBitmap = Bitmap.from(await this._currentBrowser.screenshot());
 
                 screenshots.push(screenshotBitmap);
-                await Promise.delay(this._conf.assertRetryInterval);
+                await delay(this._conf.assertRetryInterval);
             }
         }
 
@@ -1176,25 +1102,6 @@ class Testrunner extends EventEmitter {
         }
 
         this._assertCount++;
-    }
-
-    async _uploadFileAndAssignDirect(data) {
-        const filePath = data.filePath;
-        const fileName = pathlib.basename(filePath);
-        const destinationVariable = data.destinationVariable;
-
-        const file = await fs.readFileAsync(filePath);
-        const fileBase64 = file.toString('base64');
-
-        return this._browserPuppeteer.execCommand({
-            type: 'uploadFileAndAssign',
-            fileData: {
-                base64: fileBase64,
-                name: fileName,
-                type: data.type,
-            },
-            destinationVariable: destinationVariable,
-        });
     }
 }
 

@@ -36,9 +36,6 @@
             <div class="click-test-jq"></div>
             <div class="click-test-dom"></div>
 
-            <div class="composite-test-click"></div>
-            <input class="composite-test-setValue" />
-
             <input class="focus-test" />
 
             <input class="getValue-test" value="testValue" />
@@ -48,7 +45,7 @@
 
             <div class="mouseover-test"></div>
 
-            <div class="pressKey-test"></div>
+            <div tabindex="0" class="pressKey-test"></div>
 
             <div class="scroll-test">
                 a<br>b<br>c<br>d<br>e<br>f<br>g<br>h<br>i<br>j<br>k<br>l<br>m<br><span id="scroll-test--n">n</span><br>o<br>p<br>q<br>r<br>s<br>t<br>u<br>v<br>w<br>x<br>y<br>z
@@ -80,12 +77,6 @@
                     $('.pressKey-test').text('pressKey65OK')
                 }
             })
-
-            $('.composite-test-click').on('click', function () {
-                $('.composite-test-click').text('compositeClickOK')
-            })
-
-
 
             window.dummyModel = {
                 dummyFile: null

@@ -43,7 +43,7 @@ function imageDiff(a, b, options) {
 
     // TODO what if images are different size?
     if (a.width !== b.width || a.height !== b.height) {
-        throw new DifferentSizeError('width or height are different');
+        throw new DifferentSizeError(`width or height are different (A: ${a.width}x${a.height}, B: ${b.width}x${b.height})`);
     }
 
     if (a.data.equals(b.data)) {
