@@ -105,6 +105,11 @@ class ChromiumPuppeteerSpawner extends BrowserSpawnerBase {
 
         await new Promise(res => this._httpServer.close(res));
 
+        // close all pages before closing browser (https://github.com/puppeteer/puppeteer/issues/6341#issuecomment-739149141)
+        for (const page of (await this._browser.pages())) {
+            await page.close();
+        }
+
         await this._browser.close();
         this._browser = null;
         this._contextPage = null;
