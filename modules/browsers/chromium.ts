@@ -57,7 +57,14 @@ export default class Chromium implements IBrowser {
     }
 
     async stop() {
+        await this._closeAllPages();
         await this._browser.close();
+    }
+
+    async _closeAllPages() {
+        for (const page of (await this._browser.pages())) {
+            await page.close();
+        }
     }
 
     async navigateTo(url: string) {
