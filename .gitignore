@@ -2,8 +2,8 @@ npm-debug.log*
 node_modules/
 *_temp*
 test/referenceScreenshots*
-test/**/reference-diffs/*
-test/**/reference-errors/*
+test/**/reference-diffs/
+test/**/reference-errors/
 screenshot-catalog.json
 test-run-report.json
 bc-test
@@ -12,3 +12,4 @@ test.js
 bc-test*.js
 babel-temp.js
 lint.txt
+ts-dist/
