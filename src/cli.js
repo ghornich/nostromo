@@ -7,7 +7,7 @@ const fs = require('fs');
 const statAsync = util.promisify(fs.stat);
 const pathlib = require('path');
 const args = require('minimist')(process.argv.slice(2));
-const BrowserSpawners = require('../modules/browser-spawners');
+const browsers = require('../modules/browsers');
 const Loggr = require('../modules/loggr');
 
 const DEFAULT_REC_CFG_FILE = 'nostromo.record.conf.js';
@@ -83,7 +83,7 @@ async function run() {
             process.chdir(pathlib.dirname(absConfigPath));
             const configFn = require(pathlib.resolve(absConfigPath));
             const fileConf = await configFn({
-                browsers: BrowserSpawners,
+                browsers: browsers,
                 LOG_LEVELS: Loggr.LEVELS,
             });
 
