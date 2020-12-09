@@ -551,7 +551,10 @@ class Testrunner extends EventEmitter {
                 }
 
                 this._log.info(`test "${test.name}" failed, retrying`);
-                this._log.debug(error.testErrors.map(String).join('\n'));
+
+                if (error.testErrors && error.testErrors.length > 0) {
+                    this._log.debug(error.testErrors.map(String).join('\n'));
+                }
             }
         }
     }
