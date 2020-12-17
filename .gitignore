@@ -12,4 +12,4 @@ test.js
 bc-test*.js
 babel-temp.js
 lint.txt
-ts-dist/
+# ts-dist/

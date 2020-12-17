@@ -12,8 +12,7 @@
     "test": "npm run unit-test && npm run self-test",
     "unit-test": "jest --runInBand",
     "self-test": "node ts-dist/src/cli.js --run -c ts-dist/test/self-tests/nostromo.run.conf.js",
-    "XXXXX-prepublish": "tsc",
-    "postinstall": "npm run tsc"
+    "prepublish": "tsc"
   },
   "author": "ghornich",
   "dependencies": {
