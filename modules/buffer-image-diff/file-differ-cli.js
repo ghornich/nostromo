@@ -1,3 +1,4 @@
+// @ts-nocheck
 const fs = require('fs');
 const pathlib = require('path');
 const util = require('util');

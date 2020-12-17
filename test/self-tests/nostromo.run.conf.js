@@ -27,18 +27,7 @@ module.exports = function (config) {
                 appUrl: 'http://localhost:31667/test/self-tests/get-unique-selector/test.html',
                 testFiles: ['get-unique-selector/test.js'],
                 beforeTest: async function () {
-                    this.server = await createServer({ dirToServe: pathlib.resolve(__dirname, '../../'), port: 31667 });
-                },
-                afterTest: async function () {
-                    return new Promise(resolve => this.server.close(resolve));
-                },
-            },
-            {
-                name: 'browser-puppeteer',
-                appUrl: 'http://localhost:31667/index.html',
-                testFiles: ['browser-puppeteer/test.js'],
-                beforeTest: async function () {
-                    this.server = await createServer({ dirToServe: pathlib.resolve(__dirname, 'browser-puppeteer'), port: 31667 });
+                    this.server = await createServer({ dirToServe: pathlib.resolve(__dirname, '../../../'), port: 31667 });
                 },
                 afterTest: async function () {
                     return new Promise(resolve => this.server.close(resolve));
@@ -56,7 +45,7 @@ module.exports = function (config) {
                     return t.waitWhileVisible('.loading');
                 },
                 beforeTest: async function () {
-                    this.server = await createServer({ dirToServe: pathlib.resolve(__dirname, 'testapp'), port: 31667 });
+                    this.server = await createServer({ dirToServe: pathlib.resolve(__dirname, '../../../test/self-tests/testapp'), port: 31667 });
                 },
                 afterTest: async function () {
                     return new Promise(resolve => this.server.close(resolve));

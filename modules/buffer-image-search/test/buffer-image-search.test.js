@@ -1,17 +1,17 @@
 'use strict';
 
-const Bitmap = require('../../pnglib').Bitmap;
+const Bitmap = require('../../pnglib/pnglib').Bitmap;
 const resolve = require('path').resolve;
 const bufferImageSearch = require('../');
 
 test('buffer-image-search', async () => {
-    const testImg1 = await Bitmap.from(resolve(__dirname, 'galaxy1.png'));
-    const testImg2 = await Bitmap.from(resolve(__dirname, 'galaxy2.png'));
-    const testImg3 = await Bitmap.from(resolve(__dirname, 'galaxy3.png'));
+    const testImg1 = await Bitmap.from(resolve(__dirname, '../../../../modules/buffer-image-search/test/galaxy1.png'));
+    const testImg2 = await Bitmap.from(resolve(__dirname, '../../../../modules/buffer-image-search/test/galaxy2.png'));
+    const testImg3 = await Bitmap.from(resolve(__dirname, '../../../../modules/buffer-image-search/test/galaxy3.png'));
 
-    const marker1 = await Bitmap.from(resolve(__dirname, 'marker1.png'));
-    const marker2 = await Bitmap.from(resolve(__dirname, 'marker2.png'));
-    const marker3 = await Bitmap.from(resolve(__dirname, 'marker3.png'));
+    const marker1 = await Bitmap.from(resolve(__dirname, '../../../../modules/buffer-image-search/test/marker1.png'));
+    const marker2 = await Bitmap.from(resolve(__dirname, '../../../../modules/buffer-image-search/test/marker2.png'));
+    const marker3 = await Bitmap.from(resolve(__dirname, '../../../../modules/buffer-image-search/test/marker3.png'));
 
     const results1 = bufferImageSearch(testImg1, marker1);
     const results2 = bufferImageSearch(testImg2, marker2);

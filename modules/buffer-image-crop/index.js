@@ -1,5 +1,6 @@
+// @ts-nocheck
 const assert = require('assert');
-const Bitmap = require('../pnglib').Bitmap;
+const Bitmap = require('../pnglib/pnglib').Bitmap;
 
 module.exports = function (img, conf) {
     // TODO accept bitmap only

@@ -1,12 +1,13 @@
-const Bitmap = require('../../pnglib').Bitmap;
+// @ts-nocheck
+const Bitmap = require('../../pnglib/pnglib').Bitmap;
 const bic = require('../');
 const resolve = require('path').resolve;
 
 test('buffer image crop', async () => {
-    const fullImg = await Bitmap.from(resolve(__dirname, './m82.png'));
-    const ref1 = await Bitmap.from(resolve(__dirname, './m82_crop1.png'));
-    const ref2 = await Bitmap.from(resolve(__dirname, './m82_crop2.png'));
-    const ref3 = await Bitmap.from(resolve(__dirname, './m82_crop3.png'));
+    const fullImg = await Bitmap.from(resolve(__dirname, '../../../../modules/buffer-image-crop/test/m82.png'));
+    const ref1 = await Bitmap.from(resolve(__dirname, '../../../../modules/buffer-image-crop/test/m82_crop1.png'));
+    const ref2 = await Bitmap.from(resolve(__dirname, '../../../../modules/buffer-image-crop/test/m82_crop2.png'));
+    const ref3 = await Bitmap.from(resolve(__dirname, '../../../../modules/buffer-image-crop/test/m82_crop3.png'));
 
     const cropped1 = bic(fullImg, { x: 474, y: 183, width: 133, height: 151 });
     const cropped2 = bic(fullImg, { x: 0, y: 0, width: 245, height: 157 });

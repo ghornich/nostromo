@@ -1,6 +1,6 @@
 import puppeteer from 'puppeteer';
 import type { IBrowser } from './browser-interface';
-const delay = require('../delay');
+const delay = require('../delay/delay');
 
 const DEFAULT_OPTIONS = { name: 'chromium', headless: true };
 const DEFAULT_VISIBILITY_TIMEOUT = 30000;
@@ -97,22 +97,26 @@ export default class Chromium implements IBrowser {
 
     async scroll(selector: string, scrollTop: number) {
         await this._page.evaluate(function (sel, sTop) {
+            // @ts-expect-error
             document.querySelector(sel).scrollTop = sTop;
         }, selector, scrollTop);
     }
 
     async scrollIntoView(selector: string) {
         await this._page.evaluate(function (sel) {
+            // @ts-expect-error
             document.querySelector(sel).scrollIntoView();
         }, selector);
     }
 
     async execFunction(fn: Function, ...args: any[]): Promise<any> {
+        // @ts-expect-error
         return this._page.evaluate(fn, ...args);
     }
 
     async getValue(selector: string): Promise<string|boolean> {
         return this._page.evaluate(function (sel) {
+            // @ts-expect-error
             const node = document.querySelector(sel);
 
             if (node === null) {
@@ -143,14 +147,15 @@ export default class Chromium implements IBrowser {
 
     async isVisible(selector: string): Promise<boolean> {
         const result = await this._page.evaluate(function (sel) {
-            /** @type {NodeList} */
-            const nodes = document.querySelectorAll(sel);
+            // @ts-expect-error
+            const nodes: NodeList = document.querySelectorAll(sel);
 
             if (nodes.length === 0) {
                 return false;
             }
 
             const hasVisible = [...nodes].some(node => {
+                // @ts-expect-error
                 const computedStyle = window.getComputedStyle(node);
                 return computedStyle.getPropertyValue('display') !== 'none' && computedStyle.getPropertyValue('visibility') !== 'hidden';
             });
@@ -164,6 +169,7 @@ export default class Chromium implements IBrowser {
 
                 const centerX = rect.left + rect.width / 2;
                 const centerY = rect.top + rect.height / 2;
+                // @ts-expect-error
                 const elementFromPoint = document.elementFromPoint(centerX, centerY);
 
                 if (elementFromPoint === node || node.contains(elementFromPoint)) {

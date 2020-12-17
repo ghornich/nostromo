@@ -1,3 +1,4 @@
+// @ts-nocheck
 const assert = require('assert');
 
 module.exports = function (haystack, needle) {

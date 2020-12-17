@@ -1,3 +1,4 @@
+// @ts-nocheck
 'use strict';
 
 // TODO unit test
@@ -9,6 +10,7 @@ const Jimp = require('jimp');
 
 class Bitmap {
     /**
+     * @param {Object} options
      * @param {Number} options.width
      * @param {Number} options.height
      * @param {Buffer} options.data
@@ -45,7 +47,7 @@ class Bitmap {
 
 /**
  * @param {String|Buffer} source
- * @return {Bitmap}
+ * @return {Promise<Bitmap>}
  */
 Bitmap.from = async function (source) {
     const jimpImage = await Jimp.read(source);

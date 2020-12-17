@@ -1,4 +1,4 @@
-const Bitmap = require('../pnglib').Bitmap;
+// @ts-nocheck
 const DIFFERENT_SIZE_ERROR = 'differentSizeError';
 
 exports = module.exports = imgVisualDiff;
@@ -7,6 +7,8 @@ imgVisualDiff.DIFFERENT_SIZE_ERROR = DIFFERENT_SIZE_ERROR;
 const DEF_OPTS = {
     pixelThreshold: 0,
 };
+
+/** @typedef {import('../pnglib/pnglib').Bitmap} Bitmap */
 
 /**
  * @param {Bitmap} a

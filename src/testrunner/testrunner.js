@@ -1,18 +1,17 @@
-const MODULES_PATH = '../../modules/';
-const Loggr = require(MODULES_PATH + 'loggr');
+const Loggr = require('../../modules/loggr/loggr');
 const isEqual = require('lodash.isequal');
 const fs = require('fs');
 const fsp = require('fs').promises;
 const pathlib = require('path');
 const util = require('util');
-const TapWriter = require(MODULES_PATH + 'tap-writer');
+const TapWriter = require('../../modules/tap-writer/index');
 const EventEmitter = require('events').EventEmitter;
 const mkdirpAsync = util.promisify(require('mkdirp'));
-const Bitmap = require(MODULES_PATH + 'pnglib').Bitmap;
+const Bitmap = require('../../modules/pnglib/pnglib').Bitmap;
 const globAsync = util.promisify(require('glob'));
-const bufferImageDiff = require(MODULES_PATH + 'buffer-image-diff');
+const bufferImageDiff = require('../../modules/buffer-image-diff/image-diff').default;
 const unsafePrettyMs = require('pretty-ms');
-const delay = require('../../modules/delay');
+const delay = require('../../modules/delay/delay');
 
 const TEST_STATE = {
     SCHEDULED: 'scheduled',
@@ -33,14 +32,6 @@ const DEFAULT_REF_DIFFS_DIR = 'reference-diffs';
 
 const REPORT_FILE_NAME = 'test-run-report.json';
 
-// TODO use es6 class to inherit Error
-const ERRORS = {
-    TIMEOUT: 0,
-    NOT_EQUAL: 1,
-    TEST_BAILOUT: 2,
-    BAILOUT: 3,
-};
-
 class AssertError extends Error {
     constructor(message) {
         super(message);
@@ -56,10 +47,24 @@ class AbortError extends Error {
 }
 
 class TestFailedError extends Error {
-    constructor({ message, testErrors }) {
+    constructor({ message, testErrors = null }) {
         super(message);
         this.testErrors = testErrors || [];
         this.name = 'TestFailedError';
+    }
+}
+
+class BailoutError extends Error {
+    constructor(message) {
+        super(message);
+        this.name = 'BailoutError';
+    }
+}
+
+class TestBailoutError extends Error {
+    constructor(message) {
+        super(message);
+        this.name = 'TestBailoutError';
     }
 }
 
@@ -71,7 +76,7 @@ class TestFailedError extends Error {
 /**
  * @callback BeforeAfterCommandCallback
  * @param {TestAssertAPIDirect} t
- * @param {Command} command - command before/after this callback
+ * @param {Object} command - command before/after this callback
  */
 
 /**
@@ -132,7 +137,7 @@ class TestFailedError extends Error {
  * @property {String} [referenceErrorsDir = DEFAULT_REF_ERRORS_DIR]
  * @property {string} [workspaceDir]
  * @property {Array<import('../../modules/browsers/browser-interface')>} browsers
- * @property {ImageDiffOptions} [imageDiffOptions] - options for the built-in, screenshot-based asserter
+ * @property {import('../../modules/buffer-image-diff/image-diff').ImageDiffOptions} [imageDiffOptions] - options for the built-in, screenshot-based asserter
  * @property {Array<Suite>} suites
  * @property {Number} [assertRetryCount = 0]
  * @property {Number} [assertRetryInterval = 1000]
@@ -949,11 +954,11 @@ class Testrunner extends EventEmitter {
         }
 
         if (this._conf.testBailout) {
-            throw createError(ERRORS.TEST_BAILOUT, err.stack || err.message);
+            throw new TestBailoutError(err.stack || err.message);
         }
 
         if (this._conf.bailout) {
-            throw createError(ERRORS.BAILOUT, err.stack || err.message);
+            throw new BailoutError(err.stack || err.message);
         }
     }
 
@@ -1010,7 +1015,7 @@ class Testrunner extends EventEmitter {
             this._log.warn(`screenshot assert failed: ${refImgPathRelative}, ppm: ${formattedPPM}, totalChangedPixels: ${imgDiffResult.totalChangedPixels}, attempt#: ${assertAttempt}`);
 
             if (assertAttempt < assertRetryMaxAttempts) {
-                screenshotBitmap = Bitmap.from(await this._currentBrowser.screenshot());
+                screenshotBitmap = await Bitmap.from(await this._currentBrowser.screenshot());
 
                 screenshots.push(screenshotBitmap);
                 await delay(this._conf.assertRetryInterval);
@@ -1106,11 +1111,6 @@ class Testrunner extends EventEmitter {
 }
 
 function noop() { }
-
-// TODO use es6 classes for errors
-function createError(type, msg) {
-    const e = new Error(msg); e.type = type; return e;
-}
 
 function ellipsis(s, l = ELLIPSIS_LIMIT) {
     if (s.length <= l) {

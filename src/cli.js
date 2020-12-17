@@ -8,7 +8,7 @@ const statAsync = util.promisify(fs.stat);
 const pathlib = require('path');
 const args = require('minimist')(process.argv.slice(2));
 const browsers = require('../modules/browsers');
-const Loggr = require('../modules/loggr');
+const Loggr = require('../modules/loggr/loggr');
 
 const DEFAULT_REC_CFG_FILE = 'nostromo.record.conf.js';
 const DEFAULT_RUN_CFG_FILE = 'nostromo.run.conf.js';

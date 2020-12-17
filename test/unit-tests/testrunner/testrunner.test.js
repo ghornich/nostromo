@@ -65,13 +65,7 @@ test('Testrunner: test throws', async () => {
                 start: noop,
                 isBrowserVisible: () => true,
                 waitForBrowserVisible: noop,
-                open: () => {
-                    wsClient = new WebSocket('ws://localhost:47225?puppet-id=6183683651617');
-                    wsClient.on('error', noop);
-                    wsClient.on('message', () => {
-                        wsClient.send(JSON.stringify({ type: 'ack' }));
-                    });
-                },
+                open: noop,
                 stop: noop,
             },
         ],
@@ -99,8 +93,8 @@ test('Testrunner: test retries', async () => {
         testBailout: true,
         bailout: false,
 
-        // outStream: new NullStream(),
-        // logLevel: 'off',
+        outStream: new NullStream(),
+        logLevel: 'off',
         testRetryCount: 4,
 
         browsers: [
@@ -122,9 +116,10 @@ test('Testrunner: test retries', async () => {
                     await t.waitWhileVisible('.loading, #toast');
                 },
                 beforeTest: async function () {
-                    this.server = await createServer({ dirToServe: pathlib.resolve(__dirname, '../../self-tests/testapp'), port: 16743 });
+                    this.server = await createServer({ dirToServe: pathlib.resolve(__dirname, '../../../../test/self-tests/testapp'), port: 16743 });
                 },
                 afterTest: async function () {
+                    // @ts-expect-error
                     return new Promise(resolve => this.server.close(resolve));
                 },
             },
@@ -132,7 +127,7 @@ test('Testrunner: test retries', async () => {
     });
 
     await testrunner.run();
-    console.log('process.exicode', process.exitCode);
+
     expect(process.exitCode === undefined || process.exitCode === 0).toBe(true);
 }, 60 * 1000);
 

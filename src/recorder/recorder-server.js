@@ -12,6 +12,9 @@ const pathlib = require('path');
 const Loggr = require(MODULES_PATH + 'loggr');
 const defaults = require('lodash.defaults');
 
+/** @typedef {Object} Command */
+/** @typedef {Object} RecorderApp */
+
 /**
  * @memberOf RecorderServer
  * @type {Number}
@@ -52,7 +55,7 @@ exports = module.exports = RecorderServer;
 
 /**
  * @typedef {Object} RecorderOptions
- * @property {Number} [recorderAppPort = {@link RecorderServer.DEFAULT_RECORDER_APP_PORT}]
+ * @property {Number} [recorderAppPort] See RecorderServer.DEFAULT_RECORDER_APP_PORT
  * @property {Number} [logLevel] - See Loggr.LEVELS
  *
  * @property {FilterCallback} [captureFilter]
@@ -70,7 +73,7 @@ exports = module.exports = RecorderServer;
  * @property {Array<String>} [mouseoverSelectors] - Detect mouseover events only for these selectors
  *
  * @property {Array<String>} [ignoredClasses] - DEPRECATED (use uniqueSelectorOptions) Ignored classnames
- * @property {UniqueSelectorOptions} [uniqueSelectorOptions]
+ * @property {Object} [uniqueSelectorOptions] import('../../modules/get-unique-selector').UniqueSelectorOptions
  *
  * @property {Array<String>|null} [compositeEvents = ['click', 'focus']] - subsequent events of specified types will be combined into a single composite event
  * @property {Number} [compositeEventsThreshold = 200] - composite events grouping threshold
@@ -116,8 +119,6 @@ function RecorderServer(conf) {
     this._puppeteer = new BrowserPuppeteer({
         logger: this._log.fork('BrowserPuppeteer'),
     });
-
-    this._proxyMessage = this._proxyMessage.bind(this);
 }
 
 // TODO better promise chain
@@ -130,9 +131,11 @@ RecorderServer.prototype.start = async function () {
 
     console.log(`--- Open the recording app in your browser: http://localhost:${this._conf.recorderAppPort} ---`);
 
-    this._puppeteer.on(MESSAGES.UPSTREAM.SELECTOR_BECAME_VISIBLE, this._proxyMessage);
-    this._puppeteer.on(MESSAGES.UPSTREAM.CAPTURED_EVENT, this._proxyMessage);
-    this._puppeteer.on(MESSAGES.UPSTREAM.INSERT_ASSERTION, this._proxyMessage);
+    const boundProxyMessage = this._proxyMessage.bind(this);
+
+    this._puppeteer.on(MESSAGES.UPSTREAM.SELECTOR_BECAME_VISIBLE, boundProxyMessage);
+    this._puppeteer.on(MESSAGES.UPSTREAM.CAPTURED_EVENT, boundProxyMessage);
+    this._puppeteer.on(MESSAGES.UPSTREAM.INSERT_ASSERTION, boundProxyMessage);
 
     this._puppeteer.on('puppetConnected', async () => {
         try {

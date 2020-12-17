@@ -2,11 +2,15 @@ const MAX_LINE_LEN = 190;
 const INDENT_DEPTH = 4;
 
 exports = module.exports = {
-    parser: 'babel-eslint',
+    parser: '@babel/eslint-parser',
+    extends: 'eslint:recommended',
     parserOptions: {
         sourceType: 'module',
+        ecmaVersion: 6,
+        ecmaFeatures: {
+            modules: true,
+        },
     },
-    extends: 'eslint:recommended',
     env: {
         node: true,
         browser: true,

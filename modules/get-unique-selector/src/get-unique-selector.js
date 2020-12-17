@@ -1,8 +1,8 @@
 'use strict';
 
-var DOMUtils = require('./dom-utils');
-var SelectorElement = require('./selector-element');
-var SelectorElementList = require('./selector-element-list');
+const DOMUtils = require('./dom-utils');
+const SelectorElement = require('./selector-element');
+const SelectorElementList = require('./selector-element-list');
 
 exports = module.exports = UniqueSelector;
 
@@ -22,6 +22,7 @@ exports = module.exports = UniqueSelector;
 function UniqueSelector(options) {
     // TODO test all options
     this._opts = Object.assign({}, {
+        // @ts-expect-error
         querySelectorAll: document.querySelectorAll.bind(document),
         ignoredClasses: [],
         useIds: true,
@@ -37,7 +38,7 @@ function UniqueSelector(options) {
 }
 
 UniqueSelector.prototype.get = function (node) {
-    var _node = node;
+    let _node = node;
 
     if (this._opts.useIds && DOMUtils.hasId(_node)) {
         return '#' + DOMUtils.getId(_node);
@@ -45,9 +46,9 @@ UniqueSelector.prototype.get = function (node) {
 
     // traverse up until prefClass is found or max depth reached or body reached
     if (this._opts.preferredClass && this._opts.useClosestParentWithPreferredClass) {
-        var currentNode = _node;
-        var depth = 0;
-        var depthLimit = 1000;
+        let currentNode = _node;
+        let depth = 0;
+        const depthLimit = 1000;
 
         while (currentNode && currentNode.tagName !== 'BODY') {
             if (depth >= this._opts.preferredClassParentLimit) {
@@ -68,7 +69,7 @@ UniqueSelector.prototype.get = function (node) {
         }
     }
 
-    var selectorElementList = this._getParentSelectorPath(_node);
+    const selectorElementList = this._getParentSelectorPath(_node);
 
     selectorElementList.simplify();
 
@@ -87,12 +88,12 @@ UniqueSelector.prototype.get = function (node) {
 };
 
 UniqueSelector.prototype._getParentSelectorPath = function (node) {
-    var selectorElementList = new SelectorElementList(this._opts);
+    const selectorElementList = new SelectorElementList(this._opts);
 
-    var currentNode = node;
+    let currentNode = node;
 
     while (currentNode && currentNode.tagName !== 'BODY') {
-        var selectorElement = new SelectorElement(currentNode, this._opts);
+        const selectorElement = new SelectorElement(currentNode, this._opts);
 
         selectorElementList.addElement(selectorElement);
 

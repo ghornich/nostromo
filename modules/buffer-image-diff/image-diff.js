@@ -1,9 +1,14 @@
-exports = module.exports = imageDiff;
+// @ts-nocheck
+const assert = require('assert');
 
 class DifferentSizeError extends Error {}
 
 // a, b: Image
 // return {same:Boolean, difference:Number}
+
+/**
+ * @typedef {{ width: number, height: number, data: Buffer }} Bitmap
+ */
 
 /**
  * @typedef {Object} ImageDiffResult
@@ -25,11 +30,10 @@ class DifferentSizeError extends Error {}
 /**
  * @param {Bitmap} a
  * @param {Bitmap} b
- * @param {ImageDiffOptions} options
+ * @param {ImageDiffOptions} opts
  * @return {ImageDiffResult}
  */
-function imageDiff(a, b, options) {
-    const opts = options || {};
+function imageDiff(a, b, opts) {
     assert(opts.colorThreshold !== undefined, 'colorThreshold is missing');
     assert(opts.imageThreshold !== undefined, 'imageThreshold is missing');
 
@@ -100,8 +104,4 @@ function imageDiff(a, b, options) {
     return result;
 }
 
-function assert(v, m) {
-    if (!v) {
-        throw new Error(m);
-    }
-}
+export default imageDiff;

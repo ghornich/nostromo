@@ -1,3 +1,4 @@
+// @ts-nocheck
 'use strict';
 
 // TODO test using node-dom instead of nostromo

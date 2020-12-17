@@ -1,13 +1,15 @@
 {
-	"compileOnSave": false,
 	"compilerOptions": {
 		"module": "CommonJS",
 		"moduleResolution": "Node",
 		"allowJs": true,
 		"checkJs": true,
-		"noEmit": true,
+		"skipLibCheck": true,
         "lib": ["ESNext"],
 		"target": "ESNext",
-		"esModuleInterop": true
-	}
+		"esModuleInterop": true,
+		"outDir": "./ts-dist"
+	},
+	"include": ["src/", "modules/", "test/"],
+	"exclude": ["node_modules/", "modules/**/dist/", "src/recorder/", "dist/"]
 }
