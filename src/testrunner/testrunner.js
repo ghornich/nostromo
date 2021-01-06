@@ -1013,7 +1013,9 @@ class Testrunner extends EventEmitter {
             }
         }
 
-
+        // save a screenshot when fatal error occurs
+        const fatalErrorScreenshotBitmap = await this.getScreenshotBitmap();
+        await fatalErrorScreenshotBitmap.toPNGFile(pathlib.resolve(this._conf.workspaceDir, this._currentTest.id, '_fatal.png'));
 
         if (this._conf.testBailout) {
             throw createError(ERRORS.TEST_BAILOUT, err.stack || err.message);
