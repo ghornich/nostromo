@@ -1013,6 +1013,8 @@ class Testrunner extends EventEmitter {
             }
         }
 
+
+
         if (this._conf.testBailout) {
             throw createError(ERRORS.TEST_BAILOUT, err.stack || err.message);
         }
@@ -1033,14 +1035,7 @@ class Testrunner extends EventEmitter {
         await this._currentBeforeAssert(this.directAPI);
         await mkdirpAsync(refImgDir);
 
-        let screenshotBitmap;
-
-        if ('getScreenshot' in this._currentBrowser) {
-            screenshotBitmap = await this._currentBrowser.getScreenshot({ cropMarker: screenshotMarkerImg });
-        }
-        else {
-            screenshotBitmap = await screenshotjs({ cropMarker: screenshotMarkerImg });
-        }
+        let screenshotBitmap = await this.getScreenshotBitmap();
 
         const screenshots = [screenshotBitmap];
         const diffResults = [];
@@ -1082,12 +1077,7 @@ class Testrunner extends EventEmitter {
             this._log.warn(`screenshot assert failed: ${refImgPathRelative}, ppm: ${formattedPPM}, totalChangedPixels: ${imgDiffResult.totalChangedPixels}, attempt#: ${assertAttempt}`);
 
             if (assertAttempt < assertRetryMaxAttempts) {
-                if ('getScreenshot' in this._currentBrowser) {
-                    screenshotBitmap = await this._currentBrowser.getScreenshot({ cropMarker: screenshotMarkerImg });
-                }
-                else {
-                    screenshotBitmap = await screenshotjs({ cropMarker: screenshotMarkerImg });
-                }
+                screenshotBitmap = await this.getScreenshotBitmap();
 
                 screenshots.push(screenshotBitmap);
                 await Promise.delay(this._conf.assertRetryInterval);
@@ -1198,6 +1188,15 @@ class Testrunner extends EventEmitter {
             },
             destinationVariable: destinationVariable,
         });
+    }
+
+    async getScreenshotBitmap() {
+        if ('getScreenshot' in this._currentBrowser) {
+            return this._currentBrowser.getScreenshot({ cropMarker: screenshotMarkerImg });
+        }
+
+        return screenshotjs({ cropMarker: screenshotMarkerImg });
+
     }
 }
 
