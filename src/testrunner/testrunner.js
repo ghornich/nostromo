@@ -149,6 +149,7 @@ class TestFailedError extends Error {
  * @property {number} [commandRetryInterval = 250]
  * @property {TestrunnerCallback} [onCommandError]
  * @property {TestrunnerCallback} [onAssertError]
+ * @property {number} [exitTimeout = 300000]
  */
 
 class Testrunner extends EventEmitter {
@@ -179,6 +180,7 @@ class Testrunner extends EventEmitter {
             onAssertError: null,
             commandRetryCount: 4,
             commandRetryInterval: 250,
+            exitTimeout: 5 * 60000,
         };
 
         const defaultImageDiffOptions = {
@@ -427,6 +429,8 @@ class Testrunner extends EventEmitter {
             }
 
             this._isRunning = false;
+
+            this._startExitTimeout();
         }
     }
 
@@ -1199,6 +1203,13 @@ class Testrunner extends EventEmitter {
 
         return screenshotjs({ cropMarker: screenshotMarkerImg });
 
+    }
+
+    _startExitTimeout() {
+        setTimeout(() => {
+            this._log.error('Exit timeout reached');
+            process.exit(process.exitCode);
+        }, this._conf.exitTimeout).unref();
     }
 }
 
