@@ -135,12 +135,8 @@ export default class Chromium implements IBrowser {
         }, selector);
     }
 
-    async screenshot(options?: { selector?: string }): Promise<Buffer> {
-        const screenshotOptions: puppeteer.ScreenshotOptions = {
-            encoding: 'binary',
-        };
-
-        // TODO if selector, get boundingclientrect
+    async screenshot(): Promise<Buffer> {
+        // TODO implement selector, get boundingclientrect, etc
 
         return this._page.screenshot({ encoding: 'binary' });
     }

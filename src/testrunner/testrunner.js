@@ -149,6 +149,7 @@ class TestBailoutError extends Error {
  * @property {number} [commandRetryInterval = 250]
  * @property {TestrunnerCallback} [onCommandError]
  * @property {TestrunnerCallback} [onAssertError]
+ * @property {number} [exitTimeout = 300000]
  */
 
 class Testrunner extends EventEmitter {
@@ -179,6 +180,7 @@ class Testrunner extends EventEmitter {
             onAssertError: null,
             commandRetryCount: 4,
             commandRetryInterval: 250,
+            exitTimeout: 5 * 60000,
         };
 
         const defaultImageDiffOptions = {
@@ -409,6 +411,8 @@ class Testrunner extends EventEmitter {
             }
 
             this._isRunning = false;
+
+            this._startExitTimeout();
         }
     }
 
@@ -528,13 +532,15 @@ class Testrunner extends EventEmitter {
                 this._log.error('_runTestWithRetries: error when running _runTest:');
                 this._log.error(error);
 
-                if (attempt === maxAttempts || !(error instanceof TestFailedError)) {
-                    this._log.error('_runTestWithRetries: max retries reached or error is not TestFailedError');
+                if (attempt === maxAttempts) {
                     throw error;
                 }
 
                 this._log.info(`test "${test.name}" failed, retrying`);
-                this._log.debug(error.testErrors.map(String).join('\n'));
+
+                if (error.testErrors && error.testErrors.length > 0) {
+                    this._log.debug(error.testErrors.map(String).join('\n'));
+                }
             }
         }
     }
@@ -953,6 +959,10 @@ class Testrunner extends EventEmitter {
             }
         }
 
+        // save a screenshot when fatal error occurs
+        const fatalErrorScreenshotBitmap = await Bitmap.from(await this._currentBrowser.screenshot());
+        await fatalErrorScreenshotBitmap.toPNGFile(pathlib.resolve(this._conf.workspaceDir, this._currentTest.id + '___fatal.png'));
+
         if (this._conf.testBailout) {
             throw new TestBailoutError(err.stack || err.message);
         }
@@ -1107,6 +1117,13 @@ class Testrunner extends EventEmitter {
         }
 
         this._assertCount++;
+    }
+
+    _startExitTimeout() {
+        setTimeout(() => {
+            this._log.error('Exit timeout reached');
+            process.exit(process.exitCode);
+        }, this._conf.exitTimeout).unref();
     }
 }
 
