@@ -1,6 +1,0 @@
-{
-    "extends": "eslint-config-ghornich",
-    "env": {
-    	"node": true
-    }
-}

@@ -1,11 +1,11 @@
 'use strict';
 
-var COMMANDS = require('../../../modules/browser-puppeteer').COMMANDS;
+const COMMANDS = require('../../../modules/browser-puppeteer').COMMANDS;
 
 exports = module.exports = CommandList;
 
 /**
- * 
+ *
  * @param {Object} opts
  * @param {Array<String>} opts.compositeEvents
  * @param {Number} opts.compositeEventsThreshold
@@ -21,21 +21,21 @@ CommandList.prototype._compact = function () {
         return;
     }
 
-    var newCommands = [];
+    const newCommands = [];
 
-    for (var i = 0, len = this._commands.length; i < len; i++) {
-        var lastNewIdx = newCommands.length - 1;
-        var lastNewCmd = lastNewIdx >= 0 ? newCommands[lastNewIdx] : null;
-        var cmd = this._commands[i];
+    for (let i = 0, len = this._commands.length; i < len; i++) {
+        const lastNewIdx = newCommands.length - 1;
+        const lastNewCmd = lastNewIdx >= 0 ? newCommands[lastNewIdx] : null;
+        const cmd = this._commands[i];
 
         if (newCommands.length === 0) {
             newCommands.push(cmd);
             continue;
         }
 
-        var eventsInCompositeThreshold = Math.abs(cmd.$timestamp - lastNewCmd.$timestamp) < this._opts.compositeEventsThreshold;
-        var cmdInComposite = this._opts.compositeEvents.indexOf(cmd.type) >= 0;
-        var lastNewCmdInComposite = this._opts.compositeEvents.indexOf(lastNewCmd.type) >= 0;
+        const eventsInCompositeThreshold = Math.abs(cmd.$timestamp - lastNewCmd.$timestamp) < this._opts.compositeEventsThreshold;
+        const cmdInComposite = this._opts.compositeEvents.indexOf(cmd.type) >= 0;
+        const lastNewCmdInComposite = this._opts.compositeEvents.indexOf(lastNewCmd.type) >= 0;
 
         if (cmd.type !== lastNewCmd.type && cmdInComposite && lastNewCmdInComposite && eventsInCompositeThreshold) {
             if (this._opts.compositeEventsComparator(cmd, lastNewCmd)) {
