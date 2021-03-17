@@ -1,15 +1,13 @@
 'use strict';
-const MODULES_PATH = '../../modules/';
-const Promise = require('bluebird');
-const BrowserPuppeteer = require(MODULES_PATH + 'browser-puppeteer').BrowserPuppeteer;
-const MESSAGES = require(MODULES_PATH + 'browser-puppeteer').MESSAGES;
 const WS = require('ws');
 const http = require('http');
-const fs = Promise.promisifyAll(require('fs'));
-const JSONF = require(MODULES_PATH + 'jsonf');
+const fs = require('fs');
+const JSONF = require('../../modules/jsonf/jsonf');
 const pathlib = require('path');
-const Loggr = require(MODULES_PATH + 'loggr');
+const Loggr = require('../../modules/loggr/loggr');
 const defaults = require('lodash.defaults');
+const puppeteer = require('puppeteer');
+const childProcess = require('child_process');
 /** @typedef {Object} Command */
 /** @typedef {Object} RecorderApp */
 /**
@@ -66,10 +64,6 @@ exports = module.exports = RecorderServer;
  * @property {Array<String>} [ignoredClasses] - DEPRECATED (use uniqueSelectorOptions) Ignored classnames
  * @property {Object} [uniqueSelectorOptions] import('../../modules/get-unique-selector').UniqueSelectorOptions
  *
- * @property {Array<String>|null} [compositeEvents = ['click', 'focus']] - subsequent events of specified types will be combined into a single composite event
- * @property {Number} [compositeEventsThreshold = 200] - composite events grouping threshold
- * @property {Function} [compositeEventsComparator] - default: full selector paths similar (a in b or b in a)
- *
  * @property {Array<Object>} [_mockMessages] - for testing only, do not use
  * @property {Boolean} [_preEnableRecording] - for testing only, do not use
  */
@@ -85,70 +79,72 @@ function RecorderServer(conf) {
         // deprecated
         ignoredClasses: [],
         uniqueSelectorOptions: null,
-        compositeEvents: ['click', 'focus'],
-        compositeEventsThreshold: 200,
-        compositeEventsComparator: defaultCompositeEventsComparator,
         _mockMessages: [],
     });
-    if (this._conf.compositeEvents === null) {
-        this._conf.compositeEvents = [];
-    }
     // TODO assert conf
     // TODO check for configs not in default conf
     this._recorderAppServer = http.createServer(this._onRecRequest.bind(this));
     this._wsServer = new WS.Server({ server: this._recorderAppServer });
+    /** @type {puppeteer.Browser} */
+    this._browser = null;
     this._log = new Loggr({
         namespace: 'RecorderServer',
         logLevel: this._conf.logLevel,
-    });
-    this._puppeteer = new BrowserPuppeteer({
-        logger: this._log.fork('BrowserPuppeteer'),
     });
 }
 // TODO better promise chain
 RecorderServer.prototype.start = async function () {
     this._wsServer.on('connection', () => this._log.info('recorder app connected'));
     this._recorderAppServer.listen(this._conf.recorderAppPort);
-    this._puppeteer.start();
-    console.log(`--- Open the recording app in your browser: http://localhost:${this._conf.recorderAppPort} ---`);
-    const boundProxyMessage = this._proxyMessage.bind(this);
-    this._puppeteer.on(MESSAGES.UPSTREAM.SELECTOR_BECAME_VISIBLE, boundProxyMessage);
-    this._puppeteer.on(MESSAGES.UPSTREAM.CAPTURED_EVENT, boundProxyMessage);
-    this._puppeteer.on(MESSAGES.UPSTREAM.INSERT_ASSERTION, boundProxyMessage);
-    this._puppeteer.on('puppetConnected', async () => {
-        try {
-            // TODO create & use setPuppetSettings?
-            await this._puppeteer.setTransmitEvents(true);
-            const selectors = (this._conf.onSelectorBecameVisible).map(data => data.selector);
-            if (selectors.length > 0) {
-                await this._puppeteer.setSelectorBecameVisibleSelectors(selectors);
-            }
-            if (this._conf.mouseoverSelectors.length > 0) {
-                await this._puppeteer.sendMessage({
-                    type: MESSAGES.DOWNSTREAM.SET_MOUSEOVER_SELECTORS,
-                    selectors: this._conf.mouseoverSelectors,
-                });
-            }
-            if (this._conf.ignoredClasses.length > 0) {
-                await this._puppeteer.sendMessage({
-                    type: MESSAGES.DOWNSTREAM.SET_IGNORED_CLASSES,
-                    classes: this._conf.ignoredClasses,
-                });
-            }
-            if (this._conf.uniqueSelectorOptions) {
-                await this._puppeteer.sendMessage({
-                    type: MESSAGES.DOWNSTREAM.SET_UNIQUE_SELECTOR_OPTIONS,
-                    options: this._conf.uniqueSelectorOptions,
-                });
-            }
-        }
-        catch (err) {
-            this._log.error(err.stack || err.message);
+    // this._puppeteer.start();
+    this._browser = await puppeteer.launch({ headless: false });
+    // TODO platform-specific
+    childProcess.exec(`start "" "http://localhost:${this._conf.recorderAppPort}"`, err => {
+        if (err) {
+            console.error(err);
         }
     });
+    console.log('Recorder and target browsers launched!');
+    // const boundProxyMessage = this._proxyMessage.bind(this);
+    // this._puppeteer.on(MESSAGES.UPSTREAM.CAPTURED_EVENT, boundProxyMessage);
+    // this._puppeteer.on(MESSAGES.UPSTREAM.INSERT_ASSERTION, boundProxyMessage);
+    // this._puppeteer.on('puppetConnected', async () => {
+    //     try {
+    //         // TODO create & use setPuppetSettings?
+    //         await this._puppeteer.setTransmitEvents(true);
+    //         const selectors = (this._conf.onSelectorBecameVisible).map(data => data.selector);
+    //         if (selectors.length > 0) {
+    //             await this._puppeteer.setSelectorBecameVisibleSelectors(selectors);
+    //         }
+    //         if (this._conf.mouseoverSelectors.length > 0) {
+    //             await this._puppeteer.sendMessage({
+    //                 type: MESSAGES.DOWNSTREAM.SET_MOUSEOVER_SELECTORS,
+    //                 selectors: this._conf.mouseoverSelectors,
+    //             });
+    //         }
+    //         if (this._conf.ignoredClasses.length > 0) {
+    //             await this._puppeteer.sendMessage({
+    //                 type: MESSAGES.DOWNSTREAM.SET_IGNORED_CLASSES,
+    //                 classes: this._conf.ignoredClasses,
+    //             });
+    //         }
+    //         if (this._conf.uniqueSelectorOptions) {
+    //             await this._puppeteer.sendMessage({
+    //                 type: MESSAGES.DOWNSTREAM.SET_UNIQUE_SELECTOR_OPTIONS,
+    //                 options: this._conf.uniqueSelectorOptions,
+    //             });
+    //         }
+    //     }
+    //     catch (err) {
+    //         this._log.error(err.stack || err.message);
+    //     }
+    // });
 };
 RecorderServer.prototype.stop = async function () {
-    await this._puppeteer.stop();
+    for (const page of await this._browser.pages()) {
+        await page.close();
+    }
+    await this._browser.close();
     await new Promise(resolve => this._recorderAppServer.close(resolve));
 };
 RecorderServer.prototype._proxyMessage = function (data, rawData) {
@@ -161,20 +157,15 @@ RecorderServer.prototype._proxyMessage = function (data, rawData) {
 };
 RecorderServer.prototype._onRecRequest = async function (req, resp) {
     if (req.url === '/') {
-        resp.end((await fs.readFileAsync(pathlib.resolve(__dirname, 'ui/recorder-ui.html'), { encoding: 'utf-8' }))
+        resp.end((await fs.promises.readFile(pathlib.resolve(__dirname, '../../../src/recorder/ui/recorder-ui.html'), 'utf-8'))
             .replace('[[CONFIG]]', JSONF.stringify(this._conf).replace(/\\/g, '\\\\').replace(/'/g, '\\\''))
-            .replace('[[STYLE]]', await fs.readFileAsync(pathlib.resolve(__dirname, 'ui/app/style.css'))));
+            .replace('[[STYLE]]', await fs.promises.readFile(pathlib.resolve(__dirname, '../../../src/recorder/ui/app/style.css'), 'utf8')));
     }
     else if (req.url === '/script.js') {
-        resp.end(await fs.readFileAsync(pathlib.resolve(__dirname, '../../dist/recorder-app.dist.js'), { encoding: 'utf-8' }));
+        resp.end(await fs.promises.readFile(pathlib.resolve(__dirname, '../../../dist/recorder-app.dist.js'), 'utf-8'));
     }
     else {
         resp.status = 404;
         resp.end('Not found');
     }
 };
-function defaultCompositeEventsComparator(cmd, lastNewCmd) {
-    const $fsp1 = cmd.$fullSelectorPath;
-    const $fsp2 = lastNewCmd.$fullSelectorPath;
-    return $fsp1.indexOf($fsp2) >= 0 || $fsp2.indexOf($fsp1) >= 0;
-}

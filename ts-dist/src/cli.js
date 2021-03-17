@@ -61,6 +61,10 @@ async function run() {
         const RecorderServer = require('./recorder/recorder-server');
         const recServer = new RecorderServer(conf);
         recServer.start();
+        process.on('SIGINT', () => {
+            console.log('Stopping...');
+            recServer.stop();
+        });
     }
     else if (args.run) {
         try {

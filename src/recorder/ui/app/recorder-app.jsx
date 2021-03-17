@@ -6,8 +6,8 @@ const m = require('mithril');
 const Ws4ever = require('../../../../modules/ws4ever');
 
 const CommandList = require('../command-list');
-const COMMANDS = require('../../../../modules/browser-puppeteer').COMMANDS;
-const MESSAGES = require('../../../../modules/browser-puppeteer').MESSAGES;
+// const COMMANDS = require('../../../../modules/browser-puppeteer').COMMANDS;
+// const MESSAGES = require('../../../../modules/browser-puppeteer').MESSAGES;
 
 const EOL = '\n';
 
@@ -415,14 +415,6 @@ function jsonOutputFormatter(cmds, rawIndent) {
 
     return '[' + EOL +
         cmds.map(function (cmd) {
-            if (cmd.type === COMMANDS.COMPOSITE) {
-                return indent + '{"type":"' + COMMANDS.COMPOSITE + '","commands":[' + EOL +
-                    cmd.commands.map(function (subcmd) {
-                        return indent + indent + JSON.stringify(cleanCmd(subcmd));
-                    }).join(',' + EOL) + EOL +
-                indent + ']}';
-            }
-
             return indent + JSON.stringify(cleanCmd(cmd));
 
         }).join(',' + EOL) + EOL +
@@ -467,12 +459,6 @@ function renderCmd(cmd, indent) {
         case 'assert': return 't.assert()';
         case 'comment': return 't.comment(' + apos(cmd.comment) + ')';
 
-        case 'composite': return 't.composite([' + EOL +
-            cmd.commands.map(function (subcmd) {
-                return indent + indent + indent + inspectObj(cleanCmd(subcmd));
-            }).join(',' + EOL) + EOL +
-        indent + indent + '])';
-
         case 'uploadFileAndAssign': return 't.uploadFileAndAssign({' + EOL +
             indent + indent + indent + 'selector: ' + apos(cmd.selector) + ',' + EOL +
             indent + indent + indent + 'filePath: ' + apos(cmd.filePath) + ',' + EOL +
@@ -490,17 +476,3 @@ function apos(s) {
 }
 
 function noop() {}
-
-function inspectObj(o) {
-    return '{ ' + Object.keys(o).map(function (k) {
-        return k + ': ' + inspectVal(o[k]);
-    }).join(', ') + ' }';
-}
-
-function inspectVal(v) {
-    switch (typeof v) {
-        case 'string': return '\'' + v + '\'';
-        case 'boolean': return v ? 'true' : 'false';
-        default: return v;
-    }
-}
