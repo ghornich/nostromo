@@ -102,11 +102,8 @@ class Chromium {
             return node.innerText;
         }, selector);
     }
-    async screenshot(options) {
-        const screenshotOptions = {
-            encoding: 'binary',
-        };
-        // TODO if selector, get boundingclientrect
+    async screenshot() {
+        // TODO implement selector, get boundingclientrect, etc
         return this._page.screenshot({ encoding: 'binary' });
     }
     async isVisible(selector) {
