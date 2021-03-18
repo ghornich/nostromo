@@ -45,9 +45,8 @@ class Chromium {
         await this._browser.close();
     }
     async _closeAllPages() {
-        for (const page of (await this._browser.pages())) {
-            await page.close();
-        }
+        const pages = await this._browser.pages();
+        await Promise.all(pages.map(page => page.close()));
     }
     async navigateTo(url) {
         await this._page.goto(url);
