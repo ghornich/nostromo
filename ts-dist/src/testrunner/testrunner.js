@@ -673,6 +673,7 @@ class Testrunner extends EventEmitter {
     async _setValueDirect(selector, value) {
         this._log.info(`setValue: "${ellipsis(value)}", "${ellipsis(selector)}"`);
         try {
+            await this._currentBrowser.execFunction((s) => document.querySelector(s).value = '', selector);
             await this._runBrowserCommandWithRetries('type', [selector, value]);
         }
         catch (err) {
