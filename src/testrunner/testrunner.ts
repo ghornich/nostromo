@@ -40,13 +40,15 @@ class AssertError extends Error {
 }
 
 class AbortError extends Error {
-    constructor(message) {
+    constructor(message = '') {
         super(message);
         this.name = 'AbortError';
     }
 }
 
 class TestFailedError extends Error {
+    testErrors: []
+
     constructor({ message, testErrors = null }) {
         super(message);
         this.testErrors = testErrors || [];
@@ -831,6 +833,7 @@ class Testrunner extends EventEmitter {
         this._log.info(`setValue: "${ellipsis(value)}", "${ellipsis(selector)}"`);
 
         try {
+            // @ts-expect-error
             await this._currentBrowser.execFunction((s) => document.querySelector(s).value = '', selector);
             await this._runBrowserCommandWithRetries('type', [selector, value]);
         }
@@ -1152,10 +1155,11 @@ function getIdFromName(name) {
     return name.replace(/[^a-z0-9()._-]/gi, '_');
 }
 
-function prettyMs(ms, opts) {
+function prettyMs(ms, opts?) {
     return typeof ms === 'number' && ms >= 0 ? unsafePrettyMs(ms, opts) : '? ms';
 }
 
-exports = module.exports = Testrunner;
 Testrunner.AbortError = AbortError;
 Testrunner.AssertError = AssertError;
+
+export default Testrunner;

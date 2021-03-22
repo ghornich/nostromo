@@ -1,3 +1,5 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
 const Loggr = require('../../modules/loggr/loggr');
 const isEqual = require('lodash.isequal');
 const fs = require('fs');
@@ -32,7 +34,7 @@ class AssertError extends Error {
     }
 }
 class AbortError extends Error {
-    constructor(message) {
+    constructor(message = '') {
         super(message);
         this.name = 'AbortError';
     }
@@ -673,6 +675,7 @@ class Testrunner extends EventEmitter {
     async _setValueDirect(selector, value) {
         this._log.info(`setValue: "${ellipsis(value)}", "${ellipsis(selector)}"`);
         try {
+            // @ts-expect-error
             await this._currentBrowser.execFunction((s) => document.querySelector(s).value = '', selector);
             await this._runBrowserCommandWithRetries('type', [selector, value]);
         }
@@ -926,6 +929,6 @@ function getIdFromName(name) {
 function prettyMs(ms, opts) {
     return typeof ms === 'number' && ms >= 0 ? unsafePrettyMs(ms, opts) : '? ms';
 }
-exports = module.exports = Testrunner;
 Testrunner.AbortError = AbortError;
 Testrunner.AssertError = AssertError;
+exports.default = Testrunner;

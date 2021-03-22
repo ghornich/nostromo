@@ -1,8 +1,7 @@
 'use strict';
 
 const pathlib = require('path');
-const WebSocket = require('ws');
-const Testrunner = require('../../../src/testrunner/testrunner');
+const Testrunner = require('../../../src/testrunner/testrunner').default;
 const stream = require('stream');
 import createServer from '../../utils/create-server';
 import Chromium from '../../../modules/browsers/chromium';
@@ -50,8 +49,6 @@ test('Testrunner: browser fails to start', async () => {
 });
 
 test('Testrunner: test throws', async () => {
-    let wsClient;
-
     const testrunner = new Testrunner({
         testPort: 47225,
         testBailout: true,
@@ -119,7 +116,6 @@ test('Testrunner: test retries', async () => {
                     this.server = await createServer({ dirToServe: pathlib.resolve(__dirname, '../../../../test/self-tests/testapp'), port: 16743 });
                 },
                 afterTest: async function () {
-                    // @ts-expect-error
                     return new Promise(resolve => this.server.close(resolve));
                 },
             },

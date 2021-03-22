@@ -4,8 +4,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const pathlib = require('path');
-const WebSocket = require('ws');
-const Testrunner = require('../../../src/testrunner/testrunner');
+const Testrunner = require('../../../src/testrunner/testrunner').default;
 const stream = require('stream');
 const create_server_1 = __importDefault(require("../../utils/create-server"));
 const chromium_1 = __importDefault(require("../../../modules/browsers/chromium"));
@@ -45,7 +44,6 @@ test('Testrunner: browser fails to start', async () => {
     process.exitCode = 0;
 });
 test('Testrunner: test throws', async () => {
-    let wsClient;
     const testrunner = new Testrunner({
         testPort: 47225,
         testBailout: true,
@@ -105,7 +103,6 @@ test('Testrunner: test retries', async () => {
                     this.server = await create_server_1.default({ dirToServe: pathlib.resolve(__dirname, '../../../../test/self-tests/testapp'), port: 16743 });
                 },
                 afterTest: async function () {
-                    // @ts-expect-error
                     return new Promise(resolve => this.server.close(resolve));
                 },
             },

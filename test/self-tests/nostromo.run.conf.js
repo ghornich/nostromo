@@ -51,6 +51,24 @@ module.exports = function (config) {
                     return new Promise(resolve => this.server.close(resolve));
                 },
             },
+            {
+                name: 'basic commands',
+                appUrl: 'http://localhost:29336/basic-commands.html',
+                testFiles: ['./basic-commands/test.js'],
+                beforeCommand: function (t, command) {
+                    if (command.type !== 'assert') {
+                        return t.waitWhileVisible('.loading, #toast');
+                    }
+
+                    return t.waitWhileVisible('.loading');
+                },
+                beforeTest: async function () {
+                    this.server = await createServer({ dirToServe: pathlib.resolve(__dirname, '../../../test/self-tests/basic-commands'), port: 29336 });
+                },
+                afterTest: async function () {
+                    return new Promise(resolve => this.server.close(resolve));
+                },
+            },
         ],
     };
 };

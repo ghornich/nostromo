@@ -102,7 +102,7 @@ async function run() {
                 console.log(util.inspect(conf, true, 10));
             }
 
-            const Testrunner = require('./testrunner/testrunner');
+            const Testrunner = require('./testrunner/testrunner').default;
 
             const tr = new Testrunner(conf);
 
