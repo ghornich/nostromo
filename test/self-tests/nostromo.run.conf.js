@@ -54,7 +54,7 @@ module.exports = function (config) {
             {
                 name: 'basic commands',
                 appUrl: 'http://localhost:29336/basic-commands.html',
-                testFiles: ['./basic-commands/test.js'],
+                testFiles: ['./basic-commands/basic-commands.test.js'],
                 beforeCommand: function (t, command) {
                     if (command.type !== 'assert') {
                         return t.waitWhileVisible('.loading, #toast');

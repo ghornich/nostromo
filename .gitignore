@@ -8,7 +8,6 @@ screenshot-catalog.json
 test-run-report.json
 bc-test
 **/*.conf.js
-test.js
 bc-test*.js
 babel-temp.js
 lint.txt
