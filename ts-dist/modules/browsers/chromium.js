@@ -25,7 +25,7 @@ class Chromium {
                 width: this._options.width,
                 height: this._options.height,
             },
-            ignoreDefaultArgs: ['--enable-automation'],
+            ignoreDefaultArgs: ['--enable-automation', '--hide-scrollbars'],
             args: [
                 '--incognito',
                 '--start-maximized',
