@@ -40,13 +40,9 @@ function imageDiff(a, b, opts) {
     assert(opts.colorThreshold !== undefined, 'colorThreshold is missing');
     assert(opts.imageThreshold !== undefined, 'imageThreshold is missing');
 
-    if (opts.equivalenceThreshold === undefined) {
-        opts.equivalenceThreshold = 4;
-    }
-
-    if (opts.grayscaleThreshold === undefined) {
-        opts.grayscaleThreshold = 0;
-    }
+    opts.equivalenceThreshold ??= 4;
+    opts.grayscaleThreshold ??= 0;
+    opts.noiseLineWidthThreshold ??= 2;
 
     if (a.width !== b.width || a.height !== b.height) {
         throw new DifferentSizeError(`width or height are different (A: ${a.width}x${a.height}, B: ${b.width}x${b.height})`);

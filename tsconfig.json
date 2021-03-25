@@ -6,7 +6,7 @@
 		"checkJs": true,
 		"skipLibCheck": true,
         "lib": ["ESNext"],
-		"target": "ESNext",
+		"target": "ES2018",
 		"esModuleInterop": true,
 		"outDir": "./ts-dist"
 	},

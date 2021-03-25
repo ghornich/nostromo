@@ -1,6 +1,6 @@
 {
   "name": "nostromo",
-  "version": "5.2.0",
+  "version": "5.2.1",
   "description": "",
   "main": "ts-dist/src/cli.js",
   "scripts": {
