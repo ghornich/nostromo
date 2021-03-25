@@ -36,12 +36,13 @@ class DifferentSizeError extends Error {
  */
 // eslint-disable-next-line complexity
 function imageDiff(a, b, opts) {
-    var _a, _b, _c;
+    var _a, _b, _c, _d;
     assert_1.default(opts.colorThreshold !== undefined, 'colorThreshold is missing');
     assert_1.default(opts.imageThreshold !== undefined, 'imageThreshold is missing');
     (_a = opts.equivalenceThreshold) !== null && _a !== void 0 ? _a : (opts.equivalenceThreshold = 4);
     (_b = opts.grayscaleThreshold) !== null && _b !== void 0 ? _b : (opts.grayscaleThreshold = 0);
     (_c = opts.noiseLineWidthThreshold) !== null && _c !== void 0 ? _c : (opts.noiseLineWidthThreshold = 2);
+    (_d = opts.noiseLineHeightThreshold) !== null && _d !== void 0 ? _d : (opts.noiseLineHeightThreshold = 2);
     if (a.width !== b.width || a.height !== b.height) {
         throw new DifferentSizeError(`width or height are different (A: ${a.width}x${a.height}, B: ${b.width}x${b.height})`);
     }
