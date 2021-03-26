@@ -1,7 +1,8 @@
+// @ts-nocheck
 'use strict';
 
-var defaults = require('lodash.defaults');
-var SelectorElement = require('./selector-element');
+const defaults = require('lodash.defaults');
+const SelectorElement = require('./selector-element');
 
 exports = module.exports = SelectorElementList;
 
@@ -42,12 +43,12 @@ SelectorElementList.prototype.isUnique = function () {
 };
 
 SelectorElementList.prototype.simplify = function (enableUsePreferredClass) {
-    var ambiguity = this.getAmbiguity();
+    const ambiguity = this.getAmbiguity();
     enableUsePreferredClass = enableUsePreferredClass === undefined ? true : enableUsePreferredClass;
 
-    for (var i = 0, len = this._selectorElements.length; i < len - 1; i++) {
-        var selectorElement = this._selectorElements[i];
-        var isTypeOfClass = selectorElement.type === SelectorElement.TYPE.CLASS;
+    for (let i = 0, len = this._selectorElements.length; i < len - 1; i++) {
+        const selectorElement = this._selectorElements[i];
+        const isTypeOfClass = selectorElement.type === SelectorElement.TYPE.CLASS;
 
         if (!selectorElement.active) {
             continue;
@@ -59,7 +60,7 @@ SelectorElementList.prototype.simplify = function (enableUsePreferredClass) {
 
         selectorElement.active = false;
 
-        var newAmbiguity = this.getAmbiguity();
+        const newAmbiguity = this.getAmbiguity();
 
         if (ambiguity !== newAmbiguity) {
             selectorElement.active = true;
@@ -70,19 +71,19 @@ SelectorElementList.prototype.simplify = function (enableUsePreferredClass) {
 SelectorElementList.prototype.simplifyClasses = function (enableUsePreferredClass) {
     enableUsePreferredClass = enableUsePreferredClass === undefined ? true : enableUsePreferredClass;
 
-    for (var selectorElementIdx = 0, len = this._selectorElements.length; selectorElementIdx < len; selectorElementIdx++) {
-        var selectorElement = this._selectorElements[selectorElementIdx];
+    for (let selectorElementIdx = 0, len = this._selectorElements.length; selectorElementIdx < len; selectorElementIdx++) {
+        const selectorElement = this._selectorElements[selectorElementIdx];
 
         if (!selectorElement.active || selectorElement.type !== SelectorElement.TYPE.CLASS) {
             continue;
         }
 
-        var originalSelector = selectorElement.rawSelector;
-        var classList = new ClassList(originalSelector);
+        const originalSelector = selectorElement.rawSelector;
+        const classList = new ClassList(originalSelector);
 
         if (classList.length > 1) {
-            for (var classIdx = classList.length - 1; classIdx >= 0; classIdx--) {
-                var classListElement = classList.get(classIdx);
+            for (let classIdx = classList.length - 1; classIdx >= 0; classIdx--) {
+                const classListElement = classList.get(classIdx);
 
                 if (enableUsePreferredClass && this._opts.preferredClass && this._opts.preferredClass.test(classListElement.className)) {
                     continue;
@@ -139,16 +140,16 @@ function ClassListElement(className) {
  * add "nth-child"s from back until selector becomes unique
  */
 SelectorElementList.prototype.uniqueify = function () {
-    var ambiguity = this.getAmbiguity();
+    let ambiguity = this.getAmbiguity();
 
-    for (var i = this._selectorElements.length - 1; i >= 0; i--) {
-        var selectorElement = this._selectorElements[i];
-        var prevActiveValue = selectorElement.active;
+    for (let i = this._selectorElements.length - 1; i >= 0; i--) {
+        const selectorElement = this._selectorElements[i];
+        const prevActiveValue = selectorElement.active;
 
         selectorElement.active = true;
         selectorElement.useNthChild = true;
 
-        var newAmbiguity = this.getAmbiguity();
+        const newAmbiguity = this.getAmbiguity();
 
         // TODO error check: newAmbiguity < 1
 

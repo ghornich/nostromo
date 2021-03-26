@@ -1,23 +1,23 @@
-var $ = require('jquery');
-var Loggr = require('../../../../modules/loggr');
-var defaults = require('lodash.defaults');
-var JSONF = require('../../../../modules/jsonf');
-var m = require('mithril');
-var Ws4ever = require('../../../../modules/ws4ever');
+const $ = require('jquery');
+const Loggr = require('../../../../modules/loggr');
+const defaults = require('lodash.defaults');
+const JSONF = require('../../../../modules/jsonf');
+const m = require('mithril');
+const Ws4ever = require('../../../../modules/ws4ever');
 
-var CommandList = require('../command-list');
-var COMMANDS = require('../../../../modules/browser-puppeteer').COMMANDS;
-var MESSAGES = require('../../../../modules/browser-puppeteer').MESSAGES;
+const CommandList = require('../command-list');
+// const COMMANDS = require('../../../../modules/browser-puppeteer').COMMANDS;
+// const MESSAGES = require('../../../../modules/browser-puppeteer').MESSAGES;
 
-var EOL = '\n';
+const EOL = '\n';
 
-var JSON_OUTPUT_FORMATTER_NAME = 'json (built-in)';
-var NOSTROMO_OUTPUT_FORMATTER_NAME = 'nostromo (built-in)';
-var DEFAULT_OUTPUT_FILENAME = 'output';
+const JSON_OUTPUT_FORMATTER_NAME = 'json (built-in)';
+const NOSTROMO_OUTPUT_FORMATTER_NAME = 'nostromo (built-in)';
+const DEFAULT_OUTPUT_FILENAME = 'output';
 
-var MOCK_MESSAGE_INTERVAL = 500;
+const MOCK_MESSAGE_INTERVAL = 500;
 
-var RootComp;
+let RootComp;
 
 window.RecorderApp = RecorderApp;
 
@@ -27,8 +27,8 @@ window.RecorderApp = RecorderApp;
  * @param {RecorderOptions|String} conf - RecorderOptions as Object or String
  */
 function RecorderApp(conf) {
-    var self = this;
-    var confObj = conf;
+    const self = this;
+    let confObj = conf;
 
     if (typeof confObj === 'string') {
         confObj = JSONF.parse(confObj);
@@ -90,11 +90,11 @@ function RecorderApp(conf) {
             self.commandList.add({ type: COMMANDS.ASSERT });
         },
         downloadOutput: function () {
-            var formatter = self._getSelectedOutputFormatter();
-            var output = self._getFormattedOutput();
-            var blob = new Blob([output], { type: 'application/octet-stream' });
-            var dlTarget = document.getElementById('download-target');
-            var dlUrl = window.URL.createObjectURL(blob);
+            const formatter = self._getSelectedOutputFormatter();
+            const output = self._getFormattedOutput();
+            const blob = new Blob([output], { type: 'application/octet-stream' });
+            const dlTarget = document.getElementById('download-target');
+            const dlUrl = window.URL.createObjectURL(blob);
 
             dlTarget.href = dlUrl;
             dlTarget.download = formatter.filename || DEFAULT_OUTPUT_FILENAME;
@@ -110,12 +110,12 @@ function RecorderApp(conf) {
 
 // TODO promise, resolve when loaded
 RecorderApp.prototype.start = function () {
-    var self = this;
+    const self = this;
     self._wsConn = new Ws4ever(location.origin.replace('http://', 'ws://'));
     self._wsConn.onmessage = self._onWsMessage.bind(self);
     self._wsConn.onopen = self._onWsOpen.bind(self);
 
-    var MountComp = {
+    const MountComp = {
         view: function () {
             return m(RootComp, { app: self, actions: self.actions });
         },
@@ -125,7 +125,7 @@ RecorderApp.prototype.start = function () {
 };
 
 RecorderApp.prototype._onWsMessage = function (event) {
-    var data = event.data;
+    let data = event.data;
 
     try {
         data = JSONF.parse(data);
@@ -162,7 +162,7 @@ RecorderApp.prototype._onWsOpen = function () {
 };
 
 RecorderApp.prototype._runNextMockMessage = function (index) {
-    var self = this;
+    const self = this;
 
     if (index === undefined) {
         index = 0;
@@ -172,7 +172,7 @@ RecorderApp.prototype._runNextMockMessage = function (index) {
         return;
     }
 
-    var currentMockMessage = self._conf._mockMessages[index];
+    const currentMockMessage = self._conf._mockMessages[index];
 
     setTimeout(function () {
         try {
@@ -189,8 +189,8 @@ RecorderApp.prototype._runNextMockMessage = function (index) {
 };
 
 RecorderApp.prototype._getSelectedOutputFormatter = function () {
-    var self = this;
-    var filtered = self._conf.outputFormatters.filter(function (formatter) {
+    const self = this;
+    const filtered = self._conf.outputFormatters.filter(function (formatter) {
         return formatter.name === self._conf.selectedOutputFormatter;
     });
 
@@ -217,7 +217,7 @@ RecorderApp.prototype._onCapturedEvent = function (event) {
         return;
     }
 
-    var command;
+    let command;
 
     switch (event.type) {
         case 'input':
@@ -327,7 +327,7 @@ RecorderApp.prototype.onSelectorBecameVisibleEvent = function (data) {
         return;
     }
 
-    var rule = null;
+    let rule = null;
 
     this._conf.onSelectorBecameVisible.forEach(function (sbvRule) {
         if (sbvRule.selector === data.selector) {
@@ -345,10 +345,10 @@ RecorderApp.prototype.onSelectorBecameVisibleEvent = function (data) {
 
 RootComp = {
     view: function (vnode) {
-        var app = vnode.attrs.app;
-        var actions = vnode.attrs.actions;
+        const app = vnode.attrs.app;
+        const actions = vnode.attrs.actions;
 
-        var toggleBtnClass = app._isRecording
+        const toggleBtnClass = app._isRecording
             ? 'button--toggle-on'
             : 'button--toggle-off';
 
@@ -395,7 +395,7 @@ RootComp = {
 
 // remove meta (keys starting with $)
 function cleanCmd(cmd) {
-    var o = {};
+    const o = {};
 
     Object.keys(cmd).forEach(function (k) {
         if (k[0] !== '$') {
@@ -407,7 +407,7 @@ function cleanCmd(cmd) {
 }
 
 function jsonOutputFormatter(cmds, rawIndent) {
-    var indent = rawIndent || '    ';
+    const indent = rawIndent || '    ';
 
     if (cmds.length === 0) {
         return '[]';
@@ -415,14 +415,6 @@ function jsonOutputFormatter(cmds, rawIndent) {
 
     return '[' + EOL +
         cmds.map(function (cmd) {
-            if (cmd.type === COMMANDS.COMPOSITE) {
-                return indent + '{"type":"' + COMMANDS.COMPOSITE + '","commands":[' + EOL +
-                    cmd.commands.map(function (subcmd) {
-                        return indent + indent + JSON.stringify(cleanCmd(subcmd));
-                    }).join(',' + EOL) + EOL +
-                indent + ']}';
-            }
-
             return indent + JSON.stringify(cleanCmd(cmd));
 
         }).join(',' + EOL) + EOL +
@@ -431,9 +423,9 @@ function jsonOutputFormatter(cmds, rawIndent) {
 
 // TODO move to own file
 function renderTestfile(cmds, rawIndent) {
-    var indent = rawIndent || '    ';
+    const indent = rawIndent || '    ';
 
-    var res = [
+    const res = [
         '\'use strict\';',
         '',
         'exports = module.exports = function (test) {',
@@ -467,12 +459,6 @@ function renderCmd(cmd, indent) {
         case 'assert': return 't.assert()';
         case 'comment': return 't.comment(' + apos(cmd.comment) + ')';
 
-        case 'composite': return 't.composite([' + EOL +
-            cmd.commands.map(function (subcmd) {
-                return indent + indent + indent + inspectObj(cleanCmd(subcmd));
-            }).join(',' + EOL) + EOL +
-        indent + indent + '])';
-
         case 'uploadFileAndAssign': return 't.uploadFileAndAssign({' + EOL +
             indent + indent + indent + 'selector: ' + apos(cmd.selector) + ',' + EOL +
             indent + indent + indent + 'filePath: ' + apos(cmd.filePath) + ',' + EOL +
@@ -490,17 +476,3 @@ function apos(s) {
 }
 
 function noop() {}
-
-function inspectObj(o) {
-    return '{ ' + Object.keys(o).map(function (k) {
-        return k + ': ' + inspectVal(o[k]);
-    }).join(', ') + ' }';
-}
-
-function inspectVal(v) {
-    switch (typeof v) {
-        case 'string': return '\'' + v + '\'';
-        case 'boolean': return v ? 'true' : 'false';
-        default: return v;
-    }
-}

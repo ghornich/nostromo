@@ -188,8 +188,8 @@ function prettyPrint(val) {
  *   notok: '...'
  * }
  * 
- * @param  {[type]} data [description]
- * @return {[type]}      [description]
+ * @param  {Object} raw [description]
+ * @return {Object}      [description]
  */
 function aliasedMap(raw) {
     const map = {};

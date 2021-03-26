@@ -3,6 +3,7 @@ if (isNode()) {
     module.exports = Ws4ever;
 }
 else {
+    // @ts-expect-error
     window.Ws4ever = Ws4ever;
 }
 
@@ -25,6 +26,7 @@ function Ws4ever(url, protocols, options) {
     Object.defineProperties(this, {
         readyState: {
             get: function () {
+                // @ts-expect-error
                 return this._ws ? this._ws.readyState : WebSocket.CLOSED;
             },
         },
@@ -35,16 +37,11 @@ function Ws4ever(url, protocols, options) {
         },
     });
 
-    this._ensureConnection = this._ensureConnection.bind(this);
-    this._onWsOpen = this._onWsOpen.bind(this);
-    this._onWsClose = this._onWsClose.bind(this);
-    this._onWsError = this._onWsError.bind(this);
-    this._onWsMessage = this._onWsMessage.bind(this);
-
-    this.iid = setInterval(this._ensureConnection, this._opts.retryInterval);
+    this.iid = setInterval(this._ensureConnection.bind(this), this._opts.retryInterval);
 }
 
 Ws4ever.prototype.isConnected = function () {
+    // @ts-expect-error
     return Boolean(this._ws && this._ws.readyState === WebSocket.OPEN);
 };
 
@@ -65,11 +62,12 @@ Ws4ever.prototype._ensureConnection = function () {
 
     try {
         this._isConnecting = true;
+        // @ts-expect-error
         this._ws = new WebSocket(this._url, this._protocols);
-        this._ws.onopen = this._onWsOpen;
-        this._ws.onclose = this._onWsClose;
-        this._ws.onerror = this._onWsError;
-        this._ws.onmessage = this._onWsMessage;
+        this._ws.onopen = this._onWsOpen.bind(this);
+        this._ws.onclose = this._onWsClose.bind(this);
+        this._ws.onerror = this._onWsError.bind(this);
+        this._ws.onmessage = this._onWsMessage.bind(this);
     }
     catch (e) {
         // TODO handle or log?
@@ -84,25 +82,25 @@ Ws4ever.prototype.close = function () {
     this._ws.close();
 };
 
-Ws4ever.prototype._onWsOpen = function () {
-    this.onopen.apply(null, arguments);
+Ws4ever.prototype._onWsOpen = function (...args) {
+    this.onopen.apply(null, ...args);
     this._isConnecting = false;
 };
 
-Ws4ever.prototype._onWsClose = function () {
-    this.onclose.apply(null, arguments);
+Ws4ever.prototype._onWsClose = function (...args) {
+    this.onclose.apply(null, ...args);
     this._isConnecting = false;
     this._ws = null;
 };
 
-Ws4ever.prototype._onWsError = function () {
-    this.onerror.apply(null, arguments);
+Ws4ever.prototype._onWsError = function (...args) {
+    this.onerror.apply(null, ...args);
     // this._isConnecting=false
     // this._ws=null
 };
 
-Ws4ever.prototype._onWsMessage = function () {
-    this.onmessage.apply(null, arguments);
+Ws4ever.prototype._onWsMessage = function (...args) {
+    this.onmessage.apply(null, ...args);
 };
 
 

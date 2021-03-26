@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <title>title</title>
+        <style>
+            .hidden {
+                display: none;
+            }
+
+            .test-area div {
+                min-height: 1em;
+            }
+
+            .scroll-test {
+                width: 3em;
+                max-height: 5em;
+                overflow: auto;
+            }
+
+            .waitForVisible-test {
+                width: 20px;
+                height: 20px;
+                background: red;
+            }
+
+            .waitWhileVisible-test {
+                width: 20px;
+                height: 20px;
+                background: blue;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="test-area">
+            <div class="click-test"></div>
+
+            <input class="focus-test" />
+
+            <input class="getValue-test" value="testValue" />
+
+            <div class="isVisible-test-visible"></div>
+            <div class="isVisible-test-hidden hidden"></div>
+
+            <div class="mouseover-test"></div>
+
+            <div tabindex="0" class="pressKey-test"></div>
+
+            <div class="scroll-test">
+                a<br>b<br>c<br>d<br>e<br>f<br>g<br>h<br>i<br>j<br>k<br>l<br>m<br><span id="scroll-test--n">n</span><br>o<br>p<br>q<br>r<br>s<br>t<br>u<br>v<br>w<br>x<br>y<br>z
+            </div>
+
+            <input class="setValue-test" />
+
+            <div class="waitForVisible-test hidden"></div>
+            <div class="waitWhileVisible-test"></div>
+        </div>
+
+        <script>
+            const qs = (...args) => document.querySelector(...args);
+
+            qs('.click-test').addEventListener('click', function () {
+                qs('.click-test').innerText = 'clickOK';
+            })
+
+            qs('.mouseover-test').addEventListener('mouseover', function () {
+                qs('.mouseover-test').innerText = 'mouseoverOK';
+            })
+
+            qs('.pressKey-test').addEventListener('keydown', function (event) {
+                if (event.keyCode === 65) {
+                    qs('.pressKey-test').innerText = 'pressKey65OK';
+                }
+            })
+        </script>
+    </body>
+</html>

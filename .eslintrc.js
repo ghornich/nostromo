@@ -2,11 +2,15 @@ const MAX_LINE_LEN = 190;
 const INDENT_DEPTH = 4;
 
 exports = module.exports = {
-    parserOptions: {
-        'ecmaVersion': 8,
-        sourceType: 'module',
-    },
+    parser: '@babel/eslint-parser',
     extends: 'eslint:recommended',
+    parserOptions: {
+        sourceType: 'module',
+        ecmaVersion: 6,
+        ecmaFeatures: {
+            modules: true,
+        },
+    },
     env: {
         node: true,
         browser: true,
@@ -45,7 +49,6 @@ exports = module.exports = {
         'no-new-wrappers': ['error'],
         'no-octal': ['error'],
         'no-octal-escape': ['error'],
-        'no-param-reassign': ['error'],
         'no-proto': ['error'],
         'no-redeclare': ['error'],
         // 'no-return-assign': ['error'],

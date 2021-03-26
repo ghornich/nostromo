@@ -1,5 +1,6 @@
 const pathlib = require('path');
 const createServer = require('../utils/create-server').default;
+const Chromium = require('../../modules/browsers/chromium').default;
 
 module.exports = function (config) {
     return {
@@ -14,11 +15,9 @@ module.exports = function (config) {
         },
 
         browsers: [
-            new config.browsers.Chromium({
-                name: 'Chrome',
+            new Chromium({
                 width: 750,
                 height: 550,
-                headless: true,
             }),
         ],
 
@@ -28,18 +27,7 @@ module.exports = function (config) {
                 appUrl: 'http://localhost:31667/test/self-tests/get-unique-selector/test.html',
                 testFiles: ['get-unique-selector/test.js'],
                 beforeTest: async function () {
-                    this.server = await createServer({ dirToServe: pathlib.resolve(__dirname, '../../'), port: 31667 });
-                },
-                afterTest: async function () {
-                    return new Promise(resolve => this.server.close(resolve));
-                },
-            },
-            {
-                name: 'browser-puppeteer',
-                appUrl: 'http://localhost:31667/index.html',
-                testFiles: ['browser-puppeteer/test.js'],
-                beforeTest: async function () {
-                    this.server = await createServer({ dirToServe: pathlib.resolve(__dirname, 'browser-puppeteer'), port: 31667 });
+                    this.server = await createServer({ dirToServe: pathlib.resolve(__dirname, '../../../'), port: 31667 });
                 },
                 afterTest: async function () {
                     return new Promise(resolve => this.server.close(resolve));
@@ -57,7 +45,25 @@ module.exports = function (config) {
                     return t.waitWhileVisible('.loading');
                 },
                 beforeTest: async function () {
-                    this.server = await createServer({ dirToServe: pathlib.resolve(__dirname, 'testapp'), port: 31667 });
+                    this.server = await createServer({ dirToServe: pathlib.resolve(__dirname, '../../../test/self-tests/testapp'), port: 31667 });
+                },
+                afterTest: async function () {
+                    return new Promise(resolve => this.server.close(resolve));
+                },
+            },
+            {
+                name: 'basic commands',
+                appUrl: 'http://localhost:29336/basic-commands.html',
+                testFiles: ['./basic-commands/basic-commands.test.js'],
+                beforeCommand: function (t, command) {
+                    if (command.type !== 'assert') {
+                        return t.waitWhileVisible('.loading, #toast');
+                    }
+
+                    return t.waitWhileVisible('.loading');
+                },
+                beforeTest: async function () {
+                    this.server = await createServer({ dirToServe: pathlib.resolve(__dirname, '../../../test/self-tests/basic-commands'), port: 29336 });
                 },
                 afterTest: async function () {
                     return new Promise(resolve => this.server.close(resolve));

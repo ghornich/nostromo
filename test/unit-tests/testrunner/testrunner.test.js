@@ -1,12 +1,10 @@
 'use strict';
 
-const rfr = require('rfr');
 const pathlib = require('path');
-const WebSocket = require('ws');
-const Testrunner = require('../../../src/testrunner/testrunner');
+const Testrunner = require('../../../src/testrunner/testrunner').default;
 const stream = require('stream');
-const Chromium = rfr('modules/browser-spawner-chromium');
 import createServer from '../../utils/create-server';
+import Chromium from '../../../modules/browsers/chromium';
 
 class NullStream extends stream.Writable {
     _write(chunk, encoding, cb) {
@@ -51,8 +49,6 @@ test('Testrunner: browser fails to start', async () => {
 });
 
 test('Testrunner: test throws', async () => {
-    let wsClient;
-
     const testrunner = new Testrunner({
         testPort: 47225,
         testBailout: true,
@@ -66,13 +62,7 @@ test('Testrunner: test throws', async () => {
                 start: noop,
                 isBrowserVisible: () => true,
                 waitForBrowserVisible: noop,
-                open: () => {
-                    wsClient = new WebSocket('ws://localhost:47225?puppet-id=6183683651617');
-                    wsClient.on('error', noop);
-                    wsClient.on('message', () => {
-                        wsClient.send(JSON.stringify({ type: 'ack' }));
-                    });
-                },
+                open: noop,
                 stop: noop,
             },
         ],
@@ -106,7 +96,6 @@ test('Testrunner: test retries', async () => {
 
         browsers: [
             new Chromium({
-                name: 'Chrome',
                 width: 750,
                 height: 550,
                 headless: true,
@@ -120,11 +109,11 @@ test('Testrunner: test retries', async () => {
                 testFiles: [
                     pathlib.resolve(__dirname, 'testrunner-test--testfile-retry-logic.js'),
                 ],
-                beforeCommand: function (beforeCommandT) {
-                    return beforeCommandT.waitWhileVisible('.loading, #toast');
+                beforeCommand: async function (t) {
+                    await t.waitWhileVisible('.loading, #toast');
                 },
                 beforeTest: async function () {
-                    this.server = await createServer({ dirToServe: pathlib.resolve(__dirname, '../../self-tests/testapp'), port: 16743 });
+                    this.server = await createServer({ dirToServe: pathlib.resolve(__dirname, '../../../../test/self-tests/testapp'), port: 16743 });
                 },
                 afterTest: async function () {
                     return new Promise(resolve => this.server.close(resolve));

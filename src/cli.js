@@ -7,8 +7,8 @@ const fs = require('fs');
 const statAsync = util.promisify(fs.stat);
 const pathlib = require('path');
 const args = require('minimist')(process.argv.slice(2));
-const BrowserSpawners = require('../modules/browser-spawners');
-const Loggr = require('../modules/loggr');
+const browsers = require('../modules/browsers');
+const Loggr = require('../modules/loggr/loggr');
 
 const DEFAULT_REC_CFG_FILE = 'nostromo.record.conf.js';
 const DEFAULT_RUN_CFG_FILE = 'nostromo.run.conf.js';
@@ -74,6 +74,11 @@ async function run() {
         const recServer = new RecorderServer(conf);
 
         recServer.start();
+
+        process.on('SIGINT', () => {
+            console.log('Stopping...');
+            recServer.stop();
+        });
     }
     else if (args.run) {
         try {
@@ -83,7 +88,7 @@ async function run() {
             process.chdir(pathlib.dirname(absConfigPath));
             const configFn = require(pathlib.resolve(absConfigPath));
             const fileConf = await configFn({
-                browsers: BrowserSpawners,
+                browsers: browsers,
                 LOG_LEVELS: Loggr.LEVELS,
             });
 
@@ -97,7 +102,7 @@ async function run() {
                 console.log(util.inspect(conf, true, 10));
             }
 
-            const Testrunner = require('./testrunner/testrunner');
+            const Testrunner = require('./testrunner/testrunner').default;
 
             const tr = new Testrunner(conf);
 
