@@ -1,13 +1,12 @@
 {
   "name": "nostromo",
-  "version": "5.2.1",
+  "version": "5.2.2",
   "description": "",
   "main": "ts-dist/src/cli.js",
   "scripts": {
     "build": "npm run build-ui && npm run build-get-unique-selector",
     "build-ui": "babel src/recorder/ui/app/recorder-app.jsx -o src/recorder/ui/app/babel-temp.js && browserify src/recorder/ui/app/babel-temp.js -o dist/recorder-app.dist.js",
     "build-get-unique-selector": "browserify modules/get-unique-selector/build/get-unique-selector.build.js -o modules/get-unique-selector/dist/get-unique-selector.dist.js",
-    "watch": "watchmen",
     "lint": "eslint **/*.js **/*.jsx",
     "test": "npm run unit-test && npm run self-test",
     "unit-test": "jest --runInBand",
@@ -16,7 +15,6 @@
   },
   "author": "ghornich",
   "dependencies": {
-    "bluebird": "^3.5.0",
     "glob": "^7.1.2",
     "jimp": "^0.6.0",
     "jquery": "^3.2.1",
@@ -31,7 +29,6 @@
     "pretty-ms": "^7.0.1",
     "puppeteer": "^5.3.1",
     "rimraf": "^2.6.1",
-    "tree-kill": "^1.2.0",
     "ts-node": "^9.0.0",
     "typescript": "^4.0.3",
     "ws": "^3.0.0"
@@ -54,9 +51,7 @@
     "browserify": "^14.3.0",
     "eslint": "^7.10.0",
     "http-server": "^0.10.0",
-    "jest": "^26.5.0",
-    "rfr": "^1.2.3",
-    "watchmen": "github:ghornich/watchmen"
+    "jest": "^26.5.0"
   },
   "jest": {
     "testEnvironment": "node",
