@@ -4,14 +4,11 @@
   "description": "",
   "main": "ts-dist/src/cli.js",
   "scripts": {
-    "build": "npm run build-ui && npm run build-get-unique-selector",
-    "build-ui": "babel src/recorder/ui/app/recorder-app.jsx -o src/recorder/ui/app/babel-temp.js && browserify src/recorder/ui/app/babel-temp.js -o dist/recorder-app.dist.js",
-    "build-get-unique-selector": "browserify modules/get-unique-selector/build/get-unique-selector.build.js -o modules/get-unique-selector/dist/get-unique-selector.dist.js",
+    "build": "tsc",
     "lint": "eslint **/*.js **/*.jsx",
     "test": "npm run unit-test && npm run self-test",
     "unit-test": "jest --runInBand",
-    "self-test": "node ts-dist/src/cli.js --run -c ts-dist/test/self-tests/nostromo.run.conf.js",
-    "prepublish": "tsc"
+    "self-test": "node ts-dist/src/cli.js --run -c ts-dist/test/self-tests/nostromo.run.conf.js"
   },
   "author": "ghornich",
   "dependencies": {
