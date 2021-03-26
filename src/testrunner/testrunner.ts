@@ -19,7 +19,6 @@ const TEST_STATE = {
     FAILED: 'failed',
 };
 
-const DEFAULT_TEST_PORT = 47225;
 const DEFAULT_TEST_NAME = '(Unnamed test)';
 
 const ELLIPSIS_LIMIT = 40;
@@ -131,7 +130,6 @@ class TestBailoutError extends Error {
 
 /**
  * @typedef {Object} TestrunnerConfig
- * @property {Number} [testPort = 47225]
  * @property {Number|String} [logLevel] - See Logger.LEVELS
  * @property {Boolean} [testBailout = true] - Bailout from a single test if an assert fails
  * @property {Boolean} [bailout = false] - Bailout from the entire test program if an assert fails
@@ -162,7 +160,6 @@ class Testrunner extends EventEmitter {
         super();
 
         const defaultConf = {
-            testPort: DEFAULT_TEST_PORT,
             logLevel: Loggr.LEVELS.INFO,
             testBailout: true,
             bailout: false,

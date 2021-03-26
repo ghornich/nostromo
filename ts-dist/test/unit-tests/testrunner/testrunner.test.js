@@ -15,7 +15,6 @@ class NullStream extends stream.Writable {
 }
 test('Testrunner: browser fails to start', async () => {
     const testrunner = new Testrunner({
-        testPort: 47225,
         testBailout: true,
         bailout: false,
         outStream: new NullStream(),
@@ -45,7 +44,6 @@ test('Testrunner: browser fails to start', async () => {
 });
 test('Testrunner: test throws', async () => {
     const testrunner = new Testrunner({
-        testPort: 47225,
         testBailout: true,
         bailout: false,
         outStream: new NullStream(),
@@ -76,7 +74,6 @@ test('Testrunner: test throws', async () => {
 });
 test('Testrunner: test retries', async () => {
     const testrunner = new Testrunner({
-        testPort: 47225,
         testBailout: true,
         bailout: false,
         outStream: new NullStream(),
