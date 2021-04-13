@@ -673,7 +673,7 @@ class Testrunner extends EventEmitter {
         this._log.info(`setValue: "${ellipsis(value)}", "${ellipsis(selector)}"`);
         try {
             // @ts-expect-error
-            await this._currentBrowser.execFunction((s) => document.querySelector(s).value = '', selector);
+            await this._currentBrowser.execFunction((s) => document.querySelector(s).select(), selector);
             await this._runBrowserCommandWithRetries('type', [selector, value]);
         }
         catch (err) {
