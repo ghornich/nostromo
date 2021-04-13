@@ -1,10 +1,11 @@
 {
   "name": "nostromo",
-  "version": "5.4.0",
+  "version": "5.5.0",
   "description": "",
   "main": "ts-dist/src/cli.js",
   "scripts": {
     "build": "tsc",
+    "watch": "tsc --watch",
     "lint": "eslint **/*.js **/*.jsx",
     "test": "npm run unit-test && npm run self-test",
     "unit-test": "jest --runInBand",

@@ -615,19 +615,29 @@ class Testrunner extends EventEmitter {
             await this._execCommandSideEffect(cmd);
         }
     }
-    async _runBrowserCommandWithRetries(/** @type {string} */ browserFnName, /** @type {any[]} */ args) {
+    async _runBrowserCommandWithRetries(browserFnName, args) {
         let retries = 0;
         // eslint-disable-next-line no-constant-condition
         while (true) {
             this._log.trace(`_execCommandWithRetries - attempt: ${retries}, command: ${browserFnName}, args: ${util.inspect(args)}`);
             try {
-                await this._currentBrowser[browserFnName](...args);
+                if (typeof browserFnName === 'function') {
+                    await browserFnName();
+                }
+                else {
+                    await this._currentBrowser[browserFnName](...args);
+                }
                 this._log.trace('_execCommandWithRetries - success');
                 break;
             }
             catch (err) {
                 if (retries < this._conf.commandRetryCount) {
-                    this._log.warn(`Ignoring ${browserFnName} error, retrying`);
+                    if (typeof browserFnName === 'string') {
+                        this._log.warn(`Command error, retrying "${browserFnName}"`);
+                    }
+                    else {
+                        this._log.warn(`Command error, retrying`);
+                    }
                     this._log.debug(err);
                     retries++;
                     await delay(this._conf.commandRetryInterval);
@@ -672,9 +682,11 @@ class Testrunner extends EventEmitter {
     async _setValueDirect(selector, value) {
         this._log.info(`setValue: "${ellipsis(value)}", "${ellipsis(selector)}"`);
         try {
-            // @ts-expect-error
-            await this._currentBrowser.execFunction((s) => document.querySelector(s).select(), selector);
-            await this._runBrowserCommandWithRetries('type', [selector, value]);
+            await this._runBrowserCommandWithRetries(async () => {
+                // @ts-expect-error
+                await this._currentBrowser.execFunction((s) => document.querySelector(s).select(), selector);
+                await this._currentBrowser.type(selector, value);
+            });
         }
         catch (err) {
             await this._handleCommandError(err);
