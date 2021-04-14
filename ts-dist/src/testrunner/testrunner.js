@@ -206,12 +206,10 @@ class Testrunner extends EventEmitter {
         if (!Array.isArray(this._conf.browsers)) {
             this._conf.browsers = [this._conf.browsers];
         }
-        // '_execFn,equal,click,setValue,waitForVisible,waitWhileVisible'.split(',').forEach(fnn=>{
-        //     this[fnn]=this[fnn].bind(this)
-        // })
         this.directAPI = {
             getValue: this._getValueDirect.bind(this),
             setValue: this._setValueDirect.bind(this),
+            setFileInput: this._setFileInputDirect.bind(this),
             click: this._clickDirect.bind(this),
             waitForVisible: this._waitForVisibleDirect.bind(this),
             waitWhileVisible: this._waitWhileVisibleDirect.bind(this),
@@ -636,7 +634,7 @@ class Testrunner extends EventEmitter {
                         this._log.warn(`Command error, retrying "${browserFnName}"`);
                     }
                     else {
-                        this._log.warn(`Command error, retrying`);
+                        this._log.warn('Command error, retrying');
                     }
                     this._log.debug(err);
                     retries++;
@@ -686,6 +684,28 @@ class Testrunner extends EventEmitter {
                 // @ts-expect-error
                 await this._currentBrowser.execFunction((s) => document.querySelector(s).select(), selector);
                 await this._currentBrowser.type(selector, value);
+            });
+        }
+        catch (err) {
+            await this._handleCommandError(err);
+        }
+    }
+    async _setFileInputDirect(selector, filePath) {
+        this._log.info(`setFileInput: "${selector}", "${filePath}"`);
+        try {
+            await this._runBrowserCommandWithRetries(async () => {
+                await this._currentBrowser.waitForVisible(selector);
+                const isFileInput = await this._currentBrowser.execFunction((s) => {
+                    // @ts-expect-error
+                    const node = document.querySelector(s);
+                    return Boolean(node && node.tagName.toLowerCase() === 'input' && node.type.toLowerCase() === 'file');
+                }, selector);
+                if (!isFileInput) {
+                    throw new Error(`setFileInput failure: selector is not a file input: "${selector}"`);
+                }
+                const fileChooserPromise = this._currentBrowser._page.waitForFileChooser();
+                await this._currentBrowser.click(selector);
+                await (await fileChooserPromise).accept([filePath]);
             });
         }
         catch (err) {
