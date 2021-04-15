@@ -4,42 +4,74 @@
 
 ## Testrunner API
 
-`type WaitOptions = { timeout?: number, initialDelay?: number }`
+```ts
+type WaitOptions = { timeout?: number, initialDelay?: number }
+```
 
 ------
 
-`assert(): Promise<void>`
+```ts
+assert(): Promise<void>
+```
 
 Automatic screenshot assert and diff.
 
-`click(selector: string): Promise<void>`
+```ts
+click(selector: string): Promise<void>
+```
 
-`delay(ms: number): Promise<void>`
+```ts
+delay(ms: number): Promise<void>
+```
 
-`execFunction(() => any, ...args: any[]): Promise<void>`
+```ts
+execFunction(() => any, ...args: any[]): Promise<void>
+```
 
-`focus(selector: string): Promise<void>`
+```ts
+focus(selector: string): Promise<void>
+```
 
-`getValue(selector: string): Promise<string>`
+```ts
+getValue(selector: string): Promise<string>
+```
 
-`setValue(selector: string, value: string): Promise<void>`
+```ts
+setValue(selector: string, value: string): Promise<void>
+```
 
-`setFileInput(fileInputSelector: string, filePath: string): Promise<void>`
+```ts
+setFileInput(fileInputSelector: string, filePath: string, options?: { waitForVisible?: boolean }): Promise<void>
+```
 
 Throws error if `fileInputSelector` is not a file input.
 
-`waitForVisible(selector: string, opts?: WaitOptions): Promise<void>`
+```ts
+waitForVisible(selector: string, opts?: WaitOptions): Promise<void>
+```
 
-`waitWhileVisible(selector: string, opts?: WaitOptions): Promise<void>`
+```ts
+waitWhileVisible(selector: string, opts?: WaitOptions): Promise<void>
+```
 
-`isVisible(selector: string): Promise<boolean>`
+```ts
+isVisible(selector: string): Promise<boolean>
+```
 
-`scroll(selector: string, scrollTop: number): Promise<void>`
+```ts
+scroll(selector: string, scrollTop: number): Promise<void>
+```
 
-`scrollTo(selector: string): Promise<void>`
+```ts
+scrollTo(selector: string): Promise<void>
+```
 
-`pressKey(keyCode: string): Promise<void>`
+```ts
+pressKey(keyCode: string): Promise<void>
+```
 
 See the [puppeteer API](https://github.com/puppeteer/puppeteer/blob/main/src/common/USKeyboardLayout.ts) for keycodes.
 
-`mouseover(selector: string): Promise<void>`
+```ts
+mouseover(selector: string): Promise<void>
+```

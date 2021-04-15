@@ -851,12 +851,16 @@ class Testrunner extends EventEmitter {
         }
     }
 
-    async _setFileInputDirect(selector, filePath) {
+    async _setFileInputDirect(selector, filePath, options?: { waitForVisible?: boolean }) {
         this._log.info(`setFileInput: "${selector}", "${filePath}"`);
+
+        const opts = { ...{ waitForVisible: true }, ...options };
 
         try {
             await this._runBrowserCommandWithRetries(async () => {
-                await this._currentBrowser.waitForVisible(selector);
+                if (opts.waitForVisible) {
+                    await this._currentBrowser.waitForVisible(selector);
+                }
 
                 const isFileInput = await this._currentBrowser.execFunction((s) => {
                     // @ts-expect-error
