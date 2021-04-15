@@ -11,15 +11,17 @@ const DEFAULT_WAIT_INITIAL_DELAY = 100;
 const DEFAULT_WAIT_POLL_INTERVAL = 250;
 class Chromium {
     constructor(options) {
+        var _a;
         this._options = { ...DEFAULT_OPTIONS, ...options };
         this._browser = null;
         this._page = null;
+        this._puppeteer = (_a = options.puppeteer) !== null && _a !== void 0 ? _a : puppeteer_1.default;
     }
     get name() {
         return this._options.name;
     }
     async start() {
-        this._browser = await puppeteer_1.default.launch({
+        this._browser = await this._puppeteer.launch({
             headless: this._options.headless,
             defaultViewport: {
                 width: this._options.width,

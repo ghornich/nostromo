@@ -868,6 +868,7 @@ class Testrunner extends EventEmitter {
                     throw new Error(`setFileInput failure: selector is not a file input: "${selector}"`);
                 }
 
+                // FIXME implementation leak, don't use _page, maybe move setFileInput to BrowserInterface
                 const fileChooserPromise = this._currentBrowser._page.waitForFileChooser();
                 await this._currentBrowser.click(selector);
                 await (await fileChooserPromise).accept([filePath]);

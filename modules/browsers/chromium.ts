@@ -11,7 +11,9 @@ type ChromiumOptions = {
     name?: string,
     headless?: boolean,
     width: number,
-    height: number
+    height: number,
+    /** Custom version of puppeteer */
+    puppeteer?: typeof puppeteer
 }
 
 export default class Chromium implements IBrowser {
@@ -19,6 +21,7 @@ export default class Chromium implements IBrowser {
     _options: ChromiumOptions
     _browser: puppeteer.Browser
     _page: puppeteer.Page
+    _puppeteer: typeof puppeteer
 
     get name() {
         return this._options.name;
@@ -28,10 +31,11 @@ export default class Chromium implements IBrowser {
         this._options = { ...DEFAULT_OPTIONS, ...options };
         this._browser = null;
         this._page = null;
+        this._puppeteer = options.puppeteer ?? puppeteer;
     }
 
     async start() {
-        this._browser = await puppeteer.launch({
+        this._browser = await this._puppeteer.launch({
             headless: this._options.headless,
             defaultViewport: {
                 width: this._options.width,
