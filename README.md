@@ -41,10 +41,12 @@ setValue(selector: string, value: string): Promise<void>
 ```
 
 ```ts
-setFileInput(fileInputSelector: string, filePath: string, options?: { waitForVisible?: boolean }): Promise<void>
+setFileInput(fileInputSelector: string, filePath: string, options?: { waitForVisible?: boolean, checkSelectorType?: boolean }): Promise<void>
 ```
 
 Throws error if `fileInputSelector` is not a file input.
+
+* `checkSelectorType`: checks if selector is a file input. Default: `true`
 
 ```ts
 waitForVisible(selector: string, opts?: WaitOptions): Promise<void>

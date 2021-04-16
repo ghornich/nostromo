@@ -692,19 +692,21 @@ class Testrunner extends EventEmitter {
     }
     async _setFileInputDirect(selector, filePath, options) {
         this._log.info(`setFileInput: "${selector}", "${filePath}"`);
-        const opts = { ...{ waitForVisible: true }, ...options };
+        const opts = { ...{ waitForVisible: true, checkSelectorType: true }, ...options };
         try {
             await this._runBrowserCommandWithRetries(async () => {
                 if (opts.waitForVisible) {
                     await this._currentBrowser.waitForVisible(selector);
                 }
-                const isFileInput = await this._currentBrowser.execFunction((s) => {
-                    // @ts-expect-error
-                    const node = document.querySelector(s);
-                    return Boolean(node && node.tagName.toLowerCase() === 'input' && node.type.toLowerCase() === 'file');
-                }, selector);
-                if (!isFileInput) {
-                    throw new Error(`setFileInput failure: selector is not a file input: "${selector}"`);
+                if (opts.checkSelectorType) {
+                    const isFileInput = await this._currentBrowser.execFunction((s) => {
+                        // @ts-expect-error
+                        const node = document.querySelector(s);
+                        return Boolean(node && node.tagName.toLowerCase() === 'input' && node.type.toLowerCase() === 'file');
+                    }, selector);
+                    if (!isFileInput) {
+                        throw new Error(`setFileInput failure: selector is not a file input: "${selector}"`);
+                    }
                 }
                 // FIXME implementation leak, don't use _page, maybe move setFileInput to BrowserInterface
                 const fileChooserPromise = this._currentBrowser._page.waitForFileChooser();
