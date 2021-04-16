@@ -496,7 +496,7 @@ class Testrunner extends EventEmitter {
         this._currentAfterAssert = suite.afterAssert || noop;
         try {
             testStartTime = Date.now();
-            await test.testFn(this.tAPI, { suite: suite, directAPI: this.directAPI });
+            await test.testFn(this.tAPI, { suite: suite, directAPI: this.directAPI, browser: this._currentBrowser });
             if (test.runErrors.length > 0) {
                 throw new TestFailedError({
                     message: `Test "${test.name}" failed`,
