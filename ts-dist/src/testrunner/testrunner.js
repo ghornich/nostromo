@@ -87,6 +87,7 @@ class Testrunner extends events_1.EventEmitter {
             commandRetryCount: 4,
             commandRetryInterval: 250,
             exitTimeout: 5 * 60000,
+            imageDiffOptions: {},
         };
         const defaultImageDiffOptions = {
             colorThreshold: 3,
@@ -98,8 +99,8 @@ class Testrunner extends events_1.EventEmitter {
                 delete conf[key];
             }
         }
-        const imageDiffOptions = Object.assign({}, defaultImageDiffOptions, conf.imageDiffOptions);
-        this._conf = Object.assign(defaultConf, { imageDiffOptions }, conf);
+        this._conf = Object.assign(defaultConf, conf);
+        this._conf.imageDiffOptions = Object.assign({}, defaultImageDiffOptions, conf.imageDiffOptions);
         this._log = new loggr_1.default({
             logLevel: this._conf.logLevel,
             showTime: true,
@@ -690,7 +691,6 @@ class Testrunner extends events_1.EventEmitter {
         }
     }
     async _mouseoverDirect(selector) {
-        assert_1.default(this._currentBrowser);
         this._log.debug(`mouseover: ${selector}`);
         try {
             this._currentBrowser.hover(selector);
@@ -700,7 +700,6 @@ class Testrunner extends events_1.EventEmitter {
         }
     }
     async _execFunctionDirect(fn, ...args) {
-        assert_1.default(this._currentBrowser);
         this._log.debug(`execFunction: ${fn.name || '(anonymous)'}`);
         return this._currentBrowser.execFunction(fn, ...args);
     }
@@ -775,7 +774,6 @@ class Testrunner extends events_1.EventEmitter {
                 await delay_1.default(this._conf.assertRetryInterval);
             }
         }
-        assert_1.default(imgDiffResult);
         this._currentTest.runErrors.push(new AssertError(`FAIL screenshot assert (${formattedPPM} ppm): ${refImgPathRelative}, totalChangedPixels: ${imgDiffResult.totalChangedPixels}`));
         this._log.error(`FAIL screenshot assert (${formattedPPM} ppm): ${refImgPathRelative}, totalChangedPixels: ${imgDiffResult.totalChangedPixels}`);
         if (this._conf.onAssertError !== null) {

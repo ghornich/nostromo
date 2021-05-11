@@ -255,6 +255,7 @@ class Testrunner extends EventEmitter {
             commandRetryCount: 4,
             commandRetryInterval: 250,
             exitTimeout: 5 * 60000,
+			imageDiffOptions: {},
         };
 
         const defaultImageDiffOptions = {
@@ -269,8 +270,8 @@ class Testrunner extends EventEmitter {
             }
         }
 
-        const imageDiffOptions = Object.assign({}, defaultImageDiffOptions, conf.imageDiffOptions);
-        this._conf = Object.assign(defaultConf, { imageDiffOptions }, conf);
+		this._conf = Object.assign(defaultConf, conf);
+        this._conf.imageDiffOptions = Object.assign({}, defaultImageDiffOptions, conf.imageDiffOptions);
 
         this._log = new Loggr({
             logLevel: this._conf.logLevel,
