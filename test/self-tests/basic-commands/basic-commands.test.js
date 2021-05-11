@@ -33,8 +33,8 @@ exports = module.exports = function (test) {
         await t.scrollTo('#scroll-test--n');
 
         const scrollToTop = await t.execFunction(function () {
-            // @ts-expect-error
             // eslint-disable-next-line no-undef
+            // @ts-expect-error
             return document.querySelector('.scroll-test').scrollTop;
         });
 
@@ -46,8 +46,8 @@ exports = module.exports = function (test) {
         await t.scroll('.scroll-test', 190);
 
         const scrollTop = await t.execFunction(function () {
-            // @ts-expect-error
             // eslint-disable-next-line no-undef
+            // @ts-expect-error
             return document.querySelector('.scroll-test').scrollTop;
         });
 
@@ -65,8 +65,8 @@ exports = module.exports = function (test) {
 
         await t.execFunction(function () {
             setTimeout(function () {
-                // @ts-expect-error
                 // eslint-disable-next-line no-undef
+                // @ts-expect-error
                 document.querySelector('.waitForVisible-test').classList.remove('hidden');
             }, 2000);
         });
@@ -85,8 +85,8 @@ exports = module.exports = function (test) {
 
         await t.execFunction(function () {
             setTimeout(function () {
-                // @ts-expect-error
                 // eslint-disable-next-line no-undef
+                // @ts-expect-error
                 document.querySelector('.waitWhileVisible-test').classList.add('hidden');
             }, 2000);
         });

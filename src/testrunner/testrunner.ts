@@ -1,23 +1,30 @@
-const Loggr = require('../../modules/loggr/loggr');
-const isEqual = require('lodash.isequal');
-const fs = require('fs');
-const fsp = require('fs').promises;
-const pathlib = require('path');
-const util = require('util');
-const TapWriter = require('../../modules/tap-writer/index');
-const EventEmitter = require('events').EventEmitter;
-const mkdirpAsync = util.promisify(require('mkdirp'));
-const Bitmap = require('../../modules/pnglib/pnglib').Bitmap;
-const globAsync = util.promisify(require('glob'));
-const bufferImageDiff = require('../../modules/buffer-image-diff/image-diff').default;
-const unsafePrettyMs = require('pretty-ms');
-const delay = require('../../modules/delay/delay');
+import Loggr from '../../modules/loggr/loggr';
+import isEqual from 'lodash.isequal';
+import fs from 'fs';
+import { promises as fsp } from 'fs';
+import pathlib from 'path';
+import util from 'util';
+import assert from 'assert';
+import TapWriter from '../../modules/tap-writer/index';
+import { EventEmitter } from 'events';
+import mkdirp from 'mkdirp';
+const mkdirpAsync = util.promisify(mkdirp);
+import { Bitmap } from '../../modules/pnglib/pnglib';
+import glob from 'glob';
+const globAsync = util.promisify(glob);
+import bufferImageDiff, { ImageDiffResult } from '../../modules/buffer-image-diff/image-diff';
+import unsafePrettyMs from 'pretty-ms';
+import delay from '../../modules/delay/delay';
+import type { IBrowser } from '../../modules/browsers/browser-interface';
+import type { ImageDiffOptions } from '../../modules/buffer-image-diff/image-diff'; 
 
 const TEST_STATE = {
     SCHEDULED: 'scheduled',
     PASSED: 'passed',
     FAILED: 'failed',
-};
+} as const;
+
+type TestState = typeof TEST_STATE[keyof typeof TEST_STATE];
 
 const DEFAULT_TEST_NAME = '(Unnamed test)';
 
@@ -32,7 +39,7 @@ const DEFAULT_REF_DIFFS_DIR = 'reference-diffs';
 const REPORT_FILE_NAME = 'test-run-report.json';
 
 class AssertError extends Error {
-    constructor(message) {
+    constructor(message: string) {
         super(message);
         this.name = 'AssertError';
     }
@@ -46,9 +53,9 @@ class AbortError extends Error {
 }
 
 class TestFailedError extends Error {
-    testErrors: []
+    testErrors: Error[] | null
 
-    constructor({ message, testErrors = null }) {
+    constructor({ message, testErrors = null }: { message: string, testErrors?: Error[] | null}) {
         super(message);
         this.testErrors = testErrors || [];
         this.name = 'TestFailedError';
@@ -56,107 +63,175 @@ class TestFailedError extends Error {
 }
 
 class BailoutError extends Error {
-    constructor(message) {
+    constructor(message: string) {
         super(message);
         this.name = 'BailoutError';
     }
 }
 
 class TestBailoutError extends Error {
-    constructor(message) {
+    constructor(message: string) {
         super(message);
         this.name = 'TestBailoutError';
     }
 }
 
 /**
- * test assert API (without before/after side effects, "directAPI"), TODO define
- * @typedef {Object} TestAssertAPIDirect
+ * test assert API (without before/after side effects, "directAPI")
  */
+interface TestAssertAPIDirect {
+	getValue: Testrunner['_getValueDirect']
+	setValue: Testrunner['_setValueDirect']
+	setFileInput: Testrunner['_setFileInputDirect']
+	click: Testrunner['_clickDirect']
+	waitForVisible: Testrunner['_waitForVisibleDirect']
+	waitWhileVisible: Testrunner['_waitWhileVisibleDirect']
+	isVisible: Testrunner['_isVisibleDirect']
+	focus: Testrunner['_focusDirect']
+	scroll: Testrunner['_scrollDirect']
+	scrollTo: Testrunner['_scrollToDirect']
+	delay: Testrunner['_delay']
+	comment: Testrunner['_comment']
+	assert: Testrunner['_assert']
+	pressKey: Testrunner['_pressKeyDirect']
+	mouseover: Testrunner['_mouseoverDirect']
+	execFunction: Testrunner['_execFunctionDirect']
+	execCommands: Testrunner['_execCommandsDirect']
+}
 
-/**
- * @callback BeforeAfterCommandCallback
- * @param {TestAssertAPIDirect} t
- * @param {Object} command - command before/after this callback
- */
+interface BeforeAfterCommandCallback {
+	(t: TestAssertAPIDirect, command?: { type: Command['type'] }): Promise<void>
+}
 
-/**
- * @callback DirectAPICallback
- * @param {TestAssertAPIDirect} t
- */
+interface DirectAPICallback {
+	(t: TestAssertAPIDirect): Promise<void>
+}
 
-/**
- * @callback TestrunnerCallback
- * @param {Testrunner} testrunner
- */
+interface TestrunnerCallback {
+	(testrunner: Testrunner): Promise<void>
+}
 
-/**
- * @typedef {Object} Suite
- * @property {String} name
- * @property {String} appUrl
- * @property {Array<String>} testFiles - relative/absolute paths and/or globs
- * @property {Function} [beforeSuite]
- * @property {Function} [afterSuite]
- * @property {Function} [beforeTest]
- * @property {Function} [afterTest]
- * @property {BeforeAfterCommandCallback} [beforeCommand]
- * @property {BeforeAfterCommandCallback} [afterCommand]
- * @property {DirectAPICallback} [afterLastCommand]
- * @property {DirectAPICallback} [beforeAssert]
- * @property {DirectAPICallback} [afterAssert]
- */
+interface Suite {
+	name: string
+	appUrl: string
+	/** relative/absolute paths and/or globs */
+	testFiles?: string[]
+	tests?: Test[]
+	beforeSuite?: Function
+	afterSuite?: Function
+	beforeTest?: Function
+	afterTest?: Function
+	beforeCommand?: BeforeAfterCommandCallback
+	beforeFirstCommand?: BeforeAfterCommandCallback
+	afterCommand?: BeforeAfterCommandCallback
+	afterLastCommand?: DirectAPICallback
+	beforeAssert?: DirectAPICallback
+	afterAssert?: DirectAPICallback
+}
 
-/**
- * @typedef {Object} screenshotItem
- * @property {{ path: string, relativePath: string }} errorImage
- * @property {{ path: string, relativePath: string }} diffImage
- * @property {{ path: string, relativePath: string }} referenceImage
- * @property {number} attempt
- * @property {number} assertIndex
- * @property {string} testName
- */
+interface Test {
+	name: string
+	id: string
+	testFn: TestFn
+	state?: TestState
+	runErrors?: Error[]
+}
 
-/**
- * @typedef {Object} TestRunReport
- * @property {screenshotItem[]} screenshots
- * @property {number} testsCount
- * @property {number} passedCount
- * @property {number} failedCount
- * @property {string[]} failedTestNames
- * @property {number} runTimeMs
- * @property {Object<string, number>} runtimes
- * @property {boolean} passed
- */
+interface TestFn {
+	(t: TestAPI, options: { suite: Suite, directAPI: TestAssertAPIDirect, browser: IBrowser }): Promise<void>
+}
 
-/**
- * @typedef {Object} TestrunnerConfig
- * @property {Number|String} [logLevel] - See Logger.LEVELS
- * @property {Boolean} [testBailout = true] - Bailout from a single test if an assert fails
- * @property {Boolean} [bailout = false] - Bailout from the entire test program if an assert fails
- * @property {String} [referenceScreenshotsDir = DEFAULT_REF_SCREENSHOTS_DIR]
- * @property {String} [referenceErrorsDir = DEFAULT_REF_ERRORS_DIR]
- * @property {string} [workspaceDir]
- * @property {Array<import('../../modules/browsers/browser-interface')>} browsers
- * @property {import('../../modules/buffer-image-diff/image-diff').ImageDiffOptions} [imageDiffOptions] - options for the built-in, screenshot-based asserter
- * @property {Array<Suite>} suites
- * @property {Number} [assertRetryCount = 0]
- * @property {Number} [assertRetryInterval = 1000]
- * @property {String} [testFilter] - regular expression string
- * @property {import('stream').Writable} [outStream]
- * @property {Number} [testRetryCount = 0] - retry failed tests n times
- * @property {RegExp} [testRetryFilter = /.+/] - retry failed tests only if test name matches this filter
- * @property {number} [commandRetryCount = 4]
- * @property {number} [commandRetryInterval = 250]
- * @property {TestrunnerCallback} [onCommandError]
- * @property {TestrunnerCallback} [onAssertError]
- * @property {number} [exitTimeout = 300000]
- */
+interface screenshotItem {
+	errorImage: { path: string, relativePath: string }
+	diffImage: { path: string, relativePath: string }
+	referenceImage: { path: string, relativePath: string }
+	attempt: number
+	assertIndex: number
+	testName: string
+}
+
+interface TestRunReport {
+	screenshots: screenshotItem[]
+	testsCount: number | null
+	passedCount: number | null
+	failedCount: number | null
+	failedTestNames: string[]
+	runTimeMs: number | null
+	runtimes: Record<string, number>
+	passed: boolean
+}
+
+interface TestrunnerConfig {
+	/** See Logger.LEVELS */
+	logLevel: number | string
+	/** Bailout from a single test if an assert fails */
+	testBailout: boolean
+	/** Bailout from the entire test program if an assert fails */
+	bailout: boolean
+	referenceScreenshotsDir: string
+	referenceErrorsDir: string
+	referenceDiffsDir: string
+	workspaceDir: string
+	browsers: IBrowser[]
+	/** options for the built-in, screenshot-based asserter */
+	imageDiffOptions: ImageDiffOptions
+	suites: Suite[]
+	assertRetryCount: number
+	assertRetryInterval: number
+	/** regular expression string */
+	testFilter: string
+	outStream: import('stream').Writable
+	/** retry failed tests n times */
+	testRetryCount: number
+	/** retry failed tests only if test name matches this filter */
+	testRetryFilter: RegExp
+	commandRetryCount: number
+	commandRetryInterval: number
+	onCommandError: TestrunnerCallback
+	onAssertError: TestrunnerCallback
+	exitTimeout: number
+}
+
+
+interface TestAPI extends TestAssertAPIDirect {
+	equal: Testrunner['_equal']
+	equals: Testrunner['_equal']
+}
+
+interface Command {
+	type: keyof TestAssertAPIDirect;
+	selector: string;
+	value?: any;
+	pollInterval?: number;
+	timeout?: number;
+	initialDelay?: number;
+}
 
 class Testrunner extends EventEmitter {
-    /**
-     * @param {TestrunnerConfig} conf
-     */
-    constructor(conf) {
+	private _conf: TestrunnerConfig;
+	private _log: Loggr;
+	private _tapWriter: TapWriter;
+	private _isRunning: boolean;
+	private _isAborting: boolean;
+	private _assertCount: number;
+	private _foundTestsCount: number;
+	private _okTestsCount: number;
+	private _testRunReport: TestRunReport;
+	private _currentTest: any;
+	private _currentBeforeCommand: BeforeAfterCommandCallback | null;
+	private _currentAfterCommand: BeforeAfterCommandCallback | null;
+	private _currentBeforeAssert: DirectAPICallback | null;
+	private _currentAfterAssert: DirectAPICallback | null;
+	private _currentBrowser: IBrowser | null;
+
+	directAPI: TestAssertAPIDirect;
+	sideEffectAPI: TestAssertAPIDirect;
+	tAPI: TestAPI;
+
+	static AbortError = AbortError;
+	static AssertError = AssertError;
+
+    constructor(conf: Partial<TestrunnerConfig>) {
         super();
 
         const defaultConf = {
@@ -189,13 +264,13 @@ class Testrunner extends EventEmitter {
         };
 
         for (const key of Reflect.ownKeys(conf)) {
-            if (conf[key] === undefined) {
-                delete conf[key];
+            if (conf[key as keyof TestrunnerConfig] === undefined) {
+                delete conf[key as keyof TestrunnerConfig];
             }
         }
 
-        this._conf = Object.assign(defaultConf, conf);
-        this._conf.imageDiffOptions = Object.assign({}, defaultImageDiffOptions, conf.imageDiffOptions);
+        const imageDiffOptions = Object.assign({}, defaultImageDiffOptions, conf.imageDiffOptions);
+        this._conf = Object.assign(defaultConf, { imageDiffOptions }, conf);
 
         this._log = new Loggr({
             logLevel: this._conf.logLevel,
@@ -223,8 +298,6 @@ class Testrunner extends EventEmitter {
         this._tapWriter = new TapWriter({
             outStream: this._conf.outStream,
         });
-
-        this._inBailout = false;
 
         this._isRunning = false;
         this._isAborting = false;
@@ -263,16 +336,16 @@ class Testrunner extends EventEmitter {
             pressKey: this._pressKeyDirect.bind(this),
             mouseover: this._mouseoverDirect.bind(this),
             execFunction: this._execFunctionDirect.bind(this),
-        };
+        } as TestAssertAPIDirect;
 
-        this.sideEffectAPI = {};
+        this.sideEffectAPI = {} as TestAssertAPIDirect;
 
         Object.keys(this.directAPI).forEach(key => {
             if (/delay|comment/.test(key)) {
                 return;
             }
-            const directAPIFn = this.directAPI[key];
-            this.sideEffectAPI[key] = this._wrapFunctionWithSideEffects(directAPIFn, key);
+            const directAPIFn = this.directAPI[key as keyof TestAssertAPIDirect];
+            this.sideEffectAPI[key as keyof TestAssertAPIDirect] = this._wrapFunctionWithSideEffects(directAPIFn, key as keyof TestAssertAPIDirect);
         });
 
         this.sideEffectAPI.delay = this.directAPI.delay;
@@ -286,24 +359,12 @@ class Testrunner extends EventEmitter {
             equals: this._equal.bind(this),
         });
 
-        this._consolePipeLog = new Loggr({
-            logLevel: this._conf.logLevel,
-            showTime: true,
-            namespace: 'ConsolePipe',
-            indent: '  ',
-            outStream: this._conf.outStream,
-        });
-
         this._assertCount = 0;
 
-        /** @type {import('../../modules/browsers/browser-interface').IBrowser} */
         this._currentBrowser = null;
         this._foundTestsCount = 0;
         this._okTestsCount = 0;
 
-        /**
-         * @type {TestRunReport}
-         */
         this._testRunReport = {
             screenshots: [],
             failedCount: null,
@@ -366,7 +427,7 @@ class Testrunner extends EventEmitter {
             this._tapWriter.diagnostic(`tests ${effectiveTestsCount}`);
             this._tapWriter.diagnostic(`pass ${this._okTestsCount}`);
 
-            const failedTestNames = [];
+            const failedTestNames: string[] = [];
 
             if (effectiveTestsCount !== this._okTestsCount) {
                 process.exitCode = 1;
@@ -483,7 +544,7 @@ class Testrunner extends EventEmitter {
         }
     }
 
-    async _runSuite(suite) {
+    async _runSuite(suite: Suite) {
         this._log.info(`running suite: ${suite.name || DEFAULT_SUITE_NAME}`);
 
         for (const test of suite.tests) {
@@ -504,7 +565,7 @@ class Testrunner extends EventEmitter {
         }
     }
 
-    async _runTestWithRetries({ suite, test }) {
+    async _runTestWithRetries({ suite, test }: { suite: Suite, test: Test }) {
         this._log.trace(`_runTestWithRetries: started for test: '${test.name}'`);
 
         const maxAttempts = this._conf.testRetryFilter.test(test.name) ? this._conf.testRetryCount + 1 : 1;
@@ -541,7 +602,7 @@ class Testrunner extends EventEmitter {
         }
     }
 
-    async _runTest({ suite, test }) {
+    async _runTest({ suite, test }: { suite: Suite, test: Test }) {
         this._log.trace(`_runTest: running test ${test.name}`);
 
         const browser = this._currentBrowser;
@@ -581,13 +642,7 @@ class Testrunner extends EventEmitter {
         }
     }
 
-    /**
-     * @param {Object} options
-     * @param  {Object} options.suite
-     * @param  {Object} options.test
-     * @throws {}
-     */
-    async _runTestCore({ suite, test }) {
+    async _runTestCore({ suite, test }: { suite: Suite, test: Test }) {
         this._log.trace(`_runTestCore: running test ${test.name}`);
 
         this._currentTest = test;
@@ -596,7 +651,7 @@ class Testrunner extends EventEmitter {
         test.runErrors = [];
         test.state = TEST_STATE.SCHEDULED;
 
-        let testStartTime;
+        let testStartTime = 0;
 
         await this._currentBrowser.navigateTo(suite.appUrl);
 
@@ -659,29 +714,23 @@ class Testrunner extends EventEmitter {
         conf.suites = conf.suites.filter(suite => suite.tests.length > 0);
     }
 
-    /**
-     * @typedef {Object} Test
-     * @property {String} id
-     * @property {String} name
-     * @property {Function} testFn
-     */
+    async _parseTestFiles(testFilePaths: string[]) {
+        const tests: Test[] = [];
 
-    /**
-     * @param {Array<String>} testFilePaths
-     * @return {Promise<Test[]>}
-     */
-    async _parseTestFiles(testFilePaths) {
-        const tests = [];
-
-        function testRegistrar(arg0, arg1) {
-            let name, testFn;
+		function testRegistrar(arg0: TestFn): void;
+		function testRegistrar(arg0: string, arg1: TestFn): void;
+        function testRegistrar(arg0: TestFn | string, arg1?: TestFn): void {
+            let name: string;
+			let testFn: TestFn;
 
             if (arg1 === undefined) {
+				assert(typeof arg0 === 'function');
                 name = DEFAULT_TEST_NAME;
-                testFn = arg0;
+				testFn = arg0;
             }
             else {
-                name = arg0;
+				assert(typeof arg0 === 'string');
+				name = arg0;
                 testFn = arg1;
             }
 
@@ -705,11 +754,11 @@ class Testrunner extends EventEmitter {
             require(absPath)(testRegistrar, this);
         }
 
-        return tests;
+		return tests;
     }
 
-    _wrapFunctionWithSideEffects(fn, cmdType) {
-        return async (...args) => {
+    _wrapFunctionWithSideEffects(fn: Function, cmdType: keyof TestAssertAPIDirect) {
+        return async (...args: any[]) => {
             if (this._isAborting) {
                 throw new AbortError();
             }
@@ -721,7 +770,7 @@ class Testrunner extends EventEmitter {
         };
     }
 
-    async _execCommandWithAPI(cmd, api) {
+    async _execCommandWithAPI(cmd: Command, api: TestAssertAPIDirect) {
         switch (cmd.type) {
             case 'setValue': return api.setValue(cmd.selector, cmd.value);
             case 'click': return api.click(cmd.selector);
@@ -737,26 +786,25 @@ class Testrunner extends EventEmitter {
         }
     }
 
-    async _execCommandDirect(cmd) {
+    async _execCommandDirect(cmd: Command) {
         return this._execCommandWithAPI(cmd, this.directAPI);
     }
 
-    async _execCommandSideEffect(cmd) {
+    async _execCommandSideEffect(cmd: Command) {
         return this._execCommandWithAPI(cmd, this.sideEffectAPI);
     }
 
-    async _execCommandsDirect(cmds) {
+    async _execCommandsDirect(cmds: Command[]) {
         for (const cmd of cmds) {
-            await this._execCommandsDirect(cmd);
+            await this._execCommandDirect(cmd);
         }
     }
 
-    async _execCommandsSideEffect(cmds) {
+    async _execCommandsSideEffect(cmds: Command[]) {
         for (const cmd of cmds) {
             await this._execCommandSideEffect(cmd);
         }
     }
-
 
     async _runBrowserCommandWithRetries(browserFnName: string | Function, args?: any[]) {
         let retries = 0;
@@ -799,7 +847,7 @@ class Testrunner extends EventEmitter {
         }
     }
 
-    _equal(actual, expected, description) {
+    _equal(actual: unknown, expected: unknown, description: string) {
         if (isEqual(actual, expected)) {
             this._log.info('equal OK: ' + (description || '(unnamed)'));
             // this._tapWriter.ok({
@@ -819,7 +867,7 @@ class Testrunner extends EventEmitter {
         }
     }
 
-    async _clickDirect(selector/* , options*/) {
+    async _clickDirect(selector: string/* , options*/) {
         this._log.info(`click: "${ellipsis(selector)}"`);
 
         try {
@@ -830,13 +878,13 @@ class Testrunner extends EventEmitter {
         }
     }
 
-    async _getValueDirect(selector) {
+    async _getValueDirect(selector: string) {
         this._log.info(`getValue: "${ellipsis(selector)}"`);
 
         return this._currentBrowser.getValue(selector);
     }
 
-    async _setValueDirect(selector, value) {
+    async _setValueDirect(selector: string, value: string) {
         this._log.info(`setValue: "${ellipsis(value)}", "${ellipsis(selector)}"`);
 
         try {
@@ -851,7 +899,7 @@ class Testrunner extends EventEmitter {
         }
     }
 
-    async _setFileInputDirect(selector, filePath, options?: { waitForVisible?: boolean, checkSelectorType?: boolean }) {
+    async _setFileInputDirect(selector: string, filePath: string, options?: { waitForVisible?: boolean, checkSelectorType?: boolean }) {
         this._log.info(`setFileInput: "${selector}", "${filePath}"`);
 
         const opts = { ...{ waitForVisible: true, checkSelectorType: true }, ...options };
@@ -863,7 +911,7 @@ class Testrunner extends EventEmitter {
                 }
 
                 if (opts.checkSelectorType) {
-                    const isFileInput = await this._currentBrowser.execFunction((s) => {
+                    const isFileInput = await this._currentBrowser.execFunction((s: Function) => {
                         // @ts-expect-error
                         const node = document.querySelector(s);
                         return Boolean(node && node.tagName.toLowerCase() === 'input' && node.type.toLowerCase() === 'file');
@@ -874,7 +922,7 @@ class Testrunner extends EventEmitter {
                     }
                 }
 
-                // FIXME implementation leak, don't use _page, maybe move setFileInput to BrowserInterface
+                // @ts-expect-error FIXME implementation leak, don't use _page, maybe move setFileInput to BrowserInterface
                 const fileChooserPromise = this._currentBrowser._page.waitForFileChooser();
                 await this._currentBrowser.click(selector);
                 await (await fileChooserPromise).accept([filePath]);
@@ -886,10 +934,9 @@ class Testrunner extends EventEmitter {
     }
 
     /**
-     * @param {string} keyCode See https://github.com/puppeteer/puppeteer/blob/main/src/common/USKeyboardLayout.ts
-     * @return {Promise<void>}
+     * @param keyCode See https://github.com/puppeteer/puppeteer/blob/main/src/common/USKeyboardLayout.ts
      */
-    async _pressKeyDirect(keyCode) {
+    async _pressKeyDirect(keyCode: string) {
         this._log.info(`pressKey: ${keyCode}`);
 
         if (arguments.length > 1) {
@@ -903,7 +950,7 @@ class Testrunner extends EventEmitter {
         await this._runBrowserCommandWithRetries('pressKey', [keyCode]);
     }
 
-    async _waitForVisibleDirect(selector, opts = {}) {
+    async _waitForVisibleDirect(selector: string, opts = {}) {
         this._log.info(`waitForVisible: "${ellipsis(selector)}"`);
 
         try {
@@ -914,7 +961,7 @@ class Testrunner extends EventEmitter {
         }
     }
 
-    async _waitWhileVisibleDirect(selector, opts = {}) {
+    async _waitWhileVisibleDirect(selector: string, opts = {}) {
         this._log.info(`waitWhileVisible: "${ellipsis(selector)}"`);
 
         try {
@@ -925,7 +972,7 @@ class Testrunner extends EventEmitter {
         }
     }
 
-    async _isVisibleDirect(selector) {
+    async _isVisibleDirect(selector: string) {
         try {
             const result = await this._currentBrowser.isVisible(selector);
             return result;
@@ -935,7 +982,7 @@ class Testrunner extends EventEmitter {
         }
     }
 
-    async _focusDirect(selector /* , options*/) {
+    async _focusDirect(selector: string /* , options*/) {
         this._log.info(`focus: "${ellipsis(selector)}"`);
 
         try {
@@ -947,7 +994,7 @@ class Testrunner extends EventEmitter {
         }
     }
 
-    async _scrollDirect(selector, scrollTop) {
+    async _scrollDirect(selector: string, scrollTop: number) {
         this._log.debug(`scroll: ${scrollTop}, "${ellipsis(selector)}"`);
 
         try {
@@ -958,7 +1005,7 @@ class Testrunner extends EventEmitter {
         }
     }
 
-    async _scrollToDirect(selector) {
+    async _scrollToDirect(selector: string) {
         this._log.debug(`scrollTo: "${ellipsis(selector)}"`);
 
         try {
@@ -969,7 +1016,7 @@ class Testrunner extends EventEmitter {
         }
     }
 
-    async _mouseoverDirect(selector) {
+    async _mouseoverDirect(selector: string) {
         this._log.debug(`mouseover: ${selector}`);
 
         try {
@@ -980,22 +1027,22 @@ class Testrunner extends EventEmitter {
         }
     }
 
-    async _execFunctionDirect(fn, ...args) {
+    async _execFunctionDirect(fn: Function, ...args: any[]) {
         this._log.debug(`execFunction: ${fn.name || '(anonymous)'}`);
 
         return this._currentBrowser.execFunction(fn, ...args);
     }
 
-    async _delay(ms) {
+    async _delay(ms: number) {
         this._log.debug(`delay ${ms}`);
         return delay(ms);
     }
 
-    async _comment(comment) {
+    async _comment(comment: string) {
         this._tapWriter.comment(comment);
     }
 
-    async _handleCommandError(err) {
+    async _handleCommandError(err: Error) {
         if (this._conf.onCommandError !== null) {
             try {
                 await this._conf.onCommandError(this);
@@ -1028,12 +1075,12 @@ class Testrunner extends EventEmitter {
         const refImgPathRelative = pathlib.relative(pathlib.resolve(this._conf.referenceScreenshotsDir), refImgPath);
 
         await this._currentBeforeAssert(this.directAPI);
-        await mkdirpAsync(refImgDir);
+        await mkdirpAsync(refImgDir, {});
 
         let screenshotBitmap = await Bitmap.from(await this._currentBrowser.screenshot());
 
         const screenshots = [screenshotBitmap];
-        const diffResults = [];
+        const diffResults: ImageDiffResult[] = [];
 
         // region save new ref img
         try {
@@ -1093,8 +1140,8 @@ class Testrunner extends EventEmitter {
             }
         }
 
-        await mkdirpAsync(failedImgDir);
-        await mkdirpAsync(this._conf.referenceDiffsDir);
+        await mkdirpAsync(failedImgDir, {});
+        await mkdirpAsync(this._conf.referenceDiffsDir, {});
 
         for (const [i, diffResult] of diffResults.entries()) {
             const failedImage = screenshots[i];
@@ -1121,7 +1168,7 @@ class Testrunner extends EventEmitter {
             );
             const diffImgPathRelative = pathlib.relative(pathlib.resolve(this._conf.workspaceDir), diffImgPath);
 
-            for (const bufIdx of diffResult.diffBufferIndexes) {
+            for (const bufIdx of diffResult.diffBufferIndexes as number[]) {
                 failedImage.data[bufIdx] = 255;
                 failedImage.data[bufIdx + 1] = 0;
                 failedImage.data[bufIdx + 2] = 0;
@@ -1174,9 +1221,9 @@ class Testrunner extends EventEmitter {
     }
 }
 
-function noop() { }
+async function noop() { }
 
-function ellipsis(s, l = ELLIPSIS_LIMIT) {
+function ellipsis(s: string, l = ELLIPSIS_LIMIT) {
     if (s.length <= l) {
         return s;
     }
@@ -1184,8 +1231,8 @@ function ellipsis(s, l = ELLIPSIS_LIMIT) {
     return `${s.substr(0, l - 3)}...`;
 }
 
-async function multiGlobAsync(globs) {
-    let paths = [];
+async function multiGlobAsync(globs: string[]) {
+    let paths: string[] = [];
 
     for (const glob of globs) {
         paths = paths.concat(await globAsync(glob));
@@ -1194,15 +1241,12 @@ async function multiGlobAsync(globs) {
     return paths;
 }
 
-function getIdFromName(name) {
+function getIdFromName(name: string) {
     return name.replace(/[^a-z0-9()._-]/gi, '_');
 }
 
-function prettyMs(ms, opts?) {
+function prettyMs(ms: unknown, opts?: unsafePrettyMs.Options) {
     return typeof ms === 'number' && ms >= 0 ? unsafePrettyMs(ms, opts) : '? ms';
 }
-
-Testrunner.AbortError = AbortError;
-Testrunner.AssertError = AssertError;
 
 export default Testrunner;

@@ -21,8 +21,8 @@ exports = module.exports = function (test) {
         t.equal(await t.getValue('.pressKey-test'), 'pressKey65OK');
         await t.scrollTo('#scroll-test--n');
         const scrollToTop = await t.execFunction(function () {
-            // @ts-expect-error
             // eslint-disable-next-line no-undef
+            // @ts-expect-error
             return document.querySelector('.scroll-test').scrollTop;
         });
         t.equal(scrollToTop, 234);
@@ -30,8 +30,8 @@ exports = module.exports = function (test) {
         await t.scroll('.scroll-test', 0);
         await t.scroll('.scroll-test', 190);
         const scrollTop = await t.execFunction(function () {
-            // @ts-expect-error
             // eslint-disable-next-line no-undef
+            // @ts-expect-error
             return document.querySelector('.scroll-test').scrollTop;
         });
         t.equal(scrollTop, 190);
@@ -43,8 +43,8 @@ exports = module.exports = function (test) {
         const waitForVisibleStart = Date.now();
         await t.execFunction(function () {
             setTimeout(function () {
-                // @ts-expect-error
                 // eslint-disable-next-line no-undef
+                // @ts-expect-error
                 document.querySelector('.waitForVisible-test').classList.remove('hidden');
             }, 2000);
         });
@@ -57,8 +57,8 @@ exports = module.exports = function (test) {
         const waitWhileVisibleStart = Date.now();
         await t.execFunction(function () {
             setTimeout(function () {
-                // @ts-expect-error
                 // eslint-disable-next-line no-undef
+                // @ts-expect-error
                 document.querySelector('.waitWhileVisible-test').classList.add('hidden');
             }, 2000);
         });

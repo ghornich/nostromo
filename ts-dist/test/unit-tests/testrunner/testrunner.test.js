@@ -13,6 +13,34 @@ class NullStream extends stream.Writable {
         setImmediate(cb);
     }
 }
+const dummyBrowser = {
+    name: 'Bowser',
+    async start() { },
+    async stop() { },
+    async navigateTo() { },
+    async setViewport() { },
+    async click() { },
+    async focus() { },
+    async hover() { },
+    async type() { },
+    async pressKey() { },
+    async scroll() { },
+    async scrollIntoView() { },
+    async execFunction() { },
+    // queries
+    async getValue() {
+        return '';
+    },
+    async screenshot() {
+        return Buffer.from('');
+    },
+    async isVisible() {
+        return true;
+    },
+    // waiting
+    async waitForVisible() { },
+    async waitWhileVisible() { },
+};
 test('Testrunner: browser fails to start', async () => {
     const testrunner = new Testrunner({
         testBailout: true,
@@ -20,14 +48,11 @@ test('Testrunner: browser fails to start', async () => {
         outStream: new NullStream(),
         browsers: [
             {
+                ...dummyBrowser,
                 name: 'DummyBrowser',
                 start: async () => {
                     throw new Error('browser failed to start');
                 },
-                isBrowserVisible: () => false,
-                waitForBrowserVisible: noop,
-                open: noop,
-                stop: noop,
             },
         ],
         suites: [
@@ -49,14 +74,7 @@ test('Testrunner: test throws', async () => {
         outStream: new NullStream(),
         logLevel: 'off',
         browsers: [
-            {
-                name: 'DummyBrowser',
-                start: noop,
-                isBrowserVisible: () => true,
-                waitForBrowserVisible: noop,
-                open: noop,
-                stop: noop,
-            },
+            dummyBrowser,
         ],
         suites: [
             {
@@ -100,6 +118,7 @@ test('Testrunner: test retries', async () => {
                     this.server = await create_server_1.default({ dirToServe: pathlib.resolve(__dirname, '../../../../test/self-tests/testapp'), port: 16743 });
                 },
                 afterTest: async function () {
+                    // @ts-expect-error
                     return new Promise(resolve => this.server.close(resolve));
                 },
             },
@@ -108,5 +127,3 @@ test('Testrunner: test retries', async () => {
     await testrunner.run();
     expect(process.exitCode === undefined || process.exitCode === 0).toBe(true);
 }, 60 * 1000);
-// TODO before/after functions throw
-function noop() { }

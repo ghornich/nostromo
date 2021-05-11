@@ -17,11 +17,10 @@ type ChromiumOptions = {
 }
 
 export default class Chromium implements IBrowser {
-    _running: boolean
-    _options: ChromiumOptions
-    _browser: puppeteer.Browser
-    _page: puppeteer.Page
-    _puppeteer: typeof puppeteer
+    private _options: ChromiumOptions
+    private _browser: puppeteer.Browser
+    private _page: puppeteer.Page
+    private _puppeteer: typeof puppeteer
 
     get name() {
         return this._options.name;
@@ -94,7 +93,7 @@ export default class Chromium implements IBrowser {
         await this._page.type(selector, text);
     }
 
-    async pressKey(keyName: string) {
+    async pressKey(keyName: puppeteer.KeyInput) {
         await this._page.keyboard.press(keyName);
     }
 
@@ -141,7 +140,7 @@ export default class Chromium implements IBrowser {
     async screenshot(): Promise<Buffer> {
         // TODO implement selector, get boundingclientrect, etc
 
-        return this._page.screenshot({ encoding: 'binary' });
+        return this._page.screenshot({ encoding: 'binary' }) as Promise<Buffer>;
     }
 
     async isVisible(selector: string): Promise<boolean> {

@@ -1,9 +1,9 @@
-const http = require('http');
-const fs = require('fs');
-const { parse } = require('url');
-const resolvePath = require('path').resolve;
+import http from 'http';
+import fs from 'fs';
+import { parse } from 'url';
+import { resolve as resolvePath } from 'path';
 
-export default async function createServer({ dirToServe, port }) {
+export default async function createServer({ dirToServe, port }: { dirToServe: string, port: number}) {
     const server = http.createServer(async function (request, response) {
         const path = parse(request.url).path.slice(1);
 
@@ -18,7 +18,7 @@ export default async function createServer({ dirToServe, port }) {
         }
     });
 
-    await new Promise(resolve => server.listen(port, resolve));
+    await new Promise<void>(resolve => server.listen(port, resolve));
 
     return server;
 }

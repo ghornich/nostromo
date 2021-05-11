@@ -12,6 +12,36 @@ class NullStream extends stream.Writable {
     }
 }
 
+const dummyBrowser = {
+    name: 'Bowser',
+    async start() {},
+    async stop() {},
+    async navigateTo() {},
+    async setViewport() {},
+    async click() {},
+    async focus() {},
+    async hover() {},
+    async type() {},
+    async pressKey() {},
+    async scroll() {},
+    async scrollIntoView() {},
+    async execFunction() {},
+    // queries
+    async getValue() {
+        return '';
+    },
+    async screenshot() {
+        return Buffer.from('');
+    },
+    async isVisible() {
+        return true;
+    },
+    // waiting
+    async waitForVisible() {},
+    async waitWhileVisible() {},
+};
+
+
 test('Testrunner: browser fails to start', async () => {
     const testrunner = new Testrunner({
         testBailout: true,
@@ -21,14 +51,11 @@ test('Testrunner: browser fails to start', async () => {
 
         browsers: [
             {
+                ...dummyBrowser,
                 name: 'DummyBrowser',
                 start: async () => {
                     throw new Error('browser failed to start');
                 },
-                isBrowserVisible: () => false,
-                waitForBrowserVisible: noop,
-                open: noop,
-                stop: noop,
             },
         ],
 
@@ -55,14 +82,7 @@ test('Testrunner: test throws', async () => {
         outStream: new NullStream(),
         logLevel: 'off',
         browsers: [
-            {
-                name: 'DummyBrowser',
-                start: noop,
-                isBrowserVisible: () => true,
-                waitForBrowserVisible: noop,
-                open: noop,
-                stop: noop,
-            },
+            dummyBrowser,
         ],
 
         suites: [
@@ -113,6 +133,7 @@ test('Testrunner: test retries', async () => {
                     this.server = await createServer({ dirToServe: pathlib.resolve(__dirname, '../../../../test/self-tests/testapp'), port: 16743 });
                 },
                 afterTest: async function () {
+                    // @ts-expect-error
                     return new Promise(resolve => this.server.close(resolve));
                 },
             },
@@ -125,5 +146,3 @@ test('Testrunner: test retries', async () => {
 }, 60 * 1000);
 
 // TODO before/after functions throw
-
-function noop() {}
