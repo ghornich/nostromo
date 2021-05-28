@@ -80,156 +80,156 @@ class TestBailoutError extends Error {
  * test assert API (without before/after side effects, "directAPI")
  */
 interface TestAssertAPIDirect {
-	getValue: Testrunner['_getValueDirect']
-	setValue: Testrunner['_setValueDirect']
-	setFileInput: Testrunner['_setFileInputDirect']
-	click: Testrunner['_clickDirect']
-	waitForVisible: Testrunner['_waitForVisibleDirect']
-	waitWhileVisible: Testrunner['_waitWhileVisibleDirect']
-	isVisible: Testrunner['_isVisibleDirect']
-	focus: Testrunner['_focusDirect']
-	scroll: Testrunner['_scrollDirect']
-	scrollTo: Testrunner['_scrollToDirect']
-	delay: Testrunner['_delay']
-	comment: Testrunner['_comment']
-	assert: Testrunner['_assert']
-	pressKey: Testrunner['_pressKeyDirect']
-	mouseover: Testrunner['_mouseoverDirect']
-	execFunction: Testrunner['_execFunctionDirect']
-	execCommands: Testrunner['_execCommandsDirect']
+    getValue: Testrunner['_getValueDirect']
+    setValue: Testrunner['_setValueDirect']
+    setFileInput: Testrunner['_setFileInputDirect']
+    click: Testrunner['_clickDirect']
+    waitForVisible: Testrunner['_waitForVisibleDirect']
+    waitWhileVisible: Testrunner['_waitWhileVisibleDirect']
+    isVisible: Testrunner['_isVisibleDirect']
+    focus: Testrunner['_focusDirect']
+    scroll: Testrunner['_scrollDirect']
+    scrollTo: Testrunner['_scrollToDirect']
+    delay: Testrunner['_delay']
+    comment: Testrunner['_comment']
+    assert: Testrunner['_assert']
+    pressKey: Testrunner['_pressKeyDirect']
+    mouseover: Testrunner['_mouseoverDirect']
+    execFunction: Testrunner['_execFunctionDirect']
+    execCommands: Testrunner['_execCommandsDirect']
 }
 
 interface BeforeAfterCommandCallback {
-	(t: TestAssertAPIDirect, command?: { type: Command['type'] }): Promise<void>
+    (t: TestAssertAPIDirect, command?: { type: Command['type'] }): Promise<void>
 }
 
 interface DirectAPICallback {
-	(t: TestAssertAPIDirect): Promise<void>
+    (t: TestAssertAPIDirect): Promise<void>
 }
 
 interface TestrunnerCallback {
-	(testrunner: Testrunner): Promise<void>
+    (testrunner: Testrunner): Promise<void>
 }
 
 interface Suite {
-	name: string
-	appUrl: string
-	/** relative/absolute paths and/or globs */
-	testFiles?: string[]
-	tests?: Test[]
-	beforeSuite?: Function
-	afterSuite?: Function
-	beforeTest?: Function
-	afterTest?: Function
-	beforeCommand?: BeforeAfterCommandCallback
-	beforeFirstCommand?: BeforeAfterCommandCallback
-	afterCommand?: BeforeAfterCommandCallback
-	afterLastCommand?: DirectAPICallback
-	beforeAssert?: DirectAPICallback
-	afterAssert?: DirectAPICallback
+    name: string
+    appUrl: string
+    /** relative/absolute paths and/or globs */
+    testFiles?: string[]
+    tests?: Test[]
+    beforeSuite?: Function
+    afterSuite?: Function
+    beforeTest?: Function
+    afterTest?: Function
+    beforeCommand?: BeforeAfterCommandCallback
+    beforeFirstCommand?: BeforeAfterCommandCallback
+    afterCommand?: BeforeAfterCommandCallback
+    afterLastCommand?: DirectAPICallback
+    beforeAssert?: DirectAPICallback
+    afterAssert?: DirectAPICallback
 }
 
 interface Test {
-	name: string
-	id: string
-	testFn: TestFn
-	state?: TestState
-	runErrors?: Error[]
+    name: string
+    id: string
+    testFn: TestFn
+    state?: TestState
+    runErrors?: Error[]
 }
 
 interface TestFn {
-	(t: TestAPI, options: { suite: Suite, directAPI: TestAssertAPIDirect, browser: IBrowser }): Promise<void>
+    (t: TestAPI, options: { suite: Suite, directAPI: TestAssertAPIDirect, browser: IBrowser }): Promise<void>
 }
 
 interface screenshotItem {
-	errorImage: { path: string, relativePath: string }
-	diffImage: { path: string, relativePath: string }
-	referenceImage: { path: string, relativePath: string }
-	attempt: number
-	assertIndex: number
-	testName: string
+    errorImage: { path: string, relativePath: string }
+    diffImage: { path: string, relativePath: string }
+    referenceImage: { path: string, relativePath: string }
+    attempt: number
+    assertIndex: number
+    testName: string
 }
 
 interface TestRunReport {
-	screenshots: screenshotItem[]
-	testsCount: number | null
-	passedCount: number | null
-	failedCount: number | null
-	failedTestNames: string[]
-	runTimeMs: number | null
-	runtimes: Record<string, number>
-	passed: boolean
+    screenshots: screenshotItem[]
+    testsCount: number | null
+    passedCount: number | null
+    failedCount: number | null
+    failedTestNames: string[]
+    runTimeMs: number | null
+    runtimes: Record<string, number>
+    passed: boolean
 }
 
 interface TestrunnerConfig {
-	/** See Logger.LEVELS */
-	logLevel: number | string
-	/** Bailout from a single test if an assert fails */
-	testBailout: boolean
-	/** Bailout from the entire test program if an assert fails */
-	bailout: boolean
-	referenceScreenshotsDir: string
-	referenceErrorsDir: string
-	referenceDiffsDir: string
-	workspaceDir: string
-	browsers: IBrowser[]
-	/** options for the built-in, screenshot-based asserter */
-	imageDiffOptions: ImageDiffOptions
-	suites: Suite[]
-	assertRetryCount: number
-	assertRetryInterval: number
-	/** regular expression string */
-	testFilter: string
-	outStream: import('stream').Writable
-	/** retry failed tests n times */
-	testRetryCount: number
-	/** retry failed tests only if test name matches this filter */
-	testRetryFilter: RegExp
-	commandRetryCount: number
-	commandRetryInterval: number
-	onCommandError: TestrunnerCallback
-	onAssertError: TestrunnerCallback
-	exitTimeout: number
+    /** See Logger.LEVELS */
+    logLevel: number | string
+    /** Bailout from a single test if an assert fails */
+    testBailout: boolean
+    /** Bailout from the entire test program if an assert fails */
+    bailout: boolean
+    referenceScreenshotsDir: string
+    referenceErrorsDir: string
+    referenceDiffsDir: string
+    workspaceDir: string
+    browsers: IBrowser[]
+    /** options for the built-in, screenshot-based asserter */
+    imageDiffOptions: ImageDiffOptions
+    suites: Suite[]
+    assertRetryCount: number
+    assertRetryInterval: number
+    /** regular expression string */
+    testFilter: string
+    outStream: import('stream').Writable
+    /** retry failed tests n times */
+    testRetryCount: number
+    /** retry failed tests only if test name matches this filter */
+    testRetryFilter: RegExp
+    commandRetryCount: number
+    commandRetryInterval: number
+    onCommandError: TestrunnerCallback
+    onAssertError: TestrunnerCallback
+    exitTimeout: number
 }
 
 
 interface TestAPI extends TestAssertAPIDirect {
-	equal: Testrunner['_equal']
-	equals: Testrunner['_equal']
+    equal: Testrunner['_equal']
+    equals: Testrunner['_equal']
 }
 
 interface Command {
-	type: keyof TestAssertAPIDirect;
-	selector: string;
-	value?: any;
-	pollInterval?: number;
-	timeout?: number;
-	initialDelay?: number;
+    type: keyof TestAssertAPIDirect;
+    selector: string;
+    value?: any;
+    pollInterval?: number;
+    timeout?: number;
+    initialDelay?: number;
 }
 
 class Testrunner extends EventEmitter {
-	private _conf: TestrunnerConfig;
-	private _log: Loggr;
-	private _tapWriter: TapWriter;
-	private _isRunning: boolean;
-	private _isAborting: boolean;
-	private _assertCount: number;
-	private _foundTestsCount: number;
-	private _okTestsCount: number;
-	private _testRunReport: TestRunReport;
-	private _currentTest: any;
-	private _currentBeforeCommand: BeforeAfterCommandCallback | null;
-	private _currentAfterCommand: BeforeAfterCommandCallback | null;
-	private _currentBeforeAssert: DirectAPICallback | null;
-	private _currentAfterAssert: DirectAPICallback | null;
-	private _currentBrowser: IBrowser | null;
+    private _conf: TestrunnerConfig;
+    private _log: Loggr;
+    private _tapWriter: TapWriter;
+    private _isRunning: boolean;
+    private _isAborting: boolean;
+    private _assertCount: number;
+    private _foundTestsCount: number;
+    private _okTestsCount: number;
+    private _testRunReport: TestRunReport;
+    private _currentTest: any;
+    private _currentBeforeCommand: BeforeAfterCommandCallback | null;
+    private _currentAfterCommand: BeforeAfterCommandCallback | null;
+    private _currentBeforeAssert: DirectAPICallback | null;
+    private _currentAfterAssert: DirectAPICallback | null;
+    private _currentBrowser: IBrowser | null;
 
-	directAPI: TestAssertAPIDirect;
-	sideEffectAPI: TestAssertAPIDirect;
-	tAPI: TestAPI;
+    directAPI: TestAssertAPIDirect;
+    sideEffectAPI: TestAssertAPIDirect;
+    tAPI: TestAPI;
 
-	static AbortError = AbortError;
-	static AssertError = AssertError;
+    static AbortError = AbortError;
+    static AssertError = AssertError;
 
     constructor(conf: Partial<TestrunnerConfig>) {
         super();
@@ -255,7 +255,7 @@ class Testrunner extends EventEmitter {
             commandRetryCount: 4,
             commandRetryInterval: 250,
             exitTimeout: 5 * 60000,
-			imageDiffOptions: {},
+            imageDiffOptions: {},
         };
 
         const defaultImageDiffOptions = {
@@ -270,7 +270,7 @@ class Testrunner extends EventEmitter {
             }
         }
 
-		this._conf = Object.assign(defaultConf, conf);
+        this._conf = Object.assign(defaultConf, conf);
         this._conf.imageDiffOptions = Object.assign({}, defaultImageDiffOptions, conf.imageDiffOptions);
 
         this._log = new Loggr({
@@ -718,20 +718,20 @@ class Testrunner extends EventEmitter {
     async _parseTestFiles(testFilePaths: string[]) {
         const tests: Test[] = [];
 
-		function testRegistrar(arg0: TestFn): void;
-		function testRegistrar(arg0: string, arg1: TestFn): void;
+        function testRegistrar(arg0: TestFn): void;
+        function testRegistrar(arg0: string, arg1: TestFn): void;
         function testRegistrar(arg0: TestFn | string, arg1?: TestFn): void {
             let name: string;
-			let testFn: TestFn;
+            let testFn: TestFn;
 
             if (arg1 === undefined) {
-				assert(typeof arg0 === 'function');
+                assert(typeof arg0 === 'function');
                 name = DEFAULT_TEST_NAME;
-				testFn = arg0;
+                testFn = arg0;
             }
             else {
-				assert(typeof arg0 === 'string');
-				name = arg0;
+                assert(typeof arg0 === 'string');
+                name = arg0;
                 testFn = arg1;
             }
 
@@ -755,7 +755,7 @@ class Testrunner extends EventEmitter {
             require(absPath)(testRegistrar, this);
         }
 
-		return tests;
+        return tests;
     }
 
     _wrapFunctionWithSideEffects(fn: Function, cmdType: keyof TestAssertAPIDirect) {
