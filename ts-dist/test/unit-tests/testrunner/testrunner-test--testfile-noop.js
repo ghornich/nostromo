@@ -1,4 +1,4 @@
 'use strict';
 exports = module.exports = function (test) {
-    test('noop', t => { });
+    test('testrunner-test--testfile-noop', t => { });
 };

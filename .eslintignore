@@ -1,4 +1,4 @@
-**/dist/*.js
-**/docs/**/*.js
-babel-temp.js
+node_modules
+ts-dist
+dist
 *_temp_*

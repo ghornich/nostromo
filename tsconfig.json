@@ -8,7 +8,8 @@
         "lib": ["ESNext"],
 		"target": "ES2018",
 		"esModuleInterop": true,
-		"outDir": "./ts-dist"
+		"outDir": "./ts-dist",
+        "declaration": true
 	},
 	"include": ["src/", "modules/", "test/"],
 	"exclude": ["node_modules/", "modules/**/dist/", "src/recorder/", "dist/", "ts-dist/"]

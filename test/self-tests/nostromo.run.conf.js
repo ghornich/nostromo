@@ -4,7 +4,7 @@ const Chromium = require('../../modules/browsers/chromium').default;
 
 module.exports = function (config) {
     return {
-        logLevel: config.LOG_LEVELS.INFO,
+        logLevel: 'info',
         testBailout: true,
         referenceScreenshotsDir: 'reference-screenshots',
 

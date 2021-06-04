@@ -8,52 +8,26 @@ const Testrunner = require('../../../src/testrunner/testrunner').default;
 const stream = require('stream');
 const create_server_1 = __importDefault(require("../../utils/create-server"));
 const chromium_1 = __importDefault(require("../../../modules/browsers/chromium"));
+const dummy_browser_1 = require("./dummy-browser");
 class NullStream extends stream.Writable {
     _write(chunk, encoding, cb) {
         setImmediate(cb);
     }
 }
-const dummyBrowser = {
-    name: 'Bowser',
-    async start() { },
-    async stop() { },
-    async navigateTo() { },
-    async setViewport() { },
-    async click() { },
-    async focus() { },
-    async hover() { },
-    async type() { },
-    async pressKey() { },
-    async scroll() { },
-    async scrollIntoView() { },
-    async execFunction() { },
-    // queries
-    async getValue() {
-        return '';
-    },
-    async screenshot() {
-        return Buffer.from('');
-    },
-    async isVisible() {
-        return true;
-    },
-    // waiting
-    async waitForVisible() { },
-    async waitWhileVisible() { },
-};
+class NonFunctionalBrowser extends dummy_browser_1.DummyBrowser {
+    async start() {
+        throw new Error('browser failed to start');
+    }
+}
 test('Testrunner: browser fails to start', async () => {
     const testrunner = new Testrunner({
         testBailout: true,
         bailout: false,
+        consoleLogLevel: 'info',
+        fileLogLevel: null,
         outStream: new NullStream(),
         browsers: [
-            {
-                ...dummyBrowser,
-                name: 'DummyBrowser',
-                start: async () => {
-                    throw new Error('browser failed to start');
-                },
-            },
+            new NonFunctionalBrowser(),
         ],
         suites: [
             {
@@ -71,10 +45,11 @@ test('Testrunner: test throws', async () => {
     const testrunner = new Testrunner({
         testBailout: true,
         bailout: false,
+        consoleLogLevel: 'info',
+        fileLogLevel: null,
         outStream: new NullStream(),
-        logLevel: 'off',
         browsers: [
-            dummyBrowser,
+            new dummy_browser_1.DummyBrowser(),
         ],
         suites: [
             {
@@ -90,12 +65,74 @@ test('Testrunner: test throws', async () => {
     expect(process.exitCode).toBeGreaterThan(0);
     process.exitCode = 0;
 });
-test('Testrunner: test retries', async () => {
+class BrowserRequiringThreeClicks extends dummy_browser_1.DummyBrowser {
+    constructor() {
+        super();
+        this.clicks = 0;
+    }
+    async click() {
+        this.clicks++;
+        if (this.clicks !== 3) {
+            throw new Error('Click some more!');
+        }
+    }
+}
+test('Testrunner: test command retries', async () => {
     const testrunner = new Testrunner({
         testBailout: true,
         bailout: false,
+        consoleLogLevel: 'info',
+        fileLogLevel: null,
         outStream: new NullStream(),
-        logLevel: 'off',
+        testRetryCount: 3,
+        browsers: [
+            new BrowserRequiringThreeClicks(),
+        ],
+        suites: [
+            {
+                name: 'My suite',
+                appUrl: 'http://localhost:666/index.html',
+                testFiles: [
+                    pathlib.resolve(__dirname, 'testrunner-test--testfile-retry-logic.js'),
+                ],
+            },
+        ],
+    });
+    await testrunner.run();
+    expect(process.exitCode === undefined || process.exitCode === 0).toBe(true);
+}, 60 * 1000);
+test('Testrunner: test command retries but fails', async () => {
+    const testrunner = new Testrunner({
+        testBailout: true,
+        bailout: false,
+        consoleLogLevel: 'info',
+        fileLogLevel: null,
+        outStream: new NullStream(),
+        commandRetryCount: 1,
+        browsers: [
+            new BrowserRequiringThreeClicks(),
+        ],
+        suites: [
+            {
+                name: 'My suite',
+                appUrl: 'http://localhost:666/index.html',
+                testFiles: [
+                    pathlib.resolve(__dirname, 'testrunner-test--testfile-retry-logic.js'),
+                ],
+            },
+        ],
+    });
+    await testrunner.run();
+    expect(process.exitCode).toBe(1);
+}, 60 * 1000);
+// TODO before/after functions throw
+test('Testrunner: integration test', async () => {
+    const testrunner = new Testrunner({
+        testBailout: true,
+        bailout: false,
+        consoleLogLevel: 'info',
+        fileLogLevel: null,
+        outStream: new NullStream(),
         testRetryCount: 4,
         browsers: [
             new chromium_1.default({
