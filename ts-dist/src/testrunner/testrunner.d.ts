@@ -1,5 +1,4 @@
 /// <reference types="node" />
-import type winston from 'winston';
 import { EventEmitter } from 'events';
 import type { IBrowser } from '../../modules/browsers/browser-interface';
 import type { ImageDiffOptions } from '../../modules/buffer-image-diff/image-diff';
@@ -169,7 +168,6 @@ declare class Testrunner extends EventEmitter {
     tAPI: TestAPI;
     static AbortError: typeof AbortError;
     static AssertError: typeof AssertError;
-    get log(): winston.Logger;
     constructor(conf: Partial<TestrunnerConfig>);
     run(): Promise<void>;
     abort(): Promise<void>;

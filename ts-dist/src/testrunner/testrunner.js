@@ -103,7 +103,8 @@ class Testrunner extends events_1.EventEmitter {
         this._conf = Object.assign(defaultConf, conf);
         this._conf.imageDiffOptions = Object.assign({}, defaultImageDiffOptions, conf.imageDiffOptions);
         const logFilePath = path_1.default.resolve(this._conf.workspaceDir, 'run.log');
-        this._log = logger_1.createLogger(this._conf.consoleLogLevel, this._conf.fileLogLevel, logFilePath);
+        logger_1.logger.init(this._conf.consoleLogLevel, this._conf.fileLogLevel, logFilePath);
+        this._log = logger_1.logger;
         // check for configs not in defaultConf
         const confKeys = Object.keys(conf);
         const unknownKeys = confKeys.filter(key => !(key in defaultConf));
@@ -175,9 +176,6 @@ class Testrunner extends events_1.EventEmitter {
             runTimeMs: null,
             runtimes: {},
         };
-    }
-    get log() {
-        return this._log;
     }
     async run() {
         const conf = this._conf;
@@ -301,7 +299,7 @@ class Testrunner extends events_1.EventEmitter {
                         this._log.debug('completed afterSuite');
                     }
                     catch (error) {
-                        this._log.error('error while running afterSuite: ', error);
+                        this._log.error(error);
                     }
                 }
             }
@@ -379,7 +377,7 @@ class Testrunner extends events_1.EventEmitter {
                     await suite.afterTest(this.directAPI, { test });
                 }
                 catch (error) {
-                    this._log.error('error while running afterTest: ', error);
+                    this._log.error(error);
                 }
                 this._log.debug('completed afterTest');
             }
@@ -387,7 +385,7 @@ class Testrunner extends events_1.EventEmitter {
                 await browser.stop();
             }
             catch (error) {
-                this._log.error('error while stopping browser: ', error);
+                this._log.error(error);
             }
         }
     }

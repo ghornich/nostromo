@@ -1,5 +1,4 @@
 import isEqual from 'lodash.isequal';
-import type winston from 'winston'; 
 import fs from 'fs';
 import { promises as fsp } from 'fs';
 import pathlib from 'path';
@@ -16,7 +15,8 @@ import unsafePrettyMs from 'pretty-ms';
 import delay from '../../modules/delay/delay';
 import type { IBrowser } from '../../modules/browsers/browser-interface';
 import type { ImageDiffOptions } from '../../modules/buffer-image-diff/image-diff';
-import { createLogger } from '../logging/logger';
+import { logger } from '../logging/logger';
+import type { Logger } from '../logging/logger';
 import callsites from 'callsites';
 
 const TEST_STATE = {
@@ -212,7 +212,7 @@ interface Command {
 
 class Testrunner extends EventEmitter {
     private _conf: TestrunnerConfig;
-    private _log: winston.Logger;
+    private _log: Logger;
     private _isRunning: boolean;
     private _isAborting: boolean;
     private _assertCount: number;
@@ -232,10 +232,6 @@ class Testrunner extends EventEmitter {
 
     static AbortError = AbortError;
     static AssertError = AssertError;
-
-    get log() {
-        return this._log;
-    }
 
     constructor(conf: Partial<TestrunnerConfig>) {
         super();
@@ -281,7 +277,8 @@ class Testrunner extends EventEmitter {
         this._conf.imageDiffOptions = Object.assign({}, defaultImageDiffOptions, conf.imageDiffOptions);
 
         const logFilePath = pathlib.resolve(this._conf.workspaceDir, 'run.log');
-        this._log = createLogger(this._conf.consoleLogLevel, this._conf.fileLogLevel, logFilePath);
+        logger.init(this._conf.consoleLogLevel, this._conf.fileLogLevel, logFilePath);
+        this._log = logger;
 
         // check for configs not in defaultConf
         const confKeys = Object.keys(conf);
@@ -533,7 +530,7 @@ class Testrunner extends EventEmitter {
                         this._log.debug('completed afterSuite');
                     }
                     catch (error) {
-                        this._log.error('error while running afterSuite: ', error);
+                        this._log.error(error);
                     }
                 }
             }
@@ -630,7 +627,7 @@ class Testrunner extends EventEmitter {
                     await suite.afterTest(this.directAPI, { test });
                 }
                 catch (error) {
-                    this._log.error('error while running afterTest: ', error);
+                    this._log.error(error);
                 }
 
                 this._log.debug('completed afterTest');
@@ -640,7 +637,7 @@ class Testrunner extends EventEmitter {
                 await browser.stop();
             }
             catch (error) {
-                this._log.error('error while stopping browser: ', error);
+                this._log.error(error);
             }
         }
     }
