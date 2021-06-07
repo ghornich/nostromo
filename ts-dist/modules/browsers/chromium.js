@@ -4,6 +4,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const puppeteer_1 = __importDefault(require("puppeteer"));
+const logger_1 = require("../../src/logging/logger");
 const delay = require('../delay/delay');
 const DEFAULT_OPTIONS = { name: 'chromium', headless: true };
 const DEFAULT_VISIBILITY_TIMEOUT = 30000;
@@ -16,6 +17,7 @@ class Chromium {
         this._browser = null;
         this._page = null;
         this._puppeteer = (_a = options.puppeteer) !== null && _a !== void 0 ? _a : puppeteer_1.default;
+        this._log = logger_1.logger.childLogger('Chromium');
     }
     get name() {
         return this._options.name;
@@ -37,9 +39,24 @@ class Chromium {
             ],
         });
         this._page = (await this._browser.pages())[0];
-        // TODO remove this? or use as consolePipe
         this._page.on('console', event => {
-            console.log('ConsolePipe - ', event.type(), event.text());
+            const type = event.type();
+            const message = `ConsolePipe - ${event.type()} ${event.text()}`;
+            if (type === 'error') {
+                this._log.error(message);
+            }
+            else if (type === 'warning' || type === 'assert') {
+                this._log.warn(message);
+            }
+            else if (type === 'info') {
+                this._log.info(message);
+            }
+            else if (type === 'trace' || type === 'profile') {
+                this._log.debug(message);
+            }
+            else {
+                this._log.verbose(message);
+            }
         });
     }
     async stop() {

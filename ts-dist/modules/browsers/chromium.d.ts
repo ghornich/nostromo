@@ -14,6 +14,7 @@ export default class Chromium implements IBrowser {
     private _browser;
     private _page;
     private _puppeteer;
+    private _log;
     get name(): string;
     constructor(options: ChromiumOptions);
     start(): Promise<void>;

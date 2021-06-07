@@ -1,5 +1,6 @@
 import puppeteer from 'puppeteer';
 import type { IBrowser } from './browser-interface';
+import { ChildLogger, logger } from '../../src/logging/logger';
 const delay = require('../delay/delay');
 
 const DEFAULT_OPTIONS = { name: 'chromium', headless: true };
@@ -21,6 +22,7 @@ export default class Chromium implements IBrowser {
     private _browser: puppeteer.Browser
     private _page: puppeteer.Page
     private _puppeteer: typeof puppeteer
+    private _log: ChildLogger;
 
     get name() {
         return this._options.name;
@@ -31,6 +33,7 @@ export default class Chromium implements IBrowser {
         this._browser = null;
         this._page = null;
         this._puppeteer = options.puppeteer ?? puppeteer;
+        this._log = logger.childLogger('Chromium');
     }
 
     async start() {
@@ -52,11 +55,25 @@ export default class Chromium implements IBrowser {
 
         this._page = (await this._browser.pages())[0];
 
-        // TODO remove this? or use as consolePipe
         this._page.on('console', event => {
-            console.log('ConsolePipe - ', event.type(), event.text());
+            const type: PuppeteerConsoleEvent = event.type();
+            const message = `ConsolePipe - ${event.type()} ${event.text()}`;
+            if (type === 'error') {
+                this._log.error(message);
+            }
+            else if (type === 'warning' || type === 'assert') {
+                this._log.warn(message);
+            }
+            else if (type === 'info') {
+                this._log.info(message);
+            }
+            else if (type === 'trace' || type === 'profile') {
+                this._log.debug(message);
+            }
+            else {
+                this._log.verbose(message);
+            }
         });
-
     }
 
     async stop() {
@@ -227,3 +244,6 @@ export default class Chromium implements IBrowser {
         }
     }
 }
+
+/** https://github.com/puppeteer/puppeteer/blob/main/docs/api.md#class-consolemessage */
+type PuppeteerConsoleEvent = 'log'| 'debug'| 'info'| 'error'| 'warning'| 'dir'| 'dirxml'| 'table'| 'trace'| 'clear'| 'startGroup'| 'startGroupCollapsed'| 'endGroup'| 'assert'| 'profile'| 'profileEnd'| 'count'| 'timeEnd';
