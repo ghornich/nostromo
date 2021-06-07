@@ -866,13 +866,23 @@ class Testrunner extends events_1.EventEmitter {
 Testrunner.AbortError = AbortError;
 Testrunner.AssertError = AssertError;
 function getCallSiteForDirectAPI() {
-    // callsites()[0]: this function 
-    // callsites()[1]: _xyDirect
-    // callsites()[2]: _xyDirect.bind()
-    // callsites()[3]: calling test script
-    return callsites_1.default()[3].toString();
+    const stack = callsites_1.default();
+    // We expect the stack to look like this:
+    //
+    // stack[0]: this function 
+    // stack[1]: _xyDirect
+    // stack[2]: _xyDirect.bind()
+    // stack[3]: calling test script
+    // 
+    // Sometimes stack[3] can point to node internals, so it is checked and
+    // skipped.
+    for (let i = 3; i < stack.length; i++) {
+        if (!stack[i].getFileName().startsWith('internal')) {
+            return stack[i];
+        }
+    }
+    return '';
 }
-async function noop() { }
 function ellipsis(s, l = ELLIPSIS_LIMIT) {
     if (s.length <= l) {
         return s;
