@@ -15,8 +15,7 @@ import unsafePrettyMs from 'pretty-ms';
 import delay from '../../modules/delay/delay';
 import type { IBrowser } from '../../modules/browsers/browser-interface';
 import type { ImageDiffOptions } from '../../modules/buffer-image-diff/image-diff';
-import { logger } from '../logging/logger';
-import type { Logger } from '../logging/logger';
+import { logger, ChildLogger } from '../logging/logger';
 import callsites from 'callsites';
 
 const TEST_STATE = {
@@ -212,7 +211,7 @@ interface Command {
 
 class Testrunner extends EventEmitter {
     private _conf: TestrunnerConfig;
-    private _log: Logger;
+    private _log: ChildLogger;
     private _isRunning: boolean;
     private _isAborting: boolean;
     private _assertCount: number;
@@ -278,7 +277,7 @@ class Testrunner extends EventEmitter {
 
         const logFilePath = pathlib.resolve(this._conf.workspaceDir, 'run.log');
         logger.init(this._conf.consoleLogLevel, this._conf.fileLogLevel, logFilePath);
-        this._log = logger;
+        this._log = logger.childLogger('Testrunner');
 
         // check for configs not in defaultConf
         const confKeys = Object.keys(conf);

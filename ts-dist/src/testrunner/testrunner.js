@@ -104,7 +104,7 @@ class Testrunner extends events_1.EventEmitter {
         this._conf.imageDiffOptions = Object.assign({}, defaultImageDiffOptions, conf.imageDiffOptions);
         const logFilePath = path_1.default.resolve(this._conf.workspaceDir, 'run.log');
         logger_1.logger.init(this._conf.consoleLogLevel, this._conf.fileLogLevel, logFilePath);
-        this._log = logger_1.logger;
+        this._log = logger_1.logger.childLogger('Testrunner');
         // check for configs not in defaultConf
         const confKeys = Object.keys(conf);
         const unknownKeys = confKeys.filter(key => !(key in defaultConf));

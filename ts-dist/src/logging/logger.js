@@ -42,7 +42,6 @@ class WinstonLogger {
          * other random modules in the user config. */
         if (!this._logger) {
             this._logger = winston_1.default.createLogger({
-                defaultMeta: { label: 'Testrunner' },
                 // winston.format.errors breaks when defined at per-transport level
                 // https://github.com/winstonjs/winston/issues/1880
                 // https://github.com/winstonjs/winston-transport/pull/70
