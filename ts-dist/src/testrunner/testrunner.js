@@ -866,9 +866,13 @@ class Testrunner extends events_1.EventEmitter {
 Testrunner.AbortError = AbortError;
 Testrunner.AssertError = AssertError;
 function getCallSiteForDirectAPI() {
+    const unknownPathStr = '???';
     const stack = callsites_1.default();
     for (let i = 0; i < stack.length; i++) {
         const filePath = stack[i].getFileName();
+        if (filePath === null) {
+            return unknownPathStr;
+        }
         const basename = path_1.default.basename(filePath);
         // filtered: 
         // internal/**/*
@@ -877,7 +881,7 @@ function getCallSiteForDirectAPI() {
             return stack[i].toString();
         }
     }
-    return '';
+    return unknownPathStr;
 }
 function ellipsis(s, l = ELLIPSIS_LIMIT) {
     if (s.length <= l) {

@@ -1249,9 +1249,13 @@ class Testrunner extends EventEmitter {
 }
 
 function getCallSiteForDirectAPI() {
+    const unknownPathStr = '???';
     const stack = callsites();
     for (let i = 0; i < stack.length; i++) {
         const filePath = stack[i].getFileName();
+        if (filePath === null) {
+            return unknownPathStr;
+        }
         const basename = pathlib.basename(filePath);
         // filtered: 
         // internal/**/*
@@ -1260,7 +1264,7 @@ function getCallSiteForDirectAPI() {
             return stack[i].toString();
         }
     }
-    return '';
+    return unknownPathStr;
 }
 
 function ellipsis(s: string, l = ELLIPSIS_LIMIT) {
