@@ -49,7 +49,7 @@ class Chromium {
                 this._log.warn(message);
             }
             else if (type === 'info') {
-                this._log.info(message);
+                this._log.verbose(message);
             }
             else if (type === 'trace' || type === 'profile') {
                 this._log.debug(message);
