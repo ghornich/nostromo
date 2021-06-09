@@ -1250,18 +1250,14 @@ class Testrunner extends EventEmitter {
 
 function getCallSiteForDirectAPI() {
     const stack = callsites();
-    // We expect the stack to look like this:
-    //
-    // stack[0]: this function 
-    // stack[1]: _xyDirect
-    // stack[2]: _xyDirect.bind()
-    // stack[3]: calling test script
-    // 
-    // Sometimes stack[3] can point to node internals, so it is checked and
-    // skipped.
-    for (let i = 3; i < stack.length; i++) {
-        if (!stack[i].getFileName().startsWith('internal')) {
-            return stack[i];
+    for (let i = 0; i < stack.length; i++) {
+        const filePath = stack[i].getFileName();
+        const basename = pathlib.basename(filePath);
+        // filtered: 
+        // internal/**/*
+        // **/testrunner.*
+        if (!filePath.startsWith('internal') && basename !== 'testrunner.js') {
+            return stack[i].toString();
         }
     }
     return '';
