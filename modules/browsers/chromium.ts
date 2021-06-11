@@ -1,5 +1,6 @@
 import puppeteer from 'puppeteer';
 import type { IBrowser } from './browser-interface';
+import { ChildLogger, logger } from '../../src/logging/logger';
 const delay = require('../delay/delay');
 
 const DEFAULT_OPTIONS = { name: 'chromium', headless: true };
@@ -17,11 +18,11 @@ type ChromiumOptions = {
 }
 
 export default class Chromium implements IBrowser {
-    _running: boolean
-    _options: ChromiumOptions
-    _browser: puppeteer.Browser
-    _page: puppeteer.Page
-    _puppeteer: typeof puppeteer
+    private _options: ChromiumOptions
+    private _browser: puppeteer.Browser
+    private _page: puppeteer.Page
+    private _puppeteer: typeof puppeteer
+    private _log: ChildLogger;
 
     get name() {
         return this._options.name;
@@ -32,6 +33,7 @@ export default class Chromium implements IBrowser {
         this._browser = null;
         this._page = null;
         this._puppeteer = options.puppeteer ?? puppeteer;
+        this._log = logger.childLogger('Chromium');
     }
 
     async start() {
@@ -53,11 +55,25 @@ export default class Chromium implements IBrowser {
 
         this._page = (await this._browser.pages())[0];
 
-        // TODO remove this? or use as consolePipe
         this._page.on('console', event => {
-            console.log('ConsolePipe - ', event.type(), event.text());
+            const type: PuppeteerConsoleEvent = event.type();
+            const message = `ConsolePipe - ${event.type()} ${event.text()}`;
+            if (type === 'error') {
+                this._log.error(message);
+            }
+            else if (type === 'warning' || type === 'assert') {
+                this._log.warn(message);
+            }
+            else if (type === 'info') {
+                this._log.verbose(message);
+            }
+            else if (type === 'trace' || type === 'profile') {
+                this._log.debug(message);
+            }
+            else {
+                this._log.verbose(message);
+            }
         });
-
     }
 
     async stop() {
@@ -94,7 +110,7 @@ export default class Chromium implements IBrowser {
         await this._page.type(selector, text);
     }
 
-    async pressKey(keyName: string) {
+    async pressKey(keyName: puppeteer.KeyInput) {
         await this._page.keyboard.press(keyName);
     }
 
@@ -141,7 +157,7 @@ export default class Chromium implements IBrowser {
     async screenshot(): Promise<Buffer> {
         // TODO implement selector, get boundingclientrect, etc
 
-        return this._page.screenshot({ encoding: 'binary' });
+        return this._page.screenshot({ encoding: 'binary' }) as Promise<Buffer>;
     }
 
     async isVisible(selector: string): Promise<boolean> {
@@ -228,3 +244,6 @@ export default class Chromium implements IBrowser {
         }
     }
 }
+
+/** https://github.com/puppeteer/puppeteer/blob/main/docs/api.md#class-consolemessage */
+type PuppeteerConsoleEvent = 'log'| 'debug'| 'info'| 'error'| 'warning'| 'dir'| 'dirxml'| 'table'| 'trace'| 'clear'| 'startGroup'| 'startGroupCollapsed'| 'endGroup'| 'assert'| 'profile'| 'profileEnd'| 'count'| 'timeEnd';

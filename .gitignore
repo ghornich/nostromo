@@ -12,4 +12,5 @@ bc-test*.js
 babel-temp.js
 lint.txt
 *___fatal.png
+.vscode
 # ts-dist/

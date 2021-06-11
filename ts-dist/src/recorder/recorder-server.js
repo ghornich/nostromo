@@ -4,10 +4,10 @@ const http = require('http');
 const fs = require('fs');
 const JSONF = require('../../modules/jsonf/jsonf');
 const pathlib = require('path');
-const Loggr = require('../../modules/loggr/loggr');
 const defaults = require('lodash.defaults');
 const puppeteer = require('puppeteer');
 const childProcess = require('child_process');
+const { createLogger } = require('../logging/logger');
 /** @typedef {Object} Command */
 /** @typedef {Object} RecorderApp */
 /**
@@ -87,10 +87,7 @@ function RecorderServer(conf) {
     this._wsServer = new WS.Server({ server: this._recorderAppServer });
     /** @type {puppeteer.Browser} */
     this._browser = null;
-    this._log = new Loggr({
-        namespace: 'RecorderServer',
-        logLevel: this._conf.logLevel,
-    });
+    this._log = createLogger(this._conf.logLevel, null);
 }
 // TODO better promise chain
 RecorderServer.prototype.start = async function () {

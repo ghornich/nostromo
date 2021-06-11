@@ -7,8 +7,6 @@ const fs = require('fs');
 const statAsync = util.promisify(fs.stat);
 const pathlib = require('path');
 const args = require('minimist')(process.argv.slice(2));
-const browsers = require('../modules/browsers');
-const Loggr = require('../modules/loggr/loggr');
 
 const DEFAULT_REC_CFG_FILE = 'nostromo.record.conf.js';
 const DEFAULT_RUN_CFG_FILE = 'nostromo.run.conf.js';
@@ -44,10 +42,7 @@ async function run() {
             process.chdir(pathlib.dirname(absConfigPath));
             const configFn = require(absConfigPath);
 
-            fileConf = await configFn({
-                LOG_LEVELS: Loggr.LEVELS,
-                Loggr: Loggr,
-            });
+            fileConf = await configFn();
         }
         catch (e) {
             if (e.code === 'ENOENT') {
@@ -61,7 +56,7 @@ async function run() {
 
         const defaultConf = {
             recorderAppPort: 7700,
-            logLevel: Loggr.LEVELS.OFF,
+            logLevel: 'warn',
         };
 
         const conf = Object.assign({}, defaultConf, fileConf, args);
@@ -87,10 +82,7 @@ async function run() {
             const absConfigPath = pathlib.resolve(configPath);
             process.chdir(pathlib.dirname(absConfigPath));
             const configFn = require(pathlib.resolve(absConfigPath));
-            const fileConf = await configFn({
-                browsers: browsers,
-                LOG_LEVELS: Loggr.LEVELS,
-            });
+            const fileConf = await configFn();
 
             const conf = Object.assign({}, fileConf, args);
 

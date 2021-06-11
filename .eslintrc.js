@@ -11,10 +11,12 @@ exports = module.exports = {
             modules: true,
         },
     },
+    plugins: ['jest'],
     env: {
         node: true,
         browser: true,
         es6: true,
+        'jest/globals': true,
     },
     rules: {
         // from http://eslint.org/docs/rules/

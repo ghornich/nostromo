@@ -1,6 +1,6 @@
 'use strict';
 exports = module.exports = function (test) {
-    test('throws', t => {
+    test('testrunner-test--testfile-throws', t => {
         throw new Error('testfile throws');
     });
 };

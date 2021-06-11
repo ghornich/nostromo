@@ -1,15 +1,18 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
-const http = require('http');
-const fs = require('fs');
-const { parse } = require('url');
-const resolvePath = require('path').resolve;
+const http_1 = __importDefault(require("http"));
+const fs_1 = __importDefault(require("fs"));
+const url_1 = require("url");
+const path_1 = require("path");
 async function createServer({ dirToServe, port }) {
-    const server = http.createServer(async function (request, response) {
-        const path = parse(request.url).path.slice(1);
-        const file = resolvePath(dirToServe, path);
+    const server = http_1.default.createServer(async function (request, response) {
+        const path = url_1.parse(request.url).path.slice(1);
+        const file = path_1.resolve(dirToServe, path);
         try {
-            response.end(await fs.promises.readFile(file));
+            response.end(await fs_1.default.promises.readFile(file));
         }
         catch (err) {
             console.error(err);
