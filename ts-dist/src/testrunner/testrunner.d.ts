@@ -30,7 +30,9 @@ interface TestAssertAPIDirect {
     scrollTo: Testrunner['_scrollToDirect'];
     delay: Testrunner['_delay'];
     comment: Testrunner['_comment'];
-    assert: Testrunner['_assert'];
+    /** @deprecated Use screenshot instead */
+    assert: Testrunner['_screenshot'];
+    screenshot: Testrunner['_screenshot'];
     pressKey: Testrunner['_pressKeyDirect'];
     mouseover: Testrunner['_mouseoverDirect'];
     execFunction: Testrunner['_execFunctionDirect'];
@@ -207,7 +209,7 @@ declare class Testrunner extends EventEmitter {
     private _delay;
     private _comment;
     private _handleCommandError;
-    private _assert;
+    private _screenshot;
     private _runCurrentAfterAssertTasks;
     private _startExitTimeout;
 }

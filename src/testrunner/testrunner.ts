@@ -92,7 +92,9 @@ interface TestAssertAPIDirect {
     scrollTo: Testrunner['_scrollToDirect']
     delay: Testrunner['_delay']
     comment: Testrunner['_comment']
-    assert: Testrunner['_assert']
+    /** @deprecated Use screenshot instead */
+    assert: Testrunner['_screenshot']
+    screenshot: Testrunner['_screenshot']
     pressKey: Testrunner['_pressKeyDirect']
     mouseover: Testrunner['_mouseoverDirect']
     execFunction: Testrunner['_execFunctionDirect']
@@ -327,7 +329,8 @@ class Testrunner extends EventEmitter {
             scrollTo: this._scrollToDirect.bind(this),
             delay: this._delay.bind(this),
             comment: this._comment.bind(this),
-            assert: this._assert.bind(this),
+            assert: this._screenshot.bind(this),
+            screenshot: this._screenshot.bind(this),
             pressKey: this._pressKeyDirect.bind(this),
             mouseover: this._mouseoverDirect.bind(this),
             execFunction: this._execFunctionDirect.bind(this),
@@ -1088,7 +1091,7 @@ class Testrunner extends EventEmitter {
         }
     }
 
-    private async _assert() {
+    private async _screenshot(selector?: string) {
         const callsite = getCallSiteForDirectAPI();
         const refImgDir = pathlib.resolve(this._conf.referenceScreenshotsDir, this._currentBrowser.name.toLowerCase(), this._currentTest.id);
         const failedImgDir = pathlib.resolve(this._conf.referenceErrorsDir, this._currentBrowser.name.toLowerCase(), this._currentTest.id);
@@ -1102,7 +1105,7 @@ class Testrunner extends EventEmitter {
         }
         await mkdirpAsync(refImgDir, {});
 
-        let screenshotBitmap = await Bitmap.from(await this._currentBrowser.screenshot());
+        let screenshotBitmap = await Bitmap.from(await this._currentBrowser.screenshot({ selector }));
 
         const screenshots = [screenshotBitmap];
         const diffResults: ImageDiffResult[] = [];
@@ -1144,7 +1147,7 @@ class Testrunner extends EventEmitter {
             this._log.verbose(`screenshot assert failed: ${refImgPathRelative}, ppm: ${formattedPPM}, totalChangedPixels: ${imgDiffResult.totalChangedPixels}, attempt#: ${assertAttempt} at ${callsite.toString()}`);
 
             if (assertAttempt < assertRetryMaxAttempts) {
-                screenshotBitmap = await Bitmap.from(await this._currentBrowser.screenshot());
+                screenshotBitmap = await Bitmap.from(await this._currentBrowser.screenshot({ selector }));
 
                 screenshots.push(screenshotBitmap);
                 await delay(this._conf.assertRetryInterval);

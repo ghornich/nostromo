@@ -120,9 +120,17 @@ class Chromium {
             return node.innerText;
         }, selector);
     }
-    async screenshot() {
-        // TODO implement selector, get boundingclientrect, etc
-        return this._page.screenshot({ encoding: 'binary' });
+    async screenshot({ selector }) {
+        if (selector) {
+            const elem = await this._page.$(selector);
+            if (elem === null) {
+                throw new Error(`screenshot: selector not found: ${selector}`);
+            }
+            return elem.screenshot({ encoding: 'binary' });
+        }
+        else {
+            return this._page.screenshot({ encoding: 'binary' });
+        }
     }
     async isVisible(selector) {
         const result = await this._page.evaluate(function (sel) {

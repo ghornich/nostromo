@@ -141,7 +141,8 @@ class Testrunner extends events_1.EventEmitter {
             scrollTo: this._scrollToDirect.bind(this),
             delay: this._delay.bind(this),
             comment: this._comment.bind(this),
-            assert: this._assert.bind(this),
+            assert: this._screenshot.bind(this),
+            screenshot: this._screenshot.bind(this),
             pressKey: this._pressKeyDirect.bind(this),
             mouseover: this._mouseoverDirect.bind(this),
             execFunction: this._execFunctionDirect.bind(this),
@@ -741,7 +742,7 @@ class Testrunner extends events_1.EventEmitter {
             throw new BailoutError(err.stack || err.message);
         }
     }
-    async _assert() {
+    async _screenshot(selector) {
         const callsite = getCallSiteForDirectAPI();
         const refImgDir = path_1.default.resolve(this._conf.referenceScreenshotsDir, this._currentBrowser.name.toLowerCase(), this._currentTest.id);
         const failedImgDir = path_1.default.resolve(this._conf.referenceErrorsDir, this._currentBrowser.name.toLowerCase(), this._currentTest.id);
@@ -752,7 +753,7 @@ class Testrunner extends events_1.EventEmitter {
             await this._currentBeforeAssert(this.directAPI);
         }
         await mkdirpAsync(refImgDir, {});
-        let screenshotBitmap = await pnglib_1.Bitmap.from(await this._currentBrowser.screenshot());
+        let screenshotBitmap = await pnglib_1.Bitmap.from(await this._currentBrowser.screenshot({ selector }));
         const screenshots = [screenshotBitmap];
         const diffResults = [];
         // region save new ref img
@@ -783,7 +784,7 @@ class Testrunner extends events_1.EventEmitter {
             }
             this._log.verbose(`screenshot assert failed: ${refImgPathRelative}, ppm: ${formattedPPM}, totalChangedPixels: ${imgDiffResult.totalChangedPixels}, attempt#: ${assertAttempt} at ${callsite.toString()}`);
             if (assertAttempt < assertRetryMaxAttempts) {
-                screenshotBitmap = await pnglib_1.Bitmap.from(await this._currentBrowser.screenshot());
+                screenshotBitmap = await pnglib_1.Bitmap.from(await this._currentBrowser.screenshot({ selector }));
                 screenshots.push(screenshotBitmap);
                 await delay_1.default(this._conf.assertRetryInterval);
             }
