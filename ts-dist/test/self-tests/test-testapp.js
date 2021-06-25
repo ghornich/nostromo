@@ -5,7 +5,7 @@ exports = module.exports = function (test) {
         await t.assert();
         await t.setValue('#input', 'A');
         await t.click('#add-btn');
-        await t.assert();
+        await t.screenshot('#add-btn');
         await t.click('.delete');
         await t.assert();
     });
