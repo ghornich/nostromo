@@ -154,10 +154,18 @@ export default class Chromium implements IBrowser {
         }, selector);
     }
 
-    async screenshot(): Promise<Buffer> {
-        // TODO implement selector, get boundingclientrect, etc
+    async screenshot({ selector }: { selector?: string }): Promise<Buffer> {
+        if (selector) {
+            const elem = await this._page.$(selector);
+            if (elem === null) {
+                throw new Error(`screenshot: selector not found: ${selector}`);
+            }
 
-        return this._page.screenshot({ encoding: 'binary' }) as Promise<Buffer>;
+            return elem.screenshot({ encoding: 'binary' }) as Promise<Buffer>;
+        }
+        else {
+            return this._page.screenshot({ encoding: 'binary' }) as Promise<Buffer>;
+        }
     }
 
     async isVisible(selector: string): Promise<boolean> {

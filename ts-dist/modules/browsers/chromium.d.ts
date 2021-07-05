@@ -34,7 +34,9 @@ export default class Chromium implements IBrowser {
     scrollIntoView(selector: string): Promise<void>;
     execFunction(fn: Function, ...args: any[]): Promise<any>;
     getValue(selector: string): Promise<string | boolean>;
-    screenshot(): Promise<Buffer>;
+    screenshot({ selector }: {
+        selector?: string;
+    }): Promise<Buffer>;
     isVisible(selector: string): Promise<boolean>;
     waitForVisible(selector: string, options?: {
         timeout?: number;
