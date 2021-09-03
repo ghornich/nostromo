@@ -120,7 +120,7 @@ class Chromium {
             return node.innerText;
         }, selector);
     }
-    async screenshot({ selector }) {
+    async screenshot({ selector } = {}) {
         if (selector) {
             const elem = await this._page.$(selector);
             if (elem === null) {
@@ -128,9 +128,7 @@ class Chromium {
             }
             return elem.screenshot({ encoding: 'binary' });
         }
-        else {
-            return this._page.screenshot({ encoding: 'binary' });
-        }
+        return this._page.screenshot({ encoding: 'binary' });
     }
     async isVisible(selector) {
         const result = await this._page.evaluate(function (sel) {
