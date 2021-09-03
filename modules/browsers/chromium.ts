@@ -158,7 +158,7 @@ export default class Chromium implements IBrowser {
         }, selector);
     }
 
-    async screenshot({ selector }: { selector?: string }): Promise<Buffer> {
+    async screenshot({ selector }: { selector?: string } = {}): Promise<Buffer> {
         if (selector) {
             const elem = await this._page.$(selector);
             if (elem === null) {
@@ -168,8 +168,8 @@ export default class Chromium implements IBrowser {
             return elem.screenshot({ encoding: 'binary' }) as Promise<Buffer>;
         }
 
-            return this._page.screenshot({ encoding: 'binary' }) as Promise<Buffer>;
-        }
+        return this._page.screenshot({ encoding: 'binary' }) as Promise<Buffer>;
+    }
 
     async isVisible(selector: string): Promise<boolean> {
         const result = await this._page.evaluate(function (sel) {
@@ -255,4 +255,3 @@ export default class Chromium implements IBrowser {
         }
     }
 }
-
