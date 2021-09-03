@@ -2,7 +2,7 @@ const MAX_LINE_LEN = 190;
 const INDENT_DEPTH = 4;
 
 exports = module.exports = {
-    parser: '@babel/eslint-parser',
+    parser: '@typescript-eslint/parser',
     extends: 'eslint:recommended',
     parserOptions: {
         sourceType: 'module',
@@ -11,7 +11,7 @@ exports = module.exports = {
             modules: true,
         },
     },
-    plugins: ['jest'],
+    plugins: ['jest', '@typescript-eslint'],
     env: {
         node: true,
         browser: true,
@@ -85,7 +85,8 @@ exports = module.exports = {
         'no-shadow': ['error'],
         'no-undef': ['error'],
         'no-undef-init': ['error'],
-        'no-unused-vars': ['error'],
+        'no-unused-vars': 0,
+        '@typescript-eslint/no-unused-vars': 2,
         'no-use-before-define': ['error', { functions: false, classes: true, variables: true }],
 
         // Node.js and CommonJS

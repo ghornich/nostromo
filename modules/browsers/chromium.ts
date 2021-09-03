@@ -17,6 +17,10 @@ type ChromiumOptions = {
     puppeteer?: typeof puppeteer
 }
 
+/** https://github.com/puppeteer/puppeteer/blob/main/docs/api.md#class-consolemessage */
+type PuppeteerConsoleEvent = 'log' | 'debug' | 'info' | 'error' | 'warning' | 'dir' | 'dirxml' | 'table' | 'trace' | 'clear' | 'startGroup' |
+    'startGroupCollapsed' | 'endGroup' | 'assert' | 'profile' | 'profileEnd' | 'count' | 'timeEnd';
+
 export default class Chromium implements IBrowser {
     private _options: ChromiumOptions
     private _browser: puppeteer.Browser
@@ -163,10 +167,9 @@ export default class Chromium implements IBrowser {
 
             return elem.screenshot({ encoding: 'binary' }) as Promise<Buffer>;
         }
-        else {
+
             return this._page.screenshot({ encoding: 'binary' }) as Promise<Buffer>;
         }
-    }
 
     async isVisible(selector: string): Promise<boolean> {
         const result = await this._page.evaluate(function (sel) {
@@ -252,6 +255,4 @@ export default class Chromium implements IBrowser {
         }
     }
 }
-
-/** https://github.com/puppeteer/puppeteer/blob/main/docs/api.md#class-consolemessage */
-type PuppeteerConsoleEvent = 'log'| 'debug'| 'info'| 'error'| 'warning'| 'dir'| 'dirxml'| 'table'| 'trace'| 'clear'| 'startGroup'| 'startGroupCollapsed'| 'endGroup'| 'assert'| 'profile'| 'profileEnd'| 'count'| 'timeEnd';
+
