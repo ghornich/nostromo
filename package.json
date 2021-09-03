@@ -1,6 +1,6 @@
 {
   "name": "nostromo",
-  "version": "6.0.2",
+  "version": "6.0.3",
   "description": "",
   "main": "ts-dist/src/index.js",
   "types": "ts-dist/src/index.d.ts",
