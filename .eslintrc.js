@@ -1,4 +1,3 @@
-const MAX_LINE_LEN = 190;
 const INDENT_DEPTH = 4;
 
 exports = module.exports = {
@@ -52,7 +51,8 @@ exports = module.exports = {
         'no-octal': ['error'],
         'no-octal-escape': ['error'],
         'no-proto': ['error'],
-        'no-redeclare': ['error'],
+        'no-redeclare': 0,
+        '@typescript-eslint/no-redeclare': ['error'],
         // 'no-return-assign': ['error'],
         'no-return-await': ['error'],
         'no-script-url': ['error'],
@@ -87,7 +87,8 @@ exports = module.exports = {
         'no-undef-init': ['error'],
         'no-unused-vars': 0,
         '@typescript-eslint/no-unused-vars': 2,
-        'no-use-before-define': ['error', { functions: false, classes: true, variables: true }],
+        'no-use-before-define': 0,
+        '@typescript-eslint/no-use-before-define': ['error', { functions: false, classes: true, variables: true }],
 
         // Node.js and CommonJS
 
@@ -113,7 +114,7 @@ exports = module.exports = {
         'line-comment-position': [0],
         'linebreak-style': [0],
         'max-depth': ['error'],
-        'max-len': ['error', MAX_LINE_LEN],
+        'max-len': 0,
         'max-params': ['error'],
         'max-statements': [0],
         'new-cap': ['error'],

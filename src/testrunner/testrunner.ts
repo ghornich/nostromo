@@ -167,7 +167,7 @@ type Level = 'verbose' | 'debug' | 'info' | 'warn' | 'error';
 
 export interface TestrunnerConfig {
     fileLogLevel: Level,
-    consoleLogLevel:  Level, 
+    consoleLogLevel: Level,
     /** Bailout from a single test if an assert fails */
     testBailout: boolean
     /** Bailout from the entire test program if an assert fails */
@@ -459,7 +459,7 @@ class Testrunner extends EventEmitter {
                 await fsp.writeFile(pathlib.resolve(this._conf.workspaceDir, REPORT_FILE_NAME), JSON.stringify(this._testRunReport, null, 4));
             }
             catch (err) {
-                console.error(err);
+                this._log.error(err);
             }
 
             this._isRunning = false;
@@ -575,7 +575,7 @@ class Testrunner extends EventEmitter {
 
                 // cleanup: remove potential failed screenshots from catalog for this test
                 // TODO delete screenshots from disk? or don't write them until test fails
-                this._testRunReport.screenshots = this._testRunReport.screenshots.filter(screenshotItem => screenshotItem.testName !== test.name);
+                this._testRunReport.screenshots = this._testRunReport.screenshots.filter(item => item.testName !== test.name);
 
                 this._log.verbose(`_runTestWithRetries: success, test '${test.name}' passed`);
                 break;
@@ -1260,7 +1260,7 @@ function getCallSiteForDirectAPI() {
             return unknownPathStr;
         }
         const basename = pathlib.basename(filePath);
-        // filtered: 
+        // filtered:
         // internal/**/*
         // **/testrunner.*
         if (!filePath.startsWith('internal') && basename !== 'testrunner.js') {
@@ -1281,8 +1281,8 @@ function ellipsis(s: string, l = ELLIPSIS_LIMIT) {
 async function multiGlobAsync(globs: string[]) {
     let paths: string[] = [];
 
-    for (const glob of globs) {
-        paths = paths.concat(await globAsync(glob));
+    for (const g of globs) {
+        paths = paths.concat(await globAsync(g));
     }
 
     return paths;
