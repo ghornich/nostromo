@@ -415,7 +415,6 @@ class Testrunner extends EventEmitter {
             this._log.error(error);
         }
         finally {
-            // TODO run time, TAP msg
             this._log.info(`Finished in ${prettyMs(Date.now() - runStartTime, { verbose: true })}`);
 
             const effectiveTestsCount = this._foundTestsCount * this._conf.browsers.length;
