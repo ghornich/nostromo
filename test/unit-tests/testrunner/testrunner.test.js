@@ -2,16 +2,9 @@
 
 const pathlib = require('path');
 const Testrunner = require('../../../src/testrunner/testrunner').default;
-const stream = require('stream');
 import createServer from '../../utils/create-server';
 import Chromium from '../../../modules/browsers/chromium';
 import { DummyBrowser } from './dummy-browser';
-
-class NullStream extends stream.Writable {
-    _write(chunk, encoding, cb) {
-        setImmediate(cb);
-    }
-}
 
 class NonFunctionalBrowser extends DummyBrowser {
     async start() {
@@ -25,8 +18,6 @@ test('Testrunner: browser fails to start', async () => {
         bailout: false,
         consoleLogLevel: 'info',
         fileLogLevel: null,
-
-        outStream: new NullStream(),
 
         browsers: [
             new NonFunctionalBrowser(),
@@ -53,8 +44,6 @@ test('Testrunner: test throws', async () => {
         bailout: false,
         consoleLogLevel: 'info',
         fileLogLevel: null,
-
-        outStream: new NullStream(),
         browsers: [
             new DummyBrowser(),
         ],
@@ -96,7 +85,6 @@ test('Testrunner: test command retries', async () => {
         consoleLogLevel: 'info',
         fileLogLevel: null,
 
-        outStream: new NullStream(),
         testRetryCount: 3,
 
         browsers: [
@@ -114,9 +102,10 @@ test('Testrunner: test command retries', async () => {
         ],
     });
 
+    process.exitCode = 0;
     await testrunner.run();
 
-    expect(process.exitCode === undefined || process.exitCode === 0).toBe(true);
+    expect(process.exitCode).toBe(0);
 }, 60 * 1000);
 
 test('Testrunner: test command retries but fails', async () => {
@@ -126,7 +115,6 @@ test('Testrunner: test command retries but fails', async () => {
         consoleLogLevel: 'info',
         fileLogLevel: null,
 
-        outStream: new NullStream(),
         commandRetryCount: 1, // max tries: 1 + 1, and browser would require 3 tries
 
         browsers: [
@@ -156,9 +144,8 @@ test('Testrunner: integration test', async () => {
         testBailout: true,
         bailout: false,
         consoleLogLevel: 'info',
-        fileLogLevel: null,
+        // fileLogLevel: null,
 
-        outStream: new NullStream(),
         testRetryCount: 4,
 
         browsers: [
@@ -190,7 +177,8 @@ test('Testrunner: integration test', async () => {
         ],
     });
 
+    process.exitCode = 0;
     await testrunner.run();
 
-    expect(process.exitCode === undefined || process.exitCode === 0).toBe(true);
+    expect(process.exitCode).toBe(0);
 }, 60 * 1000);

@@ -25,13 +25,13 @@ class WinstonLogger implements Logger {
     init(consoleLogLevel: null, fileLogLevel: string, logFilePath: string);
     init(consoleLogLevel: string | null, fileLogLevel: string | null, logFilePath?: string) {
 
-        const addStackToMessage = winston.format(info => { 
+        const addStackToMessage = winston.format(info => {
             if (info.stack) {
                 info.message = info.message + os.EOL + info.stack;
             }
 
             return info;
-        })
+        });
 
         const formatLine = winston.format.printf(info => {
             return `${moment(info.timestamp).format('\\[HH:mm:ss:SSS\\]')} ${info.level} [${info.label}] ${info.message}`;
@@ -43,7 +43,7 @@ class WinstonLogger implements Logger {
             transports.push(new winston.transports.Console({
                 level: consoleLogLevel,
                 // per-transport level format is appended to the global one
-                format: winston.format.combine(winston.format.colorize(), formatLine)
+                format: winston.format.combine(winston.format.colorize(), formatLine),
             }));
         }
 
@@ -65,7 +65,7 @@ class WinstonLogger implements Logger {
                 // https://github.com/winstonjs/winston/issues/1880
                 // https://github.com/winstonjs/winston-transport/pull/70
                 format: winston.format.combine(winston.format.errors({ stack: true }), winston.format.timestamp()),
-                transports
+                transports,
             });
         }
         else {

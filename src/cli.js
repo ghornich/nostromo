@@ -65,7 +65,7 @@ async function run() {
             console.log(util.inspect(conf, true, 10));
         }
 
-        const RecorderServer = require('./recorder/recorder-server');
+        const RecorderServer = require('./recorder/recorder-server').default;
         const recServer = new RecorderServer(conf);
 
         recServer.start();

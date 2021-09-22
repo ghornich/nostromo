@@ -5,15 +5,9 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const pathlib = require('path');
 const Testrunner = require('../../../src/testrunner/testrunner').default;
-const stream = require('stream');
 const create_server_1 = __importDefault(require("../../utils/create-server"));
 const chromium_1 = __importDefault(require("../../../modules/browsers/chromium"));
 const dummy_browser_1 = require("./dummy-browser");
-class NullStream extends stream.Writable {
-    _write(chunk, encoding, cb) {
-        setImmediate(cb);
-    }
-}
 class NonFunctionalBrowser extends dummy_browser_1.DummyBrowser {
     async start() {
         throw new Error('browser failed to start');
@@ -25,7 +19,6 @@ test('Testrunner: browser fails to start', async () => {
         bailout: false,
         consoleLogLevel: 'info',
         fileLogLevel: null,
-        outStream: new NullStream(),
         browsers: [
             new NonFunctionalBrowser(),
         ],
@@ -47,7 +40,6 @@ test('Testrunner: test throws', async () => {
         bailout: false,
         consoleLogLevel: 'info',
         fileLogLevel: null,
-        outStream: new NullStream(),
         browsers: [
             new dummy_browser_1.DummyBrowser(),
         ],
@@ -83,7 +75,6 @@ test('Testrunner: test command retries', async () => {
         bailout: false,
         consoleLogLevel: 'info',
         fileLogLevel: null,
-        outStream: new NullStream(),
         testRetryCount: 3,
         browsers: [
             new BrowserRequiringThreeClicks(),
@@ -98,8 +89,9 @@ test('Testrunner: test command retries', async () => {
             },
         ],
     });
+    process.exitCode = 0;
     await testrunner.run();
-    expect(process.exitCode === undefined || process.exitCode === 0).toBe(true);
+    expect(process.exitCode).toBe(0);
 }, 60 * 1000);
 test('Testrunner: test command retries but fails', async () => {
     const testrunner = new Testrunner({
@@ -107,7 +99,6 @@ test('Testrunner: test command retries but fails', async () => {
         bailout: false,
         consoleLogLevel: 'info',
         fileLogLevel: null,
-        outStream: new NullStream(),
         commandRetryCount: 1,
         browsers: [
             new BrowserRequiringThreeClicks(),
@@ -131,8 +122,7 @@ test('Testrunner: integration test', async () => {
         testBailout: true,
         bailout: false,
         consoleLogLevel: 'info',
-        fileLogLevel: null,
-        outStream: new NullStream(),
+        // fileLogLevel: null,
         testRetryCount: 4,
         browsers: [
             new chromium_1.default({
@@ -161,6 +151,7 @@ test('Testrunner: integration test', async () => {
             },
         ],
     });
+    process.exitCode = 0;
     await testrunner.run();
-    expect(process.exitCode === undefined || process.exitCode === 0).toBe(true);
+    expect(process.exitCode).toBe(0);
 }, 60 * 1000);

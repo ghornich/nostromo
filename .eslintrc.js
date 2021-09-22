@@ -37,6 +37,8 @@ exports = module.exports = {
         'no-extra-bind': ['error'],
         'no-floating-decimal': ['error'],
         'no-global-assign': ['error'],
+        'no-dupe-class-members': 0,
+        '@typescript-eslint/no-dupe-class-members': 2,
         'no-implicit-coercion': ['error'],
         'no-implicit-globals': ['error'],
         'no-implied-eval': ['error'],

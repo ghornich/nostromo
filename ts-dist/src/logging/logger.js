@@ -26,7 +26,7 @@ class WinstonLogger {
             transports.push(new winston_1.default.transports.Console({
                 level: consoleLogLevel,
                 // per-transport level format is appended to the global one
-                format: winston_1.default.format.combine(winston_1.default.format.colorize(), formatLine)
+                format: winston_1.default.format.combine(winston_1.default.format.colorize(), formatLine),
             }));
         }
         if (fileLogLevel) {
@@ -46,7 +46,7 @@ class WinstonLogger {
                 // https://github.com/winstonjs/winston/issues/1880
                 // https://github.com/winstonjs/winston-transport/pull/70
                 format: winston_1.default.format.combine(winston_1.default.format.errors({ stack: true }), winston_1.default.format.timestamp()),
-                transports
+                transports,
             });
         }
         else {
