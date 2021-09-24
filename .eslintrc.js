@@ -156,5 +156,6 @@ exports = module.exports = {
         'prefer-spread': ['error'],
         // 'prefer-template': ['error'],
         'template-curly-spacing': ['error'],
+        '@typescript-eslint/type-annotation-spacing': 2,
     },
 };

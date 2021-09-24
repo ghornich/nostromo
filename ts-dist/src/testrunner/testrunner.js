@@ -13,56 +13,22 @@ const events_1 = require("events");
 const mkdirp_1 = __importDefault(require("mkdirp"));
 const mkdirpAsync = util_1.default.promisify(mkdirp_1.default);
 const pnglib_1 = require("../../modules/pnglib/pnglib");
-const glob_1 = __importDefault(require("glob"));
-const globAsync = util_1.default.promisify(glob_1.default);
 const image_diff_1 = __importDefault(require("../../modules/buffer-image-diff/image-diff"));
-const pretty_ms_1 = __importDefault(require("pretty-ms"));
 const delay_1 = __importDefault(require("../../modules/delay/delay"));
 const logger_1 = require("../logging/logger");
-const callsites_1 = __importDefault(require("callsites"));
+const errors_1 = require("./errors");
+const utils_1 = require("../utils");
 const TEST_STATE = {
     SCHEDULED: 'scheduled',
     PASSED: 'passed',
     FAILED: 'failed',
 };
 const DEFAULT_TEST_NAME = '(Unnamed test)';
-const ELLIPSIS_LIMIT = 40;
 const DEFAULT_SUITE_NAME = '(Unnamed suite)';
 const DEFAULT_REF_SCREENSHOTS_DIR = 'reference-screenshots';
 const DEFAULT_REF_ERRORS_DIR = 'reference-errors';
 const DEFAULT_REF_DIFFS_DIR = 'reference-diffs';
 const REPORT_FILE_NAME = 'test-run-report.json';
-class AssertError extends Error {
-    constructor(message) {
-        super(message);
-        this.name = 'AssertError';
-    }
-}
-class AbortError extends Error {
-    constructor(message = '') {
-        super(message);
-        this.name = 'AbortError';
-    }
-}
-class TestFailedError extends Error {
-    constructor({ message, testErrors = null }) {
-        super(message);
-        this.testErrors = testErrors || [];
-        this.name = 'TestFailedError';
-    }
-}
-class BailoutError extends Error {
-    constructor(message) {
-        super(message);
-        this.name = 'BailoutError';
-    }
-}
-class TestBailoutError extends Error {
-    constructor(message) {
-        super(message);
-        this.name = 'TestBailoutError';
-    }
-}
 class Testrunner extends events_1.EventEmitter {
     constructor(conf) {
         super();
@@ -78,7 +44,6 @@ class Testrunner extends events_1.EventEmitter {
             browsers: [],
             suites: [],
             testFilter: null,
-            outStream: process.stdout,
             assertRetryCount: 0,
             assertRetryInterval: 1000,
             testRetryCount: 0,
@@ -205,27 +170,29 @@ class Testrunner extends events_1.EventEmitter {
             await this._runBrowsers();
         }
         catch (error) {
-            process.exitCode = 1;
+            this.setExitCode(1);
             this._log.error(error);
         }
         finally {
-            // TODO run time, TAP msg
-            this._log.info(`Finished in ${prettyMs(Date.now() - runStartTime, { verbose: true })}`);
+            this._log.info(`Finished in ${utils_1.prettyMs(Date.now() - runStartTime, { verbose: true })}`);
             const effectiveTestsCount = this._foundTestsCount * this._conf.browsers.length;
             this._log.info(`Tests: ${effectiveTestsCount}`);
             this._log.info(`Pass: ${this._okTestsCount}`);
-            const failedTestNames = [];
+            const failedTestNames = new Set();
             if (effectiveTestsCount !== this._okTestsCount) {
-                process.exitCode = 1;
+                this.setExitCode(1);
+                this._log.warn('---');
                 conf.suites.forEach(suite => {
                     suite.tests.forEach(test => {
-                        if (test.state === TEST_STATE.FAILED && !failedTestNames.includes(test.name)) {
-                            failedTestNames.push(test.name);
+                        if (test.state === TEST_STATE.FAILED) {
+                            failedTestNames.add(test.name);
+                            this._log.warn(`[FAIL] "${test.name}" (suite: "${suite.name}")`);
+                            test.runErrors.forEach(err => {
+                                this._log.warn(`    [reason] ${err}`);
+                            });
                         }
                     });
                 });
-                this._log.warn('---');
-                failedTestNames.forEach(name => this._log.warn('[FAIL] ' + name));
                 this._log.warn('---');
                 this._log.warn('FAILURE');
             }
@@ -234,17 +201,23 @@ class Testrunner extends events_1.EventEmitter {
             }
             this._testRunReport.testsCount = effectiveTestsCount;
             this._testRunReport.passedCount = this._okTestsCount;
-            this._testRunReport.failedCount = this._testRunReport.testsCount - this._testRunReport.passedCount;
-            this._testRunReport.passed = this._testRunReport.testsCount === this._testRunReport.passedCount;
+            this._testRunReport.failedCount = this._testRunReport.testsCount - this._testRunReport.passedCount; // TODO error? use effectiveTestsCount
+            this._testRunReport.passed = this._testRunReport.testsCount === this._testRunReport.passedCount; // TODO redundant? remove
             this._testRunReport.runTimeMs = Date.now() - runStartTime;
-            this._testRunReport.failedTestNames = failedTestNames;
+            this._testRunReport.failedTestNames = [...failedTestNames];
+            this._log.info(`__report__: ${JSON.stringify({
+                testsCount: this._testRunReport.testsCount,
+                passedCount: this._testRunReport.passedCount,
+                failedCount: this._testRunReport.failedCount,
+                runTimeMs: this._testRunReport.runTimeMs,
+            })}`);
             try {
                 // TODO deprecated, remove in future
                 await fs_2.promises.writeFile(path_1.default.resolve(this._conf.workspaceDir, 'screenshot-catalog.json'), JSON.stringify(this._testRunReport.screenshots, null, 4));
                 await fs_2.promises.writeFile(path_1.default.resolve(this._conf.workspaceDir, REPORT_FILE_NAME), JSON.stringify(this._testRunReport, null, 4));
             }
             catch (err) {
-                console.error(err);
+                this._log.error(err);
             }
             this._isRunning = false;
             this._startExitTimeout();
@@ -273,7 +246,7 @@ class Testrunner extends events_1.EventEmitter {
         for (const browser of conf.browsers) {
             this._currentBrowser = browser;
             if (this._isAborting) {
-                throw new AbortError();
+                throw new errors_1.AbortError();
             }
             await this._runSuites();
         }
@@ -282,7 +255,7 @@ class Testrunner extends events_1.EventEmitter {
         const conf = this._conf;
         for (const suite of conf.suites) {
             if (this._isAborting) {
-                throw new AbortError();
+                throw new errors_1.AbortError();
             }
             try {
                 if (suite.beforeSuite) {
@@ -310,16 +283,16 @@ class Testrunner extends events_1.EventEmitter {
         this._log.verbose(`running suite: ${suite.name || DEFAULT_SUITE_NAME}`);
         for (const test of suite.tests) {
             if (this._isAborting) {
-                throw new AbortError();
+                throw new errors_1.AbortError();
             }
             try {
                 this._log.verbose(test.name);
                 await this._runTestWithRetries({ suite, test });
-                this._log.verbose(`${test.name} (${prettyMs(this._testRunReport.runtimes[test.name])})`);
+                this._log.verbose(`${test.name} (${utils_1.prettyMs(this._testRunReport.runtimes[test.name])})`);
                 this._okTestsCount++;
             }
             catch (error) {
-                this._log.warn(`${test.name} (${prettyMs(this._testRunReport.runtimes[test.name])})`);
+                this._log.warn(`${test.name} (${utils_1.prettyMs(this._testRunReport.runtimes[test.name])})`);
                 this._log.warn(error);
             }
         }
@@ -334,7 +307,7 @@ class Testrunner extends events_1.EventEmitter {
                 await this._runTest({ suite, test });
                 // cleanup: remove potential failed screenshots from catalog for this test
                 // TODO delete screenshots from disk? or don't write them until test fails
-                this._testRunReport.screenshots = this._testRunReport.screenshots.filter(screenshotItem => screenshotItem.testName !== test.name);
+                this._testRunReport.screenshots = this._testRunReport.screenshots.filter(item => item.testName !== test.name);
                 this._log.verbose(`_runTestWithRetries: success, test '${test.name}' passed`);
                 break;
             }
@@ -344,7 +317,7 @@ class Testrunner extends events_1.EventEmitter {
                 if (attempt === maxAttempts) {
                     throw error;
                 }
-                this._log.verbose(`test "${test.name}" failed, retrying`);
+                this._log.warn(`Test "${test.name}" failed, retrying`);
                 if (error.testErrors && error.testErrors.length > 0) {
                     this._log.debug(error.testErrors.map(String).join('\n'));
                 }
@@ -354,6 +327,7 @@ class Testrunner extends events_1.EventEmitter {
     async _runTest({ suite, test }) {
         this._log.verbose(`_runTest: running test ${test.name}`);
         const browser = this._currentBrowser;
+        test.runErrors = [];
         this._log.verbose(`starting browser "${browser.name}"`);
         try {
             await browser.start();
@@ -409,7 +383,7 @@ class Testrunner extends events_1.EventEmitter {
             testStartTime = Date.now();
             await test.testFn(this.tAPI, { suite: suite, directAPI: this.directAPI, browser: this._currentBrowser });
             if (test.runErrors.length > 0) {
-                throw new TestFailedError({
+                throw new errors_1.TestFailedError({
                     message: `Test "${test.name}" failed`,
                     testErrors: test.runErrors,
                 });
@@ -431,7 +405,7 @@ class Testrunner extends events_1.EventEmitter {
     async _parseSuiteTestfiles() {
         const conf = this._conf;
         for (const suite of conf.suites) {
-            suite.tests = await this._parseTestFiles(await multiGlobAsync(suite.testFiles));
+            suite.tests = await this._parseTestFiles(await utils_1.multiGlobAsync(suite.testFiles));
             if (conf.testFilter !== null) {
                 const filterRegex = new RegExp(conf.testFilter, 'i');
                 suite.tests = suite.tests.filter(test => filterRegex.test(test.name));
@@ -454,7 +428,7 @@ class Testrunner extends events_1.EventEmitter {
                 name = arg0;
                 testFn = arg1;
             }
-            let id = getIdFromName(name);
+            let id = utils_1.getIdFromName(name);
             const idCount = tests.filter(t => t.id === id).length;
             if (idCount > 0) {
                 id += `_(${idCount + 1})`;
@@ -474,7 +448,7 @@ class Testrunner extends events_1.EventEmitter {
     _wrapFunctionWithSideEffects(fn, cmdType) {
         return async (...args) => {
             if (this._isAborting) {
-                throw new AbortError();
+                throw new errors_1.AbortError();
             }
             if (this._currentBeforeCommand) {
                 await this._currentBeforeCommand(this.directAPI, { type: cmdType });
@@ -517,7 +491,7 @@ class Testrunner extends events_1.EventEmitter {
             await this._execCommandSideEffect(cmd);
         }
     }
-    async _runBrowserCommandWithRetries(browserFnName, args, callsite) {
+    async _runBrowserCommandWithRetries(browserFnName, args) {
         let retries = 0;
         // eslint-disable-next-line no-constant-condition
         while (true) {
@@ -535,10 +509,10 @@ class Testrunner extends events_1.EventEmitter {
             catch (err) {
                 if (retries < this._conf.commandRetryCount) {
                     if (typeof browserFnName === 'string') {
-                        this._log.verbose(`command error, retrying "${browserFnName}" at ${callsite}`);
+                        this._log.debug(`command error, retrying "${browserFnName}" at ${getErrorOrigin(err)}`);
                     }
                     else {
-                        this._log.verbose(`command error, retrying at ${callsite}`);
+                        this._log.debug(`command error, retrying at ${getErrorOrigin(err)}`);
                     }
                     this._log.verbose(err);
                     retries++;
@@ -569,36 +543,32 @@ class Testrunner extends events_1.EventEmitter {
         }
     }
     async _clickDirect(selector /* , options*/) {
-        this._log.verbose(`click: "${ellipsis(selector)}"`);
-        const callsite = getCallSiteForDirectAPI();
         try {
-            await this._runBrowserCommandWithRetries('click', [selector], callsite);
+            await this._runBrowserCommandWithRetries('click', [selector]);
         }
         catch (err) {
-            await this._handleCommandError(err, 'click', callsite);
+            await this._handleCommandError(err, 'click');
         }
     }
     async _getValueDirect(selector) {
-        this._log.verbose(`getValue: "${ellipsis(selector)}"`);
+        this._log.verbose(`getValue: "${utils_1.ellipsis(selector)}"`);
         return this._currentBrowser.getValue(selector);
     }
     async _setValueDirect(selector, value) {
-        this._log.verbose(`setValue: "${ellipsis(value)}", "${ellipsis(selector)}"`);
-        const callsite = getCallSiteForDirectAPI();
+        this._log.verbose(`setValue: "${utils_1.ellipsis(value)}", "${utils_1.ellipsis(selector)}"`);
         try {
             await this._runBrowserCommandWithRetries(async () => {
                 // @ts-expect-error
                 await this._currentBrowser.execFunction((s) => document.querySelector(s).select(), selector);
                 await this._currentBrowser.type(selector, value);
-            }, [], callsite);
+            }, []);
         }
         catch (err) {
-            await this._handleCommandError(err, 'setValue', callsite);
+            await this._handleCommandError(err, 'setValue');
         }
     }
     async _setFileInputDirect(selector, filePath, options) {
         this._log.verbose(`setFileInput: "${selector}", "${filePath}"`);
-        const callsite = getCallSiteForDirectAPI();
         const opts = { ...{ waitForVisible: true, checkSelectorType: true }, ...options };
         try {
             await this._runBrowserCommandWithRetries(async () => {
@@ -619,10 +589,10 @@ class Testrunner extends events_1.EventEmitter {
                 const fileChooserPromise = this._currentBrowser._page.waitForFileChooser();
                 await this._currentBrowser.click(selector);
                 await (await fileChooserPromise).accept([filePath]);
-            }, [], callsite);
+            }, []);
         }
         catch (err) {
-            await this._handleCommandError(err, 'setFileInput', callsite);
+            await this._handleCommandError(err, 'setFileInput');
         }
     }
     /**
@@ -630,48 +600,44 @@ class Testrunner extends events_1.EventEmitter {
      */
     async _pressKeyDirect(keyCode) {
         this._log.verbose(`pressKey: ${keyCode}`);
-        const callsite = getCallSiteForDirectAPI();
         if (arguments.length > 1) {
             throw new TypeError('Selector is removed, pressKey only accepts keyCode.');
         }
         if (typeof keyCode !== 'string') {
             throw new TypeError('Expected string keyCode');
         }
-        await this._runBrowserCommandWithRetries('pressKey', [keyCode], callsite);
+        await this._runBrowserCommandWithRetries('pressKey', [keyCode]);
     }
     async _waitForVisibleDirect(selector, opts = {}) {
-        this._log.verbose(`waitForVisible: "${ellipsis(selector)}"`);
-        const callsite = getCallSiteForDirectAPI();
+        this._log.verbose(`waitForVisible: "${utils_1.ellipsis(selector)}"`);
         try {
             await this._currentBrowser.waitForVisible(selector, opts);
         }
         catch (err) {
-            await this._handleCommandError(err, 'waitForVisible', callsite);
+            await this._handleCommandError(err, 'waitForVisible');
         }
     }
     async _waitWhileVisibleDirect(selector, opts = {}) {
-        this._log.verbose(`waitWhileVisible: "${ellipsis(selector)}"`);
-        const callsite = getCallSiteForDirectAPI();
+        this._log.verbose(`waitWhileVisible: "${utils_1.ellipsis(selector)}"`);
         try {
             await this._currentBrowser.waitWhileVisible(selector, opts);
         }
         catch (err) {
-            await this._handleCommandError(err, 'waitWhileVisible', callsite);
+            await this._handleCommandError(err, 'waitWhileVisible');
         }
     }
     async _isVisibleDirect(selector) {
-        this._log.verbose(`isVisible: "${ellipsis(selector)}"`);
-        const callsite = getCallSiteForDirectAPI();
+        this._log.verbose(`isVisible: "${utils_1.ellipsis(selector)}"`);
         try {
             const result = await this._currentBrowser.isVisible(selector);
             return result;
         }
         catch (err) {
-            await this._handleCommandError(err, 'isVisible', callsite);
+            await this._handleCommandError(err, 'isVisible');
         }
     }
     async _focusDirect(selector /* , options*/) {
-        this._log.verbose(`focus: "${ellipsis(selector)}"`);
+        this._log.verbose(`focus: "${utils_1.ellipsis(selector)}"`);
         try {
             await this._currentBrowser.focus(selector);
         }
@@ -681,33 +647,30 @@ class Testrunner extends events_1.EventEmitter {
         }
     }
     async _scrollDirect(selector, scrollTop) {
-        this._log.verbose(`scroll: ${scrollTop}, "${ellipsis(selector)}"`);
-        const callsite = getCallSiteForDirectAPI();
+        this._log.verbose(`scroll: ${scrollTop}, "${utils_1.ellipsis(selector)}"`);
         try {
             await this._currentBrowser.scroll(selector, scrollTop);
         }
         catch (err) {
-            await this._handleCommandError(err, 'scroll', callsite);
+            await this._handleCommandError(err, 'scroll');
         }
     }
     async _scrollToDirect(selector) {
-        this._log.verbose(`scrollTo: "${ellipsis(selector)}"`);
-        const callsite = getCallSiteForDirectAPI();
+        this._log.verbose(`scrollTo: "${utils_1.ellipsis(selector)}"`);
         try {
             await this._currentBrowser.scrollIntoView(selector);
         }
         catch (err) {
-            await this._handleCommandError(err, 'scrollTo', callsite);
+            await this._handleCommandError(err, 'scrollTo');
         }
     }
     async _mouseoverDirect(selector) {
         this._log.verbose(`mouseover: ${selector}`);
-        const callsite = getCallSiteForDirectAPI();
         try {
             this._currentBrowser.hover(selector);
         }
         catch (err) {
-            await this._handleCommandError(err, 'mouseover', callsite);
+            await this._handleCommandError(err, 'mouseover');
         }
     }
     async _execFunctionDirect(fn, ...args) {
@@ -721,8 +684,12 @@ class Testrunner extends events_1.EventEmitter {
     async _comment(comment) {
         this._log.info(comment);
     }
-    async _handleCommandError(err, command, callsite) {
-        this._log.warn(`"${command}" command error at ${callsite}`);
+    async _handleCommandError(err, command) {
+        Error.captureStackTrace(err);
+        const formattedErrorMessage = `"${command}" command error: ${err.message}\n${getErrorOrigin(err)}`;
+        this._log.warn(formattedErrorMessage);
+        this._log.verbose(err);
+        this._currentTest.runErrors.push(new errors_1.CommandError(formattedErrorMessage));
         if (this._conf.onCommandError !== null) {
             try {
                 await this._conf.onCommandError(this);
@@ -736,14 +703,13 @@ class Testrunner extends events_1.EventEmitter {
         const fatalErrorScreenshotBitmap = await pnglib_1.Bitmap.from(await this._currentBrowser.screenshot());
         await fatalErrorScreenshotBitmap.toPNGFile(path_1.default.resolve(this._conf.workspaceDir, this._currentTest.id + '___fatal.png'));
         if (this._conf.testBailout) {
-            throw new TestBailoutError(err.stack || err.message);
+            throw new errors_1.TestBailoutError(err.stack || err.message);
         }
         if (this._conf.bailout) {
-            throw new BailoutError(err.stack || err.message);
+            throw new errors_1.BailoutError(err.stack || err.message);
         }
     }
     async _screenshot(selector) {
-        const callsite = getCallSiteForDirectAPI();
         const refImgDir = path_1.default.resolve(this._conf.referenceScreenshotsDir, this._currentBrowser.name.toLowerCase(), this._currentTest.id);
         const failedImgDir = path_1.default.resolve(this._conf.referenceErrorsDir, this._currentBrowser.name.toLowerCase(), this._currentTest.id);
         const refImgName = `${this._assertCount}.png`;
@@ -778,19 +744,21 @@ class Testrunner extends events_1.EventEmitter {
             formattedPPM = String(imgDiffResult.difference).replace(/\.(\d)\d+/, '.$1');
             if (imgDiffResult.same) {
                 // this._tapWriter.ok(`screenshot assert (${formattedPPM} ppm): ${refImgPathRelative}, retries: ${assertAttempt}`);
-                this._log.verbose(`OK screenshot assert (${formattedPPM} ppm): ${refImgPathRelative}, totalChangedPixels: ${imgDiffResult.totalChangedPixels}, retries: ${assertAttempt} at ${callsite.toString()}`);
+                this._log.verbose(`OK screenshot assert (${formattedPPM} ppm): ${refImgPathRelative}, totalChangedPixels: ${imgDiffResult.totalChangedPixels}, retries: ${assertAttempt}`);
                 await this._runCurrentAfterAssertTasks();
                 return;
             }
-            this._log.verbose(`screenshot assert failed: ${refImgPathRelative}, ppm: ${formattedPPM}, totalChangedPixels: ${imgDiffResult.totalChangedPixels}, attempt#: ${assertAttempt} at ${callsite.toString()}`);
+            this._log.verbose(`screenshot assert failed: ${refImgPathRelative}, ppm: ${formattedPPM}, totalChangedPixels: ${imgDiffResult.totalChangedPixels}, attempt#: ${assertAttempt}`);
             if (assertAttempt < assertRetryMaxAttempts) {
                 screenshotBitmap = await pnglib_1.Bitmap.from(await this._currentBrowser.screenshot({ selector }));
                 screenshots.push(screenshotBitmap);
                 await delay_1.default(this._conf.assertRetryInterval);
             }
         }
-        this._currentTest.runErrors.push(new AssertError(`FAIL screenshot assert (${formattedPPM} ppm): ${refImgPathRelative}, totalChangedPixels: ${imgDiffResult.totalChangedPixels}`));
-        this._log.warn(`FAIL screenshot assert (${formattedPPM} ppm): ${refImgPathRelative}, totalChangedPixels: ${imgDiffResult.totalChangedPixels}`);
+        const screenshotError = new errors_1.ScreenshotError(`FAIL screenshot assert (${formattedPPM} ppm): ${refImgPathRelative}, totalChangedPixels: ${imgDiffResult.totalChangedPixels}`);
+        screenshotError.message += '\n' + getErrorOrigin(screenshotError);
+        this._currentTest.runErrors.push(screenshotError);
+        this._log.error(screenshotError);
         if (this._conf.onAssertError !== null) {
             try {
                 await this._conf.onAssertError(this);
@@ -852,7 +820,7 @@ class Testrunner extends events_1.EventEmitter {
             catch (error) {
                 this._log.verbose('_runCurrentAfterAssert catch');
                 this._log.error(error.stack || error.message);
-                process.exitCode = 1;
+                this.setExitCode(1);
             }
         }
         this._assertCount++;
@@ -863,44 +831,18 @@ class Testrunner extends events_1.EventEmitter {
             process.exit(process.exitCode);
         }, this._conf.exitTimeout).unref();
     }
-}
-Testrunner.AbortError = AbortError;
-Testrunner.AssertError = AssertError;
-function getCallSiteForDirectAPI() {
-    const unknownPathStr = '???';
-    const stack = callsites_1.default();
-    for (let i = 0; i < stack.length; i++) {
-        const filePath = stack[i].getFileName();
-        if (filePath === null) {
-            return unknownPathStr;
-        }
-        const basename = path_1.default.basename(filePath);
-        // filtered: 
-        // internal/**/*
-        // **/testrunner.*
-        if (!filePath.startsWith('internal') && basename !== 'testrunner.js') {
-            return stack[i].toString();
-        }
+    setExitCode(code) {
+        this._log.verbose(`setExitCode: ${code}`);
+        process.exitCode = code;
     }
-    return unknownPathStr;
 }
-function ellipsis(s, l = ELLIPSIS_LIMIT) {
-    if (s.length <= l) {
-        return s;
+function getErrorOrigin(err) {
+    if (!err.stack) {
+        return '    at (unknown call site)';
     }
-    return `${s.substr(0, l - 3)}...`;
-}
-async function multiGlobAsync(globs) {
-    let paths = [];
-    for (const glob of globs) {
-        paths = paths.concat(await globAsync(glob));
-    }
-    return paths;
-}
-function getIdFromName(name) {
-    return name.replace(/[^a-z0-9()._-]/gi, '_');
-}
-function prettyMs(ms, opts) {
-    return typeof ms === 'number' && ms >= 0 ? pretty_ms_1.default(ms, opts) : '? ms';
+    return err.stack.split(/[\r\n]/)
+        .slice(1)
+        .filter(s => !/testrunner\.js|node_modules[/\\]|<anonymous>|internal/.test(s))
+        .join('\n');
 }
 exports.default = Testrunner;

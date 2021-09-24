@@ -2,4 +2,3 @@ node_modules
 ts-dist
 dist
 *_temp_*
-run.log

@@ -14,3 +14,4 @@ lint.txt
 *___fatal.png
 .vscode
 # ts-dist/
+run.log

@@ -8,12 +8,6 @@ declare const TEST_STATE: {
     readonly FAILED: "failed";
 };
 declare type TestState = typeof TEST_STATE[keyof typeof TEST_STATE];
-declare class AssertError extends Error {
-    constructor(message: string);
-}
-declare class AbortError extends Error {
-    constructor(message?: string);
-}
 /**
  * test assert API (without before/after side effects, "directAPI")
  */
@@ -71,7 +65,7 @@ interface Test {
     id: string;
     testFn: TestFn;
     state?: TestState;
-    runErrors?: Error[];
+    runErrors?: (Error | string)[];
 }
 export interface TestFn {
     (t: TestAPI, options: {
@@ -127,7 +121,6 @@ export interface TestrunnerConfig {
     assertRetryInterval: number;
     /** regular expression string */
     testFilter: string;
-    outStream: import('stream').Writable;
     /** retry failed tests n times */
     testRetryCount: number;
     /** retry failed tests only if test name matches this filter */
@@ -168,8 +161,6 @@ declare class Testrunner extends EventEmitter {
     directAPI: TestAssertAPIDirect;
     sideEffectAPI: TestAssertAPIDirect;
     tAPI: TestAPI;
-    static AbortError: typeof AbortError;
-    static AssertError: typeof AssertError;
     constructor(conf: Partial<TestrunnerConfig>);
     run(): Promise<void>;
     abort(): Promise<void>;
@@ -212,5 +203,6 @@ declare class Testrunner extends EventEmitter {
     private _screenshot;
     private _runCurrentAfterAssertTasks;
     private _startExitTimeout;
+    private setExitCode;
 }
 export default Testrunner;
