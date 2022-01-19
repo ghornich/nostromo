@@ -131,33 +131,38 @@ class Chromium {
         return this._page.screenshot({ encoding: 'binary' });
     }
     async isVisible(selector) {
-        const result = await this._page.evaluate(function (sel) {
-            // @ts-expect-error
-            const nodes = document.querySelectorAll(sel);
-            if (nodes.length === 0) {
-                return false;
-            }
-            const hasVisible = [...nodes].some(node => {
+        try {
+            return await this._page.evaluate(function (sel) {
                 // @ts-expect-error
-                const computedStyle = window.getComputedStyle(node);
-                return computedStyle.getPropertyValue('display') !== 'none' && computedStyle.getPropertyValue('visibility') !== 'hidden';
-            });
-            if (!hasVisible) {
-                return false;
-            }
-            for (const node of nodes) {
-                const rect = node.getBoundingClientRect();
-                const centerX = rect.left + rect.width / 2;
-                const centerY = rect.top + rect.height / 2;
-                // @ts-expect-error
-                const elementFromPoint = document.elementFromPoint(centerX, centerY);
-                if (elementFromPoint === node || node.contains(elementFromPoint)) {
-                    return true;
+                const nodes = document.querySelectorAll(sel);
+                if (nodes.length === 0) {
+                    return false;
                 }
-            }
+                const hasVisible = [...nodes].some(node => {
+                    // @ts-expect-error
+                    const computedStyle = window.getComputedStyle(node);
+                    return computedStyle.getPropertyValue('display') !== 'none' && computedStyle.getPropertyValue('visibility') !== 'hidden';
+                });
+                if (!hasVisible) {
+                    return false;
+                }
+                for (const node of nodes) {
+                    const rect = node.getBoundingClientRect();
+                    const centerX = rect.left + rect.width / 2;
+                    const centerY = rect.top + rect.height / 2;
+                    // @ts-expect-error
+                    const elementFromPoint = document.elementFromPoint(centerX, centerY);
+                    if (elementFromPoint === node || node.contains(elementFromPoint)) {
+                        return true;
+                    }
+                }
+                return false;
+            }, selector);
+        }
+        catch (err) {
+            this._log.warn(err);
             return false;
-        }, selector);
-        return result;
+        }
     }
     async waitForVisible(selector, options = {}) {
         options.timeout = options.timeout !== undefined ? options.timeout : DEFAULT_VISIBILITY_TIMEOUT;
