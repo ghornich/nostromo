@@ -21,8 +21,8 @@ exports = module.exports = function (config) {
                 listener: function (recorderInstance) {
                     // e.g. insert a command
                     // recorderInstance.addCommand({ type: 'focus', selector: '.password' });
-                }
-            }
+                },
+            },
             // ...
         ],
 
@@ -32,8 +32,8 @@ exports = module.exports = function (config) {
                 filename: 'myFilename.abc',
                 fn: function (commands) {
                     // ...
-                }
-            }
+                },
+            },
             // ...
         ],
 
@@ -41,19 +41,19 @@ exports = module.exports = function (config) {
 
         mouseoverSelectors: [
             '.highlight a',
-            '#add-dialog .close-button'
+            '#add-dialog .close-button',
         ],
 
         uniqueSelectorOptions: {
             ignoredClasses: [
                 'class1',
-                'class2'
+                'class2',
                 // ...
             ],
             // useIds: true/false,
             // preferredClass: /some-classname-[^ ]+/,
             // useClosestParentWithPreferredClass: true/false,
             // preferredClassParentLimit: 5
-        }
+        },
     };
 };

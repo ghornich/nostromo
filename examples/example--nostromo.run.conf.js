@@ -16,13 +16,13 @@ exports = module.exports = function (config) {
                 name: 'Chrome',
                 path: 'C:/Program Files (x86)/Google/Chrome/Application/chrome.exe',
                 width: 1024,
-                height: 750
+                height: 750,
             }),
             new config.browsers.Firefox({
                 name: 'Firefox',
-                path: 'C:/Program Files (x86)/Mozilla Firefox/firefox.exe'
+                path: 'C:/Program Files (x86)/Mozilla Firefox/firefox.exe',
                 // no width/height: stretch to maximum size
-            })
+            }),
             // ...
         ],
 
@@ -38,31 +38,31 @@ exports = module.exports = function (config) {
                 afterSuite: async function () {
                 },
 
-                beforeTest: async function (t) {
+                beforeTest: async function () {
                 },
 
-                afterTest: async function (t) {
+                afterTest: async function () {
                 },
 
-                beforeFirstCommand: async function (t) {
+                beforeFirstCommand: async function () {
                 },
 
-                beforeCommand: async function (t) {
+                beforeCommand: async function () {
                 },
 
-                afterCommand: async function (t) {
+                afterCommand: async function () {
                 },
 
-                afterLastCommand: async function (t) {
+                afterLastCommand: async function () {
                 },
 
-                beforeAssert: async function (t) {
+                beforeAssert: async function () {
                 },
 
-                afterAssert: async function (t) {
+                afterAssert: async function () {
                 },
-            }
+            },
             // ...
-        ]
+        ],
     };
 };

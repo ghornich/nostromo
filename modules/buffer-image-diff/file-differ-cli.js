@@ -1,6 +1,5 @@
 // @ts-nocheck
 const fs = require('fs');
-const pathlib = require('path');
 const util = require('util');
 const glob = util.promisify(require('glob'));
 const args = require('minimist')(process.argv.slice(2));
@@ -8,8 +7,6 @@ const PNG = require('pngjs').PNG; // TODO deprecated
 const bufferImageDiff = require('./image-diff');
 
 const OUTPUT_DIR_NAME = 'diff-results';
-const OUTPUT_DIR_ABS_PATH = pathlib.resolve(OUTPUT_DIR_NAME);
-
 
 if (args._.length === 0 || args.h || args.help) {
     console.log('');

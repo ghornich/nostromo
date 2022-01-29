@@ -1,4 +1,4 @@
-import { IBrowser } from "../../../src";
+import { IBrowser } from '../../../src';
 
 export class DummyBrowser implements IBrowser {
     name = 'DummyBrowser';

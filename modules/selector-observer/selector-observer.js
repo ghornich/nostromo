@@ -2,8 +2,8 @@
 
 'use strict';
 
-var assert = require('assert');
-var $ = require('jquery'); $.noConflict();
+const assert = require('assert');
+const $ = require('jquery'); $.noConflict();
 
 exports = module.exports = SelectorObserver;
 
@@ -32,11 +32,11 @@ function SelectorObserver(conf) {
 }
 
 SelectorObserver.prototype._onMutation = function () {
-    var self = this;
+    const self = this;
 
     self._conf.observeList.forEach(function (item, i) {
-        var prevIsVisible = self._selectorPrevVisible[i];
-        var isVisible = $(item.selector).is(':visible');
+        const prevIsVisible = self._selectorPrevVisible[i];
+        const isVisible = $(item.selector).is(':visible');
 
         // console.log('[SelectorObserver] '+item.selector+(isVisible?' visible':' not visible'))
 

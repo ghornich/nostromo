@@ -2,7 +2,7 @@ const pathlib = require('path');
 const createServer = require('../utils/create-server').default;
 const Chromium = require('../../modules/browsers/chromium').default;
 
-module.exports = function (config) {
+module.exports = function (/* config */) {
     return {
         logLevel: 'info',
         testBailout: true,
