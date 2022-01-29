@@ -714,8 +714,17 @@ class Testrunner extends EventEmitter {
 
         for (const path of testFilePaths) {
             const absPath = pathlib.resolve(path);
+            const module = require(absPath);
 
-            require(absPath)(testRegistrar, this);
+            if (typeof module === 'function') {
+                module(testRegistrar, this); // commonjs
+            }
+            else if (typeof module.default === 'function') {
+                module.default(testRegistrar, this); // es6
+            }
+            else {
+                throw new Error(`Error while parsing test file: "${absPath}"`);
+            }
         }
 
         return tests;
