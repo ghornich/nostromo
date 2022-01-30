@@ -4,13 +4,17 @@
   "description": "",
   "main": "ts-dist/src/index.js",
   "types": "ts-dist/src/index.d.ts",
+  "files": [
+    "ts-dist/**/*"
+  ],
   "scripts": {
     "build": "tsc",
     "watch": "tsc --watch",
     "lint": "eslint . --ext .ts,.js,.jsx",
     "test": "npm run unit-test && npm run self-test",
     "unit-test": "jest --runInBand",
-    "self-test": "node ts-dist/src/cli.js --run -c ts-dist/test/self-tests/nostromo.run.conf.js"
+    "self-test": "node ts-dist/src/cli.js --run -c ts-dist/test/self-tests/nostromo.run.conf.js",
+    "prepare": "npm run build"
   },
   "author": "ghornich",
   "dependencies": {
