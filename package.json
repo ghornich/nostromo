@@ -7,6 +7,9 @@
   "files": [
     "ts-dist/**/*"
   ],
+  "engines": {
+    "node": ">=14.8.3"
+  },
   "scripts": {
     "build": "tsc",
     "watch": "tsc --watch",
