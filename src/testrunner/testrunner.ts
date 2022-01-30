@@ -1,12 +1,9 @@
 import isEqual from 'lodash.isequal';
-import fs from 'fs';
-import { promises as fsp } from 'fs';
+import fs, { promises as fsp } from 'fs';
 import pathlib from 'path';
 import util from 'util';
 import assert from 'assert';
 import { EventEmitter } from 'events';
-import mkdirp from 'mkdirp';
-const mkdirpAsync = util.promisify(mkdirp);
 import { Bitmap } from '../../modules/pnglib/pnglib';
 import bufferImageDiff, { ImageDiffResult } from '../../modules/buffer-image-diff/image-diff';
 import delay from '../../modules/delay/delay';
@@ -1063,7 +1060,7 @@ class Testrunner extends EventEmitter {
         if (this._currentBeforeAssert) {
             await this._currentBeforeAssert(this.directAPI);
         }
-        await mkdirpAsync(refImgDir, {});
+        await fsp.mkdir(refImgDir, { recursive: true });
 
         let screenshotBitmap = await Bitmap.from(await this._currentBrowser.screenshot({ selector }));
 
@@ -1131,8 +1128,8 @@ class Testrunner extends EventEmitter {
             }
         }
 
-        await mkdirpAsync(failedImgDir, {});
-        await mkdirpAsync(this._conf.referenceDiffsDir, {});
+        await fsp.mkdir(failedImgDir, { recursive: true });
+        await fsp.mkdir(this._conf.referenceDiffsDir, { recursive: true });
 
         for (const [i, diffResult] of diffResults.entries()) {
             const failedImage = screenshots[i];
