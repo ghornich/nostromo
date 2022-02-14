@@ -1,10 +1,5 @@
 import assert from 'assert';
 
-class DifferentSizeError extends Error {}
-
-// a, b: Image
-// return {same:Boolean, difference:Number}
-
 /**
  * @typedef {{ width: number, height: number, data: Buffer }} Bitmap
  */
@@ -46,7 +41,7 @@ function imageDiff(a, b, opts) {
     opts.noiseLineHeightThreshold ??= 2;
 
     if (a.width !== b.width || a.height !== b.height) {
-        throw new DifferentSizeError(`width or height are different (A: ${a.width}x${a.height}, B: ${b.width}x${b.height})`);
+        return { same: false, difference: a.width * a.height, totalChangedPixels: a.width * a.height, diffBufferIndexes: [] };
     }
 
     if (a.data.equals(b.data)) {
