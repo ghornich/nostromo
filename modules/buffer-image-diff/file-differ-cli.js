@@ -31,7 +31,7 @@ else {
  * @param {String} changedRootDir
  */
 async function fileDiffer(conf) {
-    const changedFilePaths = await glob(conf.changedRootDir.replace(/[\\\/]+$/, '') + '/**/*.png');
+    const changedFilePaths = await glob(conf.changedRootDir.replace(/[\\/]+$/, '') + '/**/*.png');
 
     try {
         fs.mkdirSync(OUTPUT_DIR_NAME);
@@ -43,7 +43,7 @@ async function fileDiffer(conf) {
 
     for (const changedFilePath of changedFilePaths) {
         console.log(`Scanning ${changedFilePath}`);
-        const baseFilePath = changedFilePath.replace(/[^\\\/]+/, conf.baseRootDir);
+        const baseFilePath = changedFilePath.replace(/[^\\/]+/, conf.baseRootDir);
 
         const baseImg = PNG.sync.read(fs.readFileSync(baseFilePath));
         const changedImg = PNG.sync.read(fs.readFileSync(changedFilePath));
@@ -63,8 +63,8 @@ async function fileDiffer(conf) {
                 baseImg.data[diffIndex + 2] = 0;
             }
 
-            const outputFilePath = changedFilePath.replace(/[^\\\/]+/, OUTPUT_DIR_NAME);
-            const outputDirPath = outputFilePath.replace(/[\\\/][^\\\/]+$/, '');
+            const outputFilePath = changedFilePath.replace(/[^\\/]+/, OUTPUT_DIR_NAME);
+            const outputDirPath = outputFilePath.replace(/[\\/][^\\/]+$/, '');
 
             try {
                 fs.mkdirSync(outputDirPath);

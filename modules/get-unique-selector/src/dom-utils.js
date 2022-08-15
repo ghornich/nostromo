@@ -1,6 +1,6 @@
 'use strict';
 
-var DOMUtils = exports;
+const DOMUtils = exports;
 
 DOMUtils.hasId = function (node) {
     return Boolean(node && typeof node.id === 'string' && node.id.trim().length > 0);

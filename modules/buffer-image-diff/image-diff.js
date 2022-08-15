@@ -18,7 +18,7 @@ import assert from 'assert';
  * @property {number} options.imageThreshold
  * @property {number} [options.equivalenceThreshold = 4]
  * @property {number} [options.grayscaleThreshold = 0] - Ignore grayscale differences. Zero disables this threshold
- * @property {number} [options.includeDiffBufferIndexes = false]
+ * @property {boolean} [options.includeDiffBufferIndexes = false]
  * @property {number} [options.noiseLineWidthThreshold = 2] - Ignore antialiasing differences by removing diff lines of certain width/height
  * @property {number} [options.noiseLineHeightThreshold = 2]
  */

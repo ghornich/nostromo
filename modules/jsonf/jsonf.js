@@ -2,7 +2,7 @@
 
 // TODO support ES6 arrow fns
 
-var JSONF = exports;
+const JSONF = exports;
 
 JSONF.stringify = function (o) {
     return JSON.stringify(o, function (key, val) {
@@ -54,7 +54,7 @@ function parseFunction(s) {
 }
 
 function parseRegExp(s) {
-    var matches = /\/(.+)\/([gimuy]*)/.exec(s);
+    const matches = /\/(.+)\/([gimuy]*)/.exec(s);
 
     return new RegExp(matches[1], matches[2]);
 }

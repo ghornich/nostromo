@@ -113,6 +113,7 @@ class SelectorElement {
                 let match;
                 const matches = [];
 
+                // eslint-disable-next-line no-cond-assign
                 while (match = regex.exec(classNames)) {
                     matches.push(match[0]);
                 }

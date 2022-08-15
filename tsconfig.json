@@ -10,7 +10,7 @@
 		"esModuleInterop": true,
 		"outDir": "./ts-dist",
         "declaration": true,
-		"newLine": "lf"
+		"newLine": "lf",
 	},
 	"include": ["src/", "modules/", "test/"],
 	"exclude": ["node_modules/", "modules/**/dist/", "src/recorder/", "dist/", "ts-dist/"]
