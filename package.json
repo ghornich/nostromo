@@ -11,6 +11,7 @@
     "node": ">=14.8.3"
   },
   "scripts": {
+    "clean": "npx rimraf ts-dist",
     "build": "tsc",
     "watch": "tsc --watch",
     "lint": "eslint . --ext .ts,.js,.jsx --ignore-pattern examples --ignore-pattern recorder",
