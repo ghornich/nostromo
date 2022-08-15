@@ -5,21 +5,14 @@ import util from 'util';
 import assert from 'assert';
 import { EventEmitter } from 'events';
 import { Bitmap } from '../../modules/pnglib/pnglib';
-import bufferImageDiff, { ImageDiffResult } from '../../modules/buffer-image-diff/image-diff';
+import bufferImageDiff, { ImageDiffOptions, ImageDiffResult } from '../../modules/buffer-image-diff/image-diff';
 import delay from '../../modules/delay/delay';
 import type { IBrowser } from '../../modules/browsers/browser-interface';
-import type { ImageDiffOptions } from '../../modules/buffer-image-diff/image-diff';
 import { logger, ChildLogger } from '../logging/logger';
 import { AbortError, ScreenshotError, BailoutError, CommandError, TestBailoutError, TestFailedError } from './errors';
 import { ellipsis, getIdFromName, multiGlobAsync, prettyMs } from '../utils';
-
-const TEST_STATE = {
-    SCHEDULED: 'scheduled',
-    PASSED: 'passed',
-    FAILED: 'failed',
-} as const;
-
-type TestState = typeof TEST_STATE[keyof typeof TEST_STATE];
+import type { TestrunnerConfig, Suite, Test, Command, TestRunReport, DirectAPICallback, BeforeAfterCommandCallback, TestAssertAPIDirect, TestAPI, TestFn } from '../../types';
+import { TEST_STATE } from '../../constants';
 
 const DEFAULT_TEST_NAME = '(Unnamed test)';
 
@@ -31,141 +24,7 @@ const DEFAULT_REF_DIFFS_DIR = 'reference-diffs';
 
 const REPORT_FILE_NAME = 'test-run-report.json';
 
-/**
- * test assert API (without before/after side effects, "directAPI")
- */
-interface TestAssertAPIDirect {
-    getValue: Testrunner['_getValueDirect']
-    setValue: Testrunner['_setValueDirect']
-    setFileInput: Testrunner['_setFileInputDirect']
-    click: Testrunner['_clickDirect']
-    waitForVisible: Testrunner['_waitForVisibleDirect']
-    waitWhileVisible: Testrunner['_waitWhileVisibleDirect']
-    isVisible: Testrunner['_isVisibleDirect']
-    focus: Testrunner['_focusDirect']
-    scroll: Testrunner['_scrollDirect']
-    scrollTo: Testrunner['_scrollToDirect']
-    delay: Testrunner['_delay']
-    comment: Testrunner['_comment']
-    /** @deprecated Use screenshot instead */
-    assert: Testrunner['_screenshot']
-    screenshot: Testrunner['_screenshot']
-    pressKey: Testrunner['_pressKeyDirect']
-    mouseover: Testrunner['_mouseoverDirect']
-    execFunction: Testrunner['_execFunctionDirect']
-    execCommands: Testrunner['_execCommandsDirect']
-}
-
-interface BeforeAfterCommandCallback {
-    (t: TestAssertAPIDirect, command?: { type: Command['type'] }): Promise<void>
-}
-
-interface DirectAPICallback {
-    (t: TestAssertAPIDirect): Promise<void>
-}
-
-interface TestrunnerCallback {
-    (testrunner: Testrunner): Promise<void>
-}
-
-export interface Suite {
-    name: string
-    appUrl: string
-    /** relative/absolute paths and/or globs */
-    testFiles?: string[]
-    tests?: Test[]
-    beforeSuite?: Function
-    afterSuite?: Function
-    beforeTest?: Function
-    afterTest?: Function
-    beforeCommand?: BeforeAfterCommandCallback
-    beforeFirstCommand?: BeforeAfterCommandCallback
-    afterCommand?: BeforeAfterCommandCallback
-    afterLastCommand?: DirectAPICallback
-    beforeAssert?: DirectAPICallback
-    afterAssert?: DirectAPICallback
-}
-
-interface Test {
-    name: string
-    id: string
-    testFn: TestFn
-    state?: TestState
-    runErrors?: (Error | string)[]
-}
-
-export interface TestFn {
-    (t: TestAPI, options: { suite: Suite, directAPI: TestAssertAPIDirect, browser: IBrowser }): Promise<void>
-}
-
-interface screenshotItem {
-    errorImage: { path: string, relativePath: string }
-    diffImage: { path: string, relativePath: string }
-    referenceImage: { path: string, relativePath: string }
-    attempt: number
-    assertIndex: number
-    testName: string
-}
-
-export interface TestRunReport {
-    screenshots: screenshotItem[]
-    testsCount: number | null
-    passedCount: number | null
-    failedCount: number | null
-    failedTestNames: string[]
-    runTimeMs: number | null
-    runtimes: Record<string, number>
-    passed: boolean
-}
-
-type Level = 'verbose' | 'debug' | 'info' | 'warn' | 'error';
-
-export interface TestrunnerConfig {
-    fileLogLevel: Level,
-    consoleLogLevel: Level,
-    /** Bailout from a single test if an assert fails */
-    testBailout: boolean
-    /** Bailout from the entire test program if an assert fails */
-    bailout: boolean
-    referenceScreenshotsDir: string
-    referenceErrorsDir: string
-    referenceDiffsDir: string
-    workspaceDir: string
-    browsers: IBrowser[]
-    /** options for the built-in, screenshot-based asserter */
-    imageDiffOptions: ImageDiffOptions
-    suites: Suite[]
-    assertRetryCount: number
-    assertRetryInterval: number
-    /** regular expression string */
-    testFilter: string
-    /** retry failed tests n times */
-    testRetryCount: number
-    /** retry failed tests only if test name matches this filter */
-    testRetryFilter: RegExp
-    commandRetryCount: number
-    commandRetryInterval: number
-    onCommandError: TestrunnerCallback
-    onAssertError: TestrunnerCallback
-    exitTimeout: number
-}
-
-
-interface TestAPI extends TestAssertAPIDirect {
-    equal: Testrunner['_equal']
-    equals: Testrunner['_equal']
-}
-
-interface Command {
-    type: keyof TestAssertAPIDirect;
-    selector: string;
-    value?: any;
-    pollInterval?: number;
-    timeout?: number;
-    initialDelay?: number;
-}
-
-class Testrunner extends EventEmitter {
+export default class Testrunner extends EventEmitter {
     private _conf: TestrunnerConfig;
     private _log: ChildLogger;
     private _isRunning: boolean;
@@ -188,7 +47,7 @@ class Testrunner extends EventEmitter {
     constructor(conf: Partial<TestrunnerConfig>) {
         super();
 
-        const defaultConf = {
+        const defaultConf: TestrunnerConfig = {
             fileLogLevel: 'debug',
             consoleLogLevel: 'info',
             testBailout: true,
@@ -209,36 +68,20 @@ class Testrunner extends EventEmitter {
             commandRetryCount: 4,
             commandRetryInterval: 250,
             exitTimeout: 5 * 60000,
-            imageDiffOptions: {},
         };
 
-        const defaultImageDiffOptions = {
+        const defaultImageDiffOptions: ImageDiffOptions = {
             colorThreshold: 3,
             imageThreshold: 20,
             includeDiffBufferIndexes: true,
         };
 
-        for (const key of Reflect.ownKeys(conf)) {
-            if (conf[key as keyof TestrunnerConfig] === undefined) {
-                delete conf[key as keyof TestrunnerConfig];
-            }
-        }
-
-        this._conf = Object.assign(defaultConf, conf);
-        this._conf.imageDiffOptions = Object.assign({}, defaultImageDiffOptions, conf.imageDiffOptions);
+        this._conf = { ...defaultConf, ...conf };
+        this._conf.imageDiffOptions = { ...defaultImageDiffOptions, ...conf.imageDiffOptions };
 
         const logFilePath = pathlib.resolve(this._conf.workspaceDir, 'run.log');
         logger.init(this._conf.consoleLogLevel, this._conf.fileLogLevel, logFilePath);
         this._log = logger.childLogger('Testrunner');
-
-        // check for configs not in defaultConf
-        const confKeys = Object.keys(conf);
-        const unknownKeys = confKeys.filter(key => !(key in defaultConf));
-
-        if (unknownKeys.length > 0) {
-            this._log.warn(`unknown config keys: ${unknownKeys.join(', ')}`);
-        }
-
 
         this._currentBeforeCommand = null;
         this._currentAfterCommand = null;
@@ -302,10 +145,7 @@ class Testrunner extends EventEmitter {
         this.directAPI.execCommands = this._execCommandsDirect.bind(this);
         this.sideEffectAPI.execCommands = this._execCommandsSideEffect.bind(this);
 
-        this.tAPI = Object.assign({}, this.sideEffectAPI, {
-            equal: this._equal.bind(this),
-            equals: this._equal.bind(this),
-        });
+        this.tAPI = { ...this.sideEffectAPI, ...{ equal: this._equal.bind(this), equals: this._equal.bind(this) }, ...this.getTestApiMixinsBound() };
 
         this._assertCount = 0;
 
@@ -1214,6 +1054,20 @@ class Testrunner extends EventEmitter {
         this._log.verbose(`setExitCode: ${code}`);
         process.exitCode = code;
     }
+
+    private getTestApiMixinsBound() {
+        for (const key of Reflect.ownKeys(this._conf.testApiMixins ?? {}) as string[]) {
+            if (!(typeof this._conf.testApiMixins[key] === 'function')) {
+                continue;
+            }
+
+            this._conf.testApiMixins[key] = function (...args) {
+                return this._conf.testApiMixins[key](this.tApi, ...args);
+            }.bind(this);
+        }
+
+        return this._conf.testApiMixins ?? {};
+    }
 }
 
 function getErrorOrigin(err: Error) {
@@ -1226,5 +1080,3 @@ function getErrorOrigin(err: Error) {
     .filter(s => !/testrunner\.js|node_modules[/\\]|<anonymous>|internal/.test(s))
     .join('\n');
 }
-
-export default Testrunner;
