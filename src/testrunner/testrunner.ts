@@ -1061,7 +1061,7 @@ export default class Testrunner extends EventEmitter {
                 continue;
             }
 
-            this._conf.testApiMixins[key] = function (...args) {
+            this.tAPI[key] = function (...args) {
                 return this._conf.testApiMixins[key](this.tApi, ...args);
             }.bind(this);
         }
