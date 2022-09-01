@@ -33,7 +33,7 @@ module.exports = function nostromoConfig(): TestrunnerConfig {
                 await t.click('#show-dialog');
             },
             async addItem(t, itemName) {
-                await t.openAddDialog();
+                await t.mixins.openAddDialog();
                 await t.setValue('#input', itemName);
                 await t.click('#add-btn');
             },

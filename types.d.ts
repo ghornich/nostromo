@@ -45,7 +45,8 @@ interface TestRunReport {
 
 interface TestAPI extends TestAssertAPIDirect {
     equal: Testrunner['_equal']
-    equals: Testrunner['_equal']
+    equals: Testrunner['_equal'],
+    mixins: { [key: string]: any }
 }
 
 interface Command {

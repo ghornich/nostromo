@@ -7,11 +7,11 @@ import { EventEmitter } from 'events';
 import { Bitmap } from '../../modules/pnglib/pnglib';
 import bufferImageDiff, { ImageDiffOptions, ImageDiffResult } from '../../modules/buffer-image-diff/image-diff';
 import delay from '../../modules/delay/delay';
-import type { IBrowser } from '../../modules/browsers/browser-interface';
+import { IBrowser } from '../../modules/browsers/browser-interface';
 import { logger, ChildLogger } from '../logging/logger';
 import { AbortError, ScreenshotError, BailoutError, CommandError, TestBailoutError, TestFailedError } from './errors';
 import { ellipsis, getIdFromName, multiGlobAsync, prettyMs } from '../utils';
-import type { TestrunnerConfig, Suite, Test, Command, TestRunReport, DirectAPICallback, BeforeAfterCommandCallback, TestAssertAPIDirect, TestAPI, TestFn } from '../../types';
+import { TestrunnerConfig, Suite, Test, Command, TestRunReport, DirectAPICallback, BeforeAfterCommandCallback, TestAssertAPIDirect, TestAPI, TestFn } from '../../types';
 import { TEST_STATE } from '../../constants';
 
 const DEFAULT_TEST_NAME = '(Unnamed test)';
@@ -68,6 +68,7 @@ export default class Testrunner extends EventEmitter {
             commandRetryCount: 4,
             commandRetryInterval: 250,
             exitTimeout: 5 * 60000,
+            testApiMixins: {},
         };
 
         const defaultImageDiffOptions: ImageDiffOptions = {
@@ -145,7 +146,7 @@ export default class Testrunner extends EventEmitter {
         this.directAPI.execCommands = this._execCommandsDirect.bind(this);
         this.sideEffectAPI.execCommands = this._execCommandsSideEffect.bind(this);
 
-        this.tAPI = { ...this.sideEffectAPI, ...{ equal: this._equal.bind(this), equals: this._equal.bind(this) }, ...this.getTestApiMixinsBound() };
+        this.tAPI = { ...this.sideEffectAPI, ...{ equal: this._equal.bind(this), equals: this._equal.bind(this) }, mixins: this.getTestApiMixinsBound() };
 
         this._assertCount = 0;
 
@@ -1056,17 +1057,18 @@ export default class Testrunner extends EventEmitter {
     }
 
     private getTestApiMixinsBound() {
+        const tApiMixins = {};
+
         for (const key of Reflect.ownKeys(this._conf.testApiMixins ?? {}) as string[]) {
             if (!(typeof this._conf.testApiMixins[key] === 'function')) {
                 continue;
             }
 
-            this.tAPI[key] = function (...args) {
-                return this._conf.testApiMixins[key](this.tApi, ...args);
-            }.bind(this);
+            tApiMixins[key] = (...args) => this._conf.testApiMixins[key](this.tAPI, ...args);
+
         }
 
-        return this._conf.testApiMixins ?? {};
+        return tApiMixins;
     }
 }
 

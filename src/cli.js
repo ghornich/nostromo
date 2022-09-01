@@ -3,8 +3,6 @@
 /* eslint-disable no-console, max-statements */
 
 const util = require('util');
-const fs = require('fs');
-const statAsync = util.promisify(fs.stat);
 const pathlib = require('path');
 const args = require('minimist')(process.argv.slice(2));
 

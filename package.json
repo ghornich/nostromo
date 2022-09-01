@@ -13,6 +13,7 @@
   "scripts": {
     "clean": "npx rimraf ts-dist",
     "build": "tsc",
+    "qc": "npm run clean && npm run build && npm run test",
     "watch": "tsc --watch",
     "lint": "eslint . --ext .ts,.js,.jsx --ignore-pattern examples",
     "test": "npm run lint && npm run unit-test && npm run self-test",
