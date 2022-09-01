@@ -14,7 +14,7 @@
     "clean": "npx rimraf ts-dist",
     "build": "tsc",
     "watch": "tsc --watch",
-    "lint": "eslint . --ext .ts,.js,.jsx --ignore-pattern examples --ignore-pattern recorder",
+    "lint": "eslint . --ext .ts,.js,.jsx --ignore-pattern examples",
     "test": "npm run lint && npm run unit-test && npm run self-test",
     "unit-test": "jest --runInBand",
     "self-test": "node ts-dist/src/cli.js --run -c ts-dist/test/self-tests/nostromo.run.conf.js",

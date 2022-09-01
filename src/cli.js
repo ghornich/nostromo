@@ -8,18 +8,16 @@ const statAsync = util.promisify(fs.stat);
 const pathlib = require('path');
 const args = require('minimist')(process.argv.slice(2));
 
-const DEFAULT_REC_CFG_FILE = 'nostromo.record.conf.js';
 const DEFAULT_RUN_CFG_FILE = 'nostromo.run.conf.js';
 
 const HELP = `Nostromo usage:
   Modes:
-    --record (--rec): start recorder server
     --run: runs test
       --filter: filter tests by name
     --help (-h): prints this page
   
   Configuration:
-    --config (-c): path to run/record config file
+    --config (-c): path to run config file
   
   Development
     --debug: shows runtime information about nostromo
@@ -32,50 +30,7 @@ const HELP = `Nostromo usage:
 run();
 
 async function run() {
-    if (args.record || args.rec) {
-        const configPath = args.config || args.c || DEFAULT_REC_CFG_FILE;
-        let fileConf = {};
-
-        try {
-            await statAsync(configPath);
-            const absConfigPath = pathlib.resolve(configPath);
-            process.chdir(pathlib.dirname(absConfigPath));
-            const configFn = require(absConfigPath);
-
-            fileConf = await configFn();
-        }
-        catch (e) {
-            if (e.code === 'ENOENT') {
-                console.log('WARNING: recorder config file not found. Using default settings.');
-            }
-            else {
-                console.log(e.message);
-                process.exit(1);
-            }
-        }
-
-        const defaultConf = {
-            recorderAppPort: 7700,
-            logLevel: 'warn',
-        };
-
-        const conf = Object.assign({}, defaultConf, fileConf, args);
-
-        if (args.debug) {
-            console.log(util.inspect(conf, true, 10));
-        }
-
-        const RecorderServer = require('./recorder/recorder-server').default;
-        const recServer = new RecorderServer(conf);
-
-        recServer.start();
-
-        process.on('SIGINT', () => {
-            console.log('Stopping...');
-            recServer.stop();
-        });
-    }
-    else if (args.run) {
+    if (args.run) {
         try {
 
             const configPath = args.config || args.c || DEFAULT_RUN_CFG_FILE;

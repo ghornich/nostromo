@@ -41,17 +41,6 @@ module.exports = function nostromoConfig(): TestrunnerConfig {
 
         suites: [
             {
-                name: 'getUniqueSelector',
-                appUrl: 'http://localhost:31667/test/self-tests/get-unique-selector/test.html',
-                testFiles: ['get-unique-selector/test.js'],
-                beforeTest: async function () {
-                    this.server = await createServer({ dirToServe: pathlib.resolve(__dirname, '../../../'), port: 31667 });
-                },
-                afterTest: async function () {
-                    return new Promise(resolve => this.server.close(resolve));
-                },
-            },
-            {
                 name: 'test-testapp',
                 appUrl: 'http://localhost:31667/index.html',
                 testFiles: ['./test-testapp.js'],
