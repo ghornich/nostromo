@@ -29,3 +29,10 @@ jobs:
     - run: npm ci
     - run: npm run build --if-present
     - run: npm run self-test
+    - uses: actions/upload-artifact@v3
+      if: failure()
+      with:
+        name: self-test-artifact-node ${{ matrix.node-version }}
+        path: |
+          test/self-tests/reference-diffs
+          test/self-tests/reference-errors
