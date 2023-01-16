@@ -1,4 +1,4 @@
-import puppeteer from 'puppeteer';
+import puppeteer, { Page } from 'puppeteer';
 import type { IBrowser } from './browser-interface';
 import { ChildLogger, logger } from '../../src/logging/logger';
 const delay = require('../delay/delay');
@@ -24,7 +24,6 @@ type PuppeteerConsoleEvent = 'log' | 'debug' | 'info' | 'error' | 'warning' | 'd
 export default class Chromium implements IBrowser {
     private _options: ChromiumOptions
     private _browser: puppeteer.Browser
-    private _page: puppeteer.Page
     private _puppeteer: typeof puppeteer
     private _log: ChildLogger;
 
@@ -35,7 +34,6 @@ export default class Chromium implements IBrowser {
     constructor(options: ChromiumOptions) {
         this._options = { ...DEFAULT_OPTIONS, ...options };
         this._browser = null;
-        this._page = null;
         this._puppeteer = options.puppeteer ?? puppeteer;
         this._log = logger.childLogger('Chromium');
     }
@@ -57,9 +55,7 @@ export default class Chromium implements IBrowser {
             ],
         });
 
-        this._page = (await this._browser.pages())[0];
-
-        this._page.on('console', event => {
+        (await this.getPage()).on('console', event => {
             const type: PuppeteerConsoleEvent = event.type();
             const message = `ConsolePipe - ${event.type()} ${event.text()}`;
             if (type === 'error') {
@@ -91,42 +87,42 @@ export default class Chromium implements IBrowser {
     }
 
     async navigateTo(url: string) {
-        await this._page.goto(url);
+        await (await this.getPage()).goto(url);
     }
 
     async setViewport(options: { width: number, height: number }) {
-        await this._page.setViewport(options);
+        await (await this.getPage()).setViewport(options);
     }
 
     async click(selector: string) {
-        await this._page.click(selector);
+        await (await this.getPage()).click(selector);
     }
 
     async focus(selector: string) {
-        await this._page.focus(selector);
+        await (await this.getPage()).focus(selector);
     }
 
     async hover(selector: string) {
-        await this._page.hover(selector);
+        await (await this.getPage()).hover(selector);
     }
 
     async type(selector: string, text: string) {
-        await this._page.type(selector, text);
+        await (await this.getPage()).type(selector, text);
     }
 
     async pressKey(keyName: puppeteer.KeyInput) {
-        await this._page.keyboard.press(keyName);
+        await (await this.getPage()).keyboard.press(keyName);
     }
 
     async scroll(selector: string, scrollTop: number) {
-        await this._page.evaluate(function (sel, sTop) {
+        await (await this.getPage()).evaluate(function (sel, sTop) {
             // @ts-expect-error
             document.querySelector(sel).scrollTop = sTop;
         }, selector, scrollTop);
     }
 
     async scrollIntoView(selector: string) {
-        await this._page.evaluate(function (sel) {
+        await (await this.getPage()).evaluate(function (sel) {
             // @ts-expect-error
             document.querySelector(sel).scrollIntoView();
         }, selector);
@@ -134,11 +130,11 @@ export default class Chromium implements IBrowser {
 
     async execFunction(fn: Function, ...args: any[]): Promise<any> {
         // @ts-expect-error
-        return this._page.evaluate(fn, ...args);
+        return (await this.getPage()).evaluate(fn, ...args);
     }
 
     async getValue(selector: string): Promise<string|boolean> {
-        return this._page.evaluate(function (sel) {
+        return (await this.getPage()).evaluate(function (sel) {
             // @ts-expect-error
             const node = document.querySelector(sel);
 
@@ -159,8 +155,10 @@ export default class Chromium implements IBrowser {
     }
 
     async screenshot({ selector }: { selector?: string } = {}): Promise<Buffer> {
+        const page = await this.getPage();
+
         if (selector) {
-            const elem = await this._page.$(selector);
+            const elem = await page.$(selector);
             if (elem === null) {
                 throw new Error(`screenshot: selector not found: ${selector}`);
             }
@@ -168,12 +166,12 @@ export default class Chromium implements IBrowser {
             return elem.screenshot({ encoding: 'binary' }) as Promise<Buffer>;
         }
 
-        return this._page.screenshot({ encoding: 'binary' }) as Promise<Buffer>;
+        return page.screenshot({ encoding: 'binary' }) as Promise<Buffer>;
     }
 
     async isVisible(selector: string): Promise<boolean> {
         try {
-            return await this._page.evaluate(function (sel) {
+            return await (await this.getPage()).evaluate(function (sel) {
             // @ts-expect-error
                 const nodes: NodeList = document.querySelectorAll(sel);
 
@@ -257,5 +255,9 @@ export default class Chromium implements IBrowser {
 
             await delay(DEFAULT_WAIT_POLL_INTERVAL);
         }
+    }
+
+    private async getPage(): Promise<Page> {
+        return (await this._browser.pages())[0];
     }
 }
