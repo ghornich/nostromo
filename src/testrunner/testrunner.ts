@@ -735,8 +735,8 @@ export default class Testrunner extends EventEmitter {
                     }
                 }
 
-                // @ts-expect-error FIXME implementation leak, don't use _page, maybe move setFileInput to BrowserInterface
-                const fileChooserPromise = this._currentBrowser._page.waitForFileChooser();
+                // @ts-expect-error FIXME implementation leak, don't use getPage, maybe move setFileInput to BrowserInterface
+                const fileChooserPromise = (await this._currentBrowser.getPage()).waitForFileChooser();
                 await this._currentBrowser.click(selector);
                 await (await fileChooserPromise).accept([filePath]);
             }, []);
