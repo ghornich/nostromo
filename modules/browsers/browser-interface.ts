@@ -1,3 +1,6 @@
+import { WaitForOptions } from 'puppeteer';
+
+
 /**
  * Responsible for the low-level control of a browser
  */
@@ -7,7 +10,7 @@ export interface IBrowser {
     // control
     start(): Promise<void>,
     stop(): Promise<void>,
-    navigateTo(url: string): Promise<void>,
+    navigateTo(url: string, options?: WaitForOptions & { referer?: string; referrerPolicy?: string; }): Promise<void>,
     setViewport(options: { width: number, height: number }): Promise<void>,
 
     // commands

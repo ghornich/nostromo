@@ -1,6 +1,7 @@
 import puppeteer, { Page } from 'puppeteer';
 import type { IBrowser } from './browser-interface';
 import { ChildLogger, logger } from '../../src/logging/logger';
+import { WaitForOptions } from 'puppeteer';
 const delay = require('../delay/delay');
 
 const DEFAULT_OPTIONS = { name: 'chromium', headless: true };
@@ -86,8 +87,8 @@ export default class Chromium implements IBrowser {
         await Promise.all(pages.map(page => page.close()));
     }
 
-    async navigateTo(url: string) {
-        await (await this.getPage()).goto(url);
+    async navigateTo(url: string, options?: WaitForOptions & { referer?: string; referrerPolicy?: string; }) {
+        await (await this.getPage()).goto(url, options);
     }
 
     async setViewport(options: { width: number, height: number }) {
