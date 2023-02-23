@@ -2,6 +2,7 @@ import type { ImageDiffOptions } from './modules/buffer-image-diff/image-diff';
 import type { IBrowser } from './modules/browsers/browser-interface';
 import type Testrunner from './src/testrunner';
 import { TEST_STATE } from './constants';
+import type { PuppeteerLifeCycleEvent } from 'puppeteer';
 
 type LogLevel = 'verbose' | 'debug' | 'info' | 'warn' | 'error';
 
@@ -94,6 +95,7 @@ interface Test {
 interface Suite {
     name: string
     appUrl: string
+    waitUntil?: PuppeteerLifeCycleEvent
     /** relative/absolute paths and/or globs */
     testFiles?: string[]
     tests?: Test[]

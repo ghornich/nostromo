@@ -344,6 +344,7 @@ export default class Testrunner extends EventEmitter {
 
     private async _runSuite(suite: Suite) {
         this._log.verbose(`running suite: ${suite.name || DEFAULT_SUITE_NAME}`);
+        this._log.info('Suite waitUntil: ' + suite.waitUntil);
 
         for (const test of suite.tests) {
             if (this._isAborting) {
@@ -460,7 +461,7 @@ export default class Testrunner extends EventEmitter {
 
         let testStartTime = 0;
 
-        await this._currentBrowser.navigateTo(suite.appUrl);
+        await this._currentBrowser.navigateTo(suite.appUrl, { waitUntil: suite.waitUntil ?? 'load' });
 
         if (suite.beforeFirstCommand) {
             await suite.beforeFirstCommand(this.directAPI);
