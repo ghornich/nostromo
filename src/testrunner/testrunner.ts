@@ -713,7 +713,7 @@ export default class Testrunner extends EventEmitter {
         }
     }
 
-    private async _setFileInputDirect(selector: string, filePath: string, options?: { waitForVisible?: boolean, checkSelectorType?: boolean }) {
+    private async _setFileInputDirect(selector: string, filePath: string[], options?: { waitForVisible?: boolean, checkSelectorType?: boolean }) {
         this._log.verbose(`setFileInput: "${selector}", "${filePath}"`);
 
         const opts = { ...{ waitForVisible: true, checkSelectorType: true }, ...options };
