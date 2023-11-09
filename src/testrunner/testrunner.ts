@@ -713,7 +713,7 @@ export default class Testrunner extends EventEmitter {
         }
     }
 
-    private async _setFileInputDirect(selector: string, filePath: string, options?: { waitForVisible?: boolean, checkSelectorType?: boolean }) {
+    private async _setFileInputDirect(selector: string, filePath: string[], options?: { waitForVisible?: boolean, checkSelectorType?: boolean }) {
         this._log.verbose(`setFileInput: "${selector}", "${filePath}"`);
 
         const opts = { ...{ waitForVisible: true, checkSelectorType: true }, ...options };
@@ -739,7 +739,7 @@ export default class Testrunner extends EventEmitter {
                 // @ts-expect-error FIXME implementation leak, don't use getPage, maybe move setFileInput to BrowserInterface
                 const fileChooserPromise = (await this._currentBrowser.getPage()).waitForFileChooser();
                 await this._currentBrowser.click(selector);
-                await (await fileChooserPromise).accept([filePath]);
+                await (await fileChooserPromise).accept(filePath);
             }, []);
         }
         catch (err) {
