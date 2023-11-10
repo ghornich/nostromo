@@ -12,6 +12,6 @@
         "declaration": true,
 		"newLine": "lf",
 	},
-	"include": ["src/", "modules/", "test/"],
+	"include": ["src/", "modules/", "test/", "node_modules/puppeteer/**/*.d.ts"],
 	"exclude": ["node_modules/", "modules/**/dist/", "src/recorder/", "dist/", "ts-dist/"]
 }
