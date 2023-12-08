@@ -415,7 +415,8 @@ export default class Testrunner extends EventEmitter {
             this._log.verbose(`started browser "${browser.name}"`);
         }
         catch (error) {
-            this._log.error(`browser "${browser.name}" failed to start`);
+            this._log.error(`browser "${browser.name}" failed to start (${error})`);
+            this._log.error(error.stack);
             throw error;
         }
 
