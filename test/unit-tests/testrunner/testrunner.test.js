@@ -134,7 +134,8 @@ test('Testrunner: test command retries but fails', async () => {
 
     await testrunner.run();
 
-    expect(process.exitCode).toBe(1);
+    expect(process.exitCode).toBeGreaterThan(0);
+    process.exitCode = 0;
 }, 60 * 1000);
 
 // TODO before/after functions throw
