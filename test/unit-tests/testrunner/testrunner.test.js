@@ -8,7 +8,7 @@ import { DummyBrowser } from './dummy-browser';
 
 class NonFunctionalBrowser extends DummyBrowser {
     async start() {
-        throw new Error('browser failed to start');
+        throw new Error('NonFunctionalBrowser: intentionally throw from start()');
     }
 }
 
@@ -139,7 +139,8 @@ test('Testrunner: test command retries but fails', async () => {
 
 // TODO before/after functions throw
 
-test('Testrunner: integration test', async () => {
+// Skipping test for now; not really a unit test, move to self-tests
+test.skip('Testrunner: integration test', async () => {
     const testrunner = new Testrunner({
         testBailout: true,
         bailout: false,
