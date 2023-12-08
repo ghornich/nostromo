@@ -167,6 +167,7 @@ test('Testrunner: integration test', async () => {
                     await t.waitWhileVisible('.loading, #toast');
                 },
                 beforeTest: async function () {
+                    // @ts-expect-error
                     this.server = await createServer({ dirToServe: pathlib.resolve(__dirname, '../../../../test/self-tests/testapp'), port: 16743 });
                 },
                 afterTest: async function () {
