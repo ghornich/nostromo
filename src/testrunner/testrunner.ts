@@ -204,6 +204,7 @@ export default class Testrunner extends EventEmitter {
         catch (error) {
             this.setExitCode(1);
             this._log.error(error);
+            this._log.error(error.stack);
         }
         finally {
             this._log.info(`Finished in ${prettyMs(Date.now() - runStartTime, { verbose: true })}`);
