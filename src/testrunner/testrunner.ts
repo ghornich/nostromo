@@ -204,7 +204,6 @@ export default class Testrunner extends EventEmitter {
         catch (error) {
             this.setExitCode(1);
             this._log.error(error);
-            this._log.error(error.stack);
         }
         finally {
             this._log.info(`Finished in ${prettyMs(Date.now() - runStartTime, { verbose: true })}`);
@@ -416,7 +415,6 @@ export default class Testrunner extends EventEmitter {
         }
         catch (error) {
             this._log.error(`browser "${browser.name}" failed to start (${error})`);
-            this._log.error(error.stack);
             throw error;
         }
 
