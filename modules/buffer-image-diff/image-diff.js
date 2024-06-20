@@ -1,5 +1,7 @@
 import assert from 'assert';
 
+const AA_NOISE_FILTER_MAX_PIXELS = 50_000;
+
 /**
  * @typedef {{ width: number, height: number, data: Buffer }} Bitmap
  */
@@ -86,6 +88,23 @@ function imageDiff(a, b, opts) {
         }
     }
 
+    if (diffPixels.size < AA_NOISE_FILTER_MAX_PIXELS) {
+        antialiasNoiseFilter({diffPixels, opts, width});
+    }
+
+    const totalPxs = a.width * b.width;
+    const imgDifference = diffPixels.size / totalPxs * 1e6;
+    const same = imgDifference <= opts.imageThreshold;
+    const result = { same: same, difference: imgDifference, totalChangedPixels: totalChangedPixels };
+
+    if (opts.includeDiffBufferIndexes) {
+        result.diffBufferIndexes = [...diffPixels.keys()].map(i => i * 4);
+    }
+
+    return result;
+}
+
+function antialiasNoiseFilter({diffPixels, opts, width}){
     const ungroupedDiffs = new Map(diffPixels);
     const boundingBlocks = []; // [pixelIndex, x, y][]
 
@@ -142,17 +161,6 @@ function imageDiff(a, b, opts) {
             iValues.forEach(i => diffPixels.delete(i));
         }
     }
-
-    const totalPxs = a.width * b.width;
-    const imgDifference = diffPixels.size / totalPxs * 1e6;
-    const same = imgDifference <= opts.imageThreshold;
-    const result = { same: same, difference: imgDifference, totalChangedPixels: totalChangedPixels };
-
-    if (opts.includeDiffBufferIndexes) {
-        result.diffBufferIndexes = [...diffPixels.keys()].map(i => i * 4);
-    }
-
-    return result;
 }
 
 export default imageDiff;
