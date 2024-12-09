@@ -155,7 +155,7 @@ export default class Chromium implements IBrowser {
         }, selector);
     }
 
-    async screenshot({ selector }: { selector?: string } = {}): Promise<Buffer> {
+    async screenshot({ selector, fullPage }: { selector?: string, fullPage?: boolean } = {}): Promise<Buffer> {
         const page = await this.getPage();
 
         if (selector) {
@@ -167,7 +167,7 @@ export default class Chromium implements IBrowser {
             return elem.screenshot({ encoding: 'binary' }) as Promise<Buffer>;
         }
 
-        return page.screenshot({ encoding: 'binary' }) as Promise<Buffer>;
+        return page.screenshot({ encoding: 'binary', fullPage }) as Promise<Buffer>;
     }
 
     async isVisible(selector: string): Promise<boolean> {

@@ -891,7 +891,9 @@ export default class Testrunner extends EventEmitter {
         }
     }
 
-    private async _screenshot(selector?: string) {
+    private async _screenshot(options: { selector?: string, fullPage?: boolean } | string = {}) {
+        options = typeof options === 'string' ? { selector: options } : options;
+
         const refImgDir = pathlib.resolve(this._conf.referenceScreenshotsDir, this._currentBrowser.name.toLowerCase(), this._currentTest.id);
         const failedImgDir = pathlib.resolve(this._conf.referenceErrorsDir, this._currentBrowser.name.toLowerCase(), this._currentTest.id);
 
@@ -904,7 +906,7 @@ export default class Testrunner extends EventEmitter {
         }
         await fsp.mkdir(refImgDir, { recursive: true });
 
-        let screenshotBitmap = await Bitmap.from(await this._currentBrowser.screenshot({ selector }));
+        let screenshotBitmap = await Bitmap.from(await this._currentBrowser.screenshot({ selector: options.selector, fullPage: options.fullPage }));
 
         const screenshots = [screenshotBitmap];
         const diffResults: ImageDiffResult[] = [];
@@ -946,7 +948,7 @@ export default class Testrunner extends EventEmitter {
             this._log.verbose(`screenshot assert failed: ${refImgPathRelative}, ppm: ${formattedPPM}, totalChangedPixels: ${imgDiffResult.totalChangedPixels}, attempt#: ${assertAttempt}`);
 
             if (assertAttempt < assertRetryMaxAttempts) {
-                screenshotBitmap = await Bitmap.from(await this._currentBrowser.screenshot({ selector }));
+                screenshotBitmap = await Bitmap.from(await this._currentBrowser.screenshot({ selector: options.selector, fullPage: options.fullPage }));
 
                 screenshots.push(screenshotBitmap);
                 await delay(this._conf.assertRetryInterval);
