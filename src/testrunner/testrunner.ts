@@ -4,7 +4,7 @@ import pathlib from 'path';
 import util from 'util';
 import assert from 'assert';
 import { EventEmitter } from 'events';
-import { Bitmap } from '../../modules/pnglib/pnglib';
+import Bitmap from '../../modules/pnglib/pnglib';
 import bufferImageDiff, { ImageDiffOptions, ImageDiffResult } from '../../modules/buffer-image-diff/image-diff';
 import delay from '../../modules/delay/delay';
 import { IBrowser } from '../../modules/browsers/browser-interface';
@@ -146,7 +146,13 @@ export default class Testrunner extends EventEmitter {
         this.directAPI.execCommands = this._execCommandsDirect.bind(this);
         this.sideEffectAPI.execCommands = this._execCommandsSideEffect.bind(this);
 
-        this.tAPI = { ...this.sideEffectAPI, ...{ equal: this._equal.bind(this), equals: this._equal.bind(this) }, mixins: this.getTestApiMixinsBound() };
+        this.tAPI = {
+            ...this.sideEffectAPI,
+            equal: this._equal.bind(this),
+            equals: this._equal.bind(this),
+            ok: this._ok.bind(this),
+            mixins: this.getTestApiMixinsBound(),
+        };
 
         this._assertCount = 0;
 
@@ -663,23 +669,23 @@ export default class Testrunner extends EventEmitter {
         }
     }
 
+    private _ok(value: any, description?: string) {
+        if (value) {
+            this._log.info('ok OK: ' + (description || '(no description)'));
+        }
+        else {
+            this._log.error('ok FAIL: ' + (description || '(no description)'));
+            throw new Error(`Testrunner._ok: FAIL (value: "${value}", description: ${description || '(no description)'})`);
+        }
+    }
+
     private _equal(actual: unknown, expected: unknown, description: string) {
         if (isEqual(actual, expected)) {
             this._log.info('equal OK: ' + (description || '(unnamed)'));
-            // this._tapWriter.ok({
-            //     type: 'equal',
-            //     message: description,
-            // });
         }
         else {
             this._log.error('equal FAIL: ' + (description || '(unnamed)'));
             throw new Error(`Testrunner._equal: FAIL (actual: ${actual}, expected: ${expected}, description: ${description || '(none)'})`);
-            // this._tapWriter.fail({
-            //     type: 'equal',
-            //     expected: expected,
-            //     actual: actual,
-            // });
-
         }
     }
 

@@ -26,7 +26,7 @@ export interface IBrowser {
 
     // queries
     getValue(selector: string): Promise<string|boolean>,
-    screenshot(options?: { selector?: string, fullPage?: boolean }): Promise<Buffer>,
+    screenshot(options?: { selector?: string, fullPage?: boolean }): Promise<Uint8Array>,
     isVisible(selector: string): Promise<boolean>,
 
     // waiting

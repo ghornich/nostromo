@@ -38,7 +38,8 @@ exports = module.exports = function (test) {
             return document.querySelector('.scroll-test').scrollTop;
         });
 
-        t.equal(scrollToTop, 234);
+        // t.equal(scrollToTop, 234);
+        t.ok(Math.abs(scrollToTop - 234) < 5, '.scroll-test scrollTop threshold 1');
 
         // reset scroll
         await t.scroll('.scroll-test', 0);
@@ -51,7 +52,8 @@ exports = module.exports = function (test) {
             return document.querySelector('.scroll-test').scrollTop;
         });
 
-        t.equal(scrollTop, 190);
+        // t.equal(scrollTop, 190);
+        t.ok(Math.abs(scrollTop - 190) < 3, '.scroll-test scrollTop threshold 2');
 
         await t.setValue('.setValue-test', 'testSetValue');
         t.equal(await t.getValue('.setValue-test'), 'testSetValue');

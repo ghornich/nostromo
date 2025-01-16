@@ -1,4 +1,4 @@
-import puppeteer, { Page } from 'puppeteer';
+import puppeteer, { Page, Browser, KeyInput } from 'puppeteer';
 import type { IBrowser } from './browser-interface';
 import { ChildLogger, logger } from '../../src/logging/logger';
 import { WaitForOptions } from 'puppeteer';
@@ -18,13 +18,9 @@ type ChromiumOptions = {
     puppeteer?: typeof puppeteer
 }
 
-/** https://github.com/puppeteer/puppeteer/blob/main/docs/api.md#class-consolemessage */
-type PuppeteerConsoleEvent = 'log' | 'debug' | 'info' | 'error' | 'warning' | 'dir' | 'dirxml' | 'table' | 'trace' | 'clear' | 'startGroup' |
-    'startGroupCollapsed' | 'endGroup' | 'assert' | 'profile' | 'profileEnd' | 'count' | 'timeEnd';
-
 export default class Chromium implements IBrowser {
     private _options: ChromiumOptions
-    private _browser: puppeteer.Browser
+    private _browser: Browser
     private _puppeteer: typeof puppeteer
     private _log: ChildLogger;
 
@@ -57,12 +53,12 @@ export default class Chromium implements IBrowser {
         });
 
         (await this.getPage()).on('console', event => {
-            const type: PuppeteerConsoleEvent = event.type();
+            const type = event.type();
             const message = `ConsolePipe - ${event.type()} ${event.text()}`;
             if (type === 'error') {
                 this._log.error(message);
             }
-            else if (type === 'warning' || type === 'assert') {
+            else if (type === 'warn' || type === 'assert') {
                 this._log.warn(message);
             }
             else if (type === 'info') {
@@ -111,7 +107,7 @@ export default class Chromium implements IBrowser {
         await (await this.getPage()).type(selector, text);
     }
 
-    async pressKey(keyName: puppeteer.KeyInput) {
+    async pressKey(keyName: KeyInput) {
         await (await this.getPage()).keyboard.press(keyName);
     }
 
@@ -155,7 +151,7 @@ export default class Chromium implements IBrowser {
         }, selector);
     }
 
-    async screenshot({ selector, fullPage }: { selector?: string, fullPage?: boolean } = {}): Promise<Buffer> {
+    async screenshot({ selector, fullPage }: { selector?: string, fullPage?: boolean } = {}): Promise<Uint8Array> {
         const page = await this.getPage();
 
         if (selector) {
