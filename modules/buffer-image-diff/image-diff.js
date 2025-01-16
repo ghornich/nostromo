@@ -89,7 +89,7 @@ function imageDiff(a, b, opts) {
     }
 
     if (diffPixels.size < AA_NOISE_FILTER_MAX_PIXELS) {
-        antialiasNoiseFilter({diffPixels, opts, width});
+        antialiasNoiseFilter({ diffPixels, opts, width });
     }
 
     const totalPxs = a.width * b.width;
@@ -104,7 +104,7 @@ function imageDiff(a, b, opts) {
     return result;
 }
 
-function antialiasNoiseFilter({diffPixels, opts, width}){
+function antialiasNoiseFilter({ diffPixels, opts, width }) {
     const ungroupedDiffs = new Map(diffPixels);
     const boundingBlocks = []; // [pixelIndex, x, y][]
 
