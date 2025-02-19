@@ -203,7 +203,7 @@ export default class Chromium implements IBrowser {
             }, selector);
         }
         catch (err) {
-            this._log.warn(err);
+            this._log.verbose(err);
             return false;
         }
     }
