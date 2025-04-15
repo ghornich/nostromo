@@ -294,6 +294,11 @@ export default class Testrunner extends EventEmitter {
 
             this._isRunning = false;
 
+            await this.pluginManager.callHook('runEnd', {
+                success: this._testRunReport.passed,
+                endTime: Date.now(),
+            });
+
             this._startExitTimeout();
         }
     }

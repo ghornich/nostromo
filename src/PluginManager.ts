@@ -10,6 +10,7 @@ type CommandArgs = {
 type Hooks = {
     testStart: { testName: string; startTime: number };
     testEnd: { testName: string; success: boolean; endTime: number, errors?: any[] };
+    runEnd: { success: boolean; endTime: number };
 
     click: { selector: string } & CommandArgs;
     delay: { milliseconds: number } & CommandArgs;
