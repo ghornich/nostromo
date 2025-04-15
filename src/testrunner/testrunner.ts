@@ -610,7 +610,7 @@ export default class Testrunner extends EventEmitter {
             if (this._currentBeforeCommand) {
                 await this._currentBeforeCommand(this.directAPI, { type: cmdType });
             }
-            const fnResult = await fn(...args, false);
+            const fnResult = await fn(...args);
             if (this._currentAfterCommand) {
                 await this._currentAfterCommand(this.directAPI, { type: cmdType });
             }
