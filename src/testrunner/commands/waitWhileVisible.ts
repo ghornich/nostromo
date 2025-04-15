@@ -14,14 +14,14 @@ export default async function waitWhileVisible({ selector, opts = {}, testrunner
     let result;
 
     if (callLifecycles) {
-        await this._currentBeforeCommand?.(this.directAPI, { type: 'waitWhileVisible' });
+        await testrunner._currentBeforeCommand?.(testrunner.directAPI, { type: 'waitWhileVisible' });
     }
 
     try {
-        result = await this._currentBrowser.waitWhileVisible(selector, opts);
+        result = await testrunner._currentBrowser.waitWhileVisible(selector, opts);
 
         if (callHooks) {
-            await testrunner.pluginManager.callHook('waitWhileVisible', { startTime, endTime: Date.now(), selector, timeout: opts.timeout, success: true, getScreenshot: this.getPNGScreenshot });
+            await testrunner.pluginManager.callHook('waitWhileVisible', { startTime, endTime: Date.now(), selector, timeout: opts.timeout, success: true, getScreenshot: testrunner.getPNGScreenshot });
         }
     }
     catch (err) {
@@ -33,7 +33,7 @@ export default async function waitWhileVisible({ selector, opts = {}, testrunner
     }
 
     if (callLifecycles) {
-        await this._currentAfterCommand?.(this.directAPI, { type: 'waitWhileVisible' });
+        await testrunner._currentAfterCommand?.(testrunner.directAPI, { type: 'waitWhileVisible' });
     }
 
     return result;

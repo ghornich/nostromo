@@ -36,11 +36,11 @@ export default class Testrunner extends EventEmitter {
     private _okTestsCount: number;
     private _testRunReport: TestRunReport;
     private _currentTest: Test;
-    private _currentBeforeCommand: BeforeAfterCommandCallback | null;
-    private _currentAfterCommand: BeforeAfterCommandCallback | null;
+    _currentBeforeCommand: BeforeAfterCommandCallback | null;
+    _currentAfterCommand: BeforeAfterCommandCallback | null;
     private _currentBeforeAssert: DirectAPICallback | null;
     private _currentAfterAssert: DirectAPICallback | null;
-    private _currentBrowser: IBrowser | null;
+    _currentBrowser: IBrowser | null;
 
     directAPI: TestAssertAPIDirect;
     sideEffectAPI: TestAssertAPIDirect;
