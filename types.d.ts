@@ -3,6 +3,7 @@ import type { IBrowser } from './modules/browsers/browser-interface';
 import type Testrunner from './src/testrunner';
 import { TEST_STATE } from './constants';
 import type { PuppeteerLifeCycleEvent } from 'puppeteer';
+import { PluginManager } from './src/PluginManager';
 
 type LogLevel = 'verbose' | 'debug' | 'info' | 'warn' | 'error';
 
@@ -48,7 +49,8 @@ interface TestAPI extends TestAssertAPIDirect {
     equal: Testrunner['_equal']
     equals: Testrunner['_equal'],
     ok: Testrunner['_ok'],
-    mixins: { [key: string]: any }
+    mixins: { [key: string]: any },
+    callPluginHook: PluginManager['callHook'],
 }
 
 interface Command {
@@ -141,4 +143,5 @@ interface TestrunnerConfig {
     onAssertError?: TestrunnerCallback
     exitTimeout?: number,
     testApiMixins?: { [key: string]: any }
+    plugins?: string[]
 }

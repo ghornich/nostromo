@@ -7,7 +7,7 @@ export interface Logger {
     init(consoleLogLevel: string, fileLogLevel: null): void;
     init(consoleLogLevel: null, fileLogLevel: string, logFilePath: string): void;
     init(consoleLogLevel: string | null, fileLogLevel: string | null, logFilePath?: string): void;
-    error(e: Error | string): void;
+    error(e: Error | string, ...args: any[]): void;
     warn(m: Error | string): void;
     info(m: Error | string): void;
     verbose(m: Error | string): void;
@@ -76,9 +76,10 @@ class WinstonLogger implements Logger {
         }
     }
 
-    error(e: Error | string) {
+    error(e: Error | string, ...args: any[]) {
         if (this._logger) {
-            this._logger.error(e);
+            // @ts-expect-error
+            this._logger.error(e, ...args);
         }
     }
 

@@ -13,6 +13,8 @@ import { AbortError, ScreenshotError, BailoutError, CommandError, TestBailoutErr
 import { ellipsis, getIdFromName, multiGlobAsync, prettyMs } from '../utils';
 import { TestrunnerConfig, Suite, Test, Command, TestRunReport, DirectAPICallback, BeforeAfterCommandCallback, TestAssertAPIDirect, TestAPI, TestFn } from '../../types';
 import { TEST_STATE } from '../../constants';
+import { PluginManager } from '../PluginManager';
+import waitWhileVisible from './commands/waitWhileVisible';
 
 const DEFAULT_TEST_NAME = '(Unnamed test)';
 
@@ -28,7 +30,7 @@ export default class Testrunner extends EventEmitter {
     private _conf: TestrunnerConfig;
     private _log: ChildLogger;
     private _isRunning: boolean;
-    private _isAborting: boolean;
+    _isAborting: boolean;
     private _assertCount: number;
     private _foundTestsCount: number;
     private _okTestsCount: number;
@@ -43,6 +45,8 @@ export default class Testrunner extends EventEmitter {
     directAPI: TestAssertAPIDirect;
     sideEffectAPI: TestAssertAPIDirect;
     tAPI: TestAPI;
+
+    pluginManager: PluginManager;
 
     constructor(conf: Partial<TestrunnerConfig>) {
         super();
@@ -93,6 +97,8 @@ export default class Testrunner extends EventEmitter {
         this._isRunning = false;
         this._isAborting = false;
 
+        this.pluginManager = new PluginManager();
+
         // -------------------
 
         // TODO ensure browser names are unique (for reference images)
@@ -116,7 +122,7 @@ export default class Testrunner extends EventEmitter {
             setFileInput: this._setFileInputDirect.bind(this),
             click: this._clickDirect.bind(this),
             waitForVisible: this._waitForVisibleDirect.bind(this),
-            waitWhileVisible: this._waitWhileVisibleDirect.bind(this),
+            waitWhileVisible: async (selector: string, opts: { timeout?: number } = {}) => waitWhileVisible({ selector, opts, testrunner: this }),
             isVisible: this._isVisibleDirect.bind(this),
             focus: this._focusDirect.bind(this),
             scroll: this._scrollDirect.bind(this),
@@ -130,10 +136,20 @@ export default class Testrunner extends EventEmitter {
             execFunction: this._execFunctionDirect.bind(this),
         } as TestAssertAPIDirect;
 
-        this.sideEffectAPI = {} as TestAssertAPIDirect;
+        // NTH rename to public api? lifecycled api?
+        this.sideEffectAPI = {
+            waitWhileVisible: async (selector: string, opts: { timeout?: number } = {}) => {
+
+                await this._currentBeforeCommand?.(this.directAPI, { type: 'waitWhileVisible' });
+                const fnResult = await waitWhileVisible({ selector, opts, testrunner: this, callHooks: true, callLifecycles: true });
+                await this._currentAfterCommand?.(this.directAPI, { type: 'waitWhileVisible' });
+
+                return fnResult;
+            },
+        } as TestAssertAPIDirect;
 
         Object.keys(this.directAPI).forEach(key => {
-            if (/delay|comment/.test(key)) {
+            if (/delay|comment|waitWhileVisible/.test(key)) {
                 return;
             }
             const directAPIFn = this.directAPI[key as keyof TestAssertAPIDirect];
@@ -152,6 +168,7 @@ export default class Testrunner extends EventEmitter {
             equals: this._equal.bind(this),
             ok: this._ok.bind(this),
             mixins: this.getTestApiMixinsBound(),
+            callPluginHook: this.pluginManager.callHook.bind(this.pluginManager),
         };
 
         this._assertCount = 0;
@@ -181,6 +198,10 @@ export default class Testrunner extends EventEmitter {
         }
 
         this._isRunning = true;
+
+        for (const plugin of conf.plugins || []) {
+            await this.pluginManager.loadPlugin(plugin);
+        }
 
         try {
             if (conf.suites.length === 0) {
@@ -410,6 +431,8 @@ export default class Testrunner extends EventEmitter {
     private async _runTest({ suite, test }: { suite: Suite, test: Test }) {
         this._log.verbose(`_runTest: running test ${test.name}`);
 
+        await this.pluginManager.callHook('testStart', { testName: test.name, startTime: Date.now() });
+
         const browser = this._currentBrowser;
 
         test.runErrors = [];
@@ -446,13 +469,16 @@ export default class Testrunner extends EventEmitter {
 
                 this._log.debug('completed afterTest');
             }
+        }
 
-            try {
-                await browser.stop();
-            }
-            catch (error) {
-                this._log.error(error);
-            }
+        await this.pluginManager.callHook('testEnd', { testName: test.name, success: test.state === TEST_STATE.PASSED, endTime: Date.now(), errors: test.runErrors });
+
+        try {
+            await browser.stop();
+        }
+        catch (error) {
+            this._log.error(error);
+            throw error;
         }
     }
 
@@ -584,7 +610,7 @@ export default class Testrunner extends EventEmitter {
             if (this._currentBeforeCommand) {
                 await this._currentBeforeCommand(this.directAPI, { type: cmdType });
             }
-            const fnResult = await fn(...args);
+            const fnResult = await fn(...args, false);
             if (this._currentAfterCommand) {
                 await this._currentAfterCommand(this.directAPI, { type: cmdType });
             }
@@ -690,10 +716,14 @@ export default class Testrunner extends EventEmitter {
     }
 
     private async _clickDirect(selector: string/* , options*/) {
+        const startTime = Date.now();
+
         try {
             await this._runBrowserCommandWithRetries('click', [selector]);
+            await this.pluginManager.callHook('click', { startTime, endTime: Date.now(), selector, success: true, getScreenshot: this.getPNGScreenshot });
         }
         catch (err) {
+            await this.pluginManager.callHook('click', { startTime, endTime: Date.now(), selector, success: false, getScreenshot: this.getPNGScreenshot });
             await this._handleCommandError(err, 'click');
         }
     }
@@ -707,14 +737,18 @@ export default class Testrunner extends EventEmitter {
     private async _setValueDirect(selector: string, value: string) {
         this._log.verbose(`setValue: "${ellipsis(value)}", "${ellipsis(selector)}"`);
 
+        const startTime = Date.now();
+
         try {
             await this._runBrowserCommandWithRetries(async () => {
                 // @ts-expect-error
                 await this._currentBrowser.execFunction((s) => document.querySelector(s).select(), selector);
                 await this._currentBrowser.type(selector, value);
             }, []);
+            await this.pluginManager.callHook('setValue', { startTime, endTime: Date.now(), selector, value, success: true, getScreenshot: this.getPNGScreenshot });
         }
         catch (err) {
+            await this.pluginManager.callHook('setValue', { startTime, endTime: Date.now(), selector, value, success: false, getScreenshot: this.getPNGScreenshot });
             await this._handleCommandError(err, 'setValue');
         }
     }
@@ -770,7 +804,7 @@ export default class Testrunner extends EventEmitter {
         await this._runBrowserCommandWithRetries('pressKey', [keyCode]);
     }
 
-    private async _waitForVisibleDirect(selector: string, opts = {}) {
+    private async _waitForVisibleDirect(selector: string, opts: {timeout?: number} = {}) {
         this._log.verbose(`waitForVisible: "${ellipsis(selector)}"`);
 
         try {
@@ -778,17 +812,6 @@ export default class Testrunner extends EventEmitter {
         }
         catch (err) {
             await this._handleCommandError(err, 'waitForVisible');
-        }
-    }
-
-    private async _waitWhileVisibleDirect(selector: string, opts = {}) {
-        this._log.verbose(`waitWhileVisible: "${ellipsis(selector)}"`);
-
-        try {
-            await this._currentBrowser.waitWhileVisible(selector, opts);
-        }
-        catch (err) {
-            await this._handleCommandError(err, 'waitWhileVisible');
         }
     }
 
@@ -864,7 +887,7 @@ export default class Testrunner extends EventEmitter {
         this._log.info(comment);
     }
 
-    private async _handleCommandError(err: Error, command: string) {
+    async _handleCommandError(err: Error, command: string) {
         Error.captureStackTrace(err);
 
         const formattedErrorMessage = `"${command}" command error: ${err.message}\n${getErrorOrigin(err)}`;
@@ -895,6 +918,12 @@ export default class Testrunner extends EventEmitter {
         if (this._conf.bailout) {
             throw new BailoutError(err.stack || err.message);
         }
+    }
+
+    getPNGScreenshot = async () => {
+        const screenshotBitmap = await Bitmap.from(await this._currentBrowser.screenshot());
+        const pngBuffer = await screenshotBitmap.toPNGBuffer();
+        return pngBuffer;
     }
 
     private async _screenshot(options: { selector?: string, fullPage?: boolean } | string = {}) {
