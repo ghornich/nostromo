@@ -436,7 +436,7 @@ export default class Testrunner extends EventEmitter {
     private async _runTest({ suite, test }: { suite: Suite, test: Test }) {
         this._log.verbose(`_runTest: running test ${test.name}`);
 
-        await this.pluginManager.callHook('testStart', { testName: test.name, startTime: Date.now() });
+        await this.pluginManager.callHook('testStart', { testId: test.id, testName: test.name, startTime: Date.now() });
 
         const browser = this._currentBrowser;
 
@@ -462,6 +462,8 @@ export default class Testrunner extends EventEmitter {
             await this._runTestCore({ suite, test });
         }
         finally {
+            await this.pluginManager.callHook('testEnd', { testId: test.id, testName: test.name, success: test.state === TEST_STATE.PASSED, endTime: Date.now(), errors: test.runErrors });
+
             if (suite.afterTest) {
                 this._log.debug('running afterTest');
 
@@ -475,8 +477,6 @@ export default class Testrunner extends EventEmitter {
                 this._log.debug('completed afterTest');
             }
         }
-
-        await this.pluginManager.callHook('testEnd', { testName: test.name, success: test.state === TEST_STATE.PASSED, endTime: Date.now(), errors: test.runErrors });
 
         try {
             await browser.stop();
