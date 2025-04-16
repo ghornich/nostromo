@@ -476,15 +476,17 @@ export default class Testrunner extends EventEmitter {
 
                 this._log.debug('completed afterTest');
             }
+
+            try {
+                await browser.stop();
+            }
+            catch (error) {
+                this._log.error(error);
+                // eslint-disable-next-line no-unsafe-finally
+                throw error;
+            }
         }
 
-        try {
-            await browser.stop();
-        }
-        catch (error) {
-            this._log.error(error);
-            throw error;
-        }
     }
 
     private async _runTestCore({ suite, test }: { suite: Suite, test: Test }) {
