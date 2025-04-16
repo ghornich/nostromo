@@ -7,7 +7,7 @@ type CommandArgs = {
     getScreenshot: () => Promise<Buffer>
 }
 
-type Hooks = {
+export type Hooks = {
     testStart: { testId: string, testName: string; startTime: number };
     testEnd: { testId: string, testName: string; success: boolean; endTime: number, errors?: any[] };
     runEnd: { success: boolean; endTime: number };
@@ -23,9 +23,9 @@ type Hooks = {
 
 type HookName = keyof Hooks;
 
-type Plugin = {
+export type Plugin = {
     name: string;
-    hooks: Partial<Record<HookName, (args: Hooks[HookName]) => Promise<void>>>;
+    hooks: Partial<{ [K in HookName]: (args: Hooks[K]) => Promise<void> }>;
 };
 
 export class PluginManager {
