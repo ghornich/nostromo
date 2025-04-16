@@ -8,8 +8,8 @@ type CommandArgs = {
 }
 
 type Hooks = {
-    testStart: { testName: string; startTime: number };
-    testEnd: { testName: string; success: boolean; endTime: number, errors?: any[] };
+    testStart: { testId: string, testName: string; startTime: number };
+    testEnd: { testId: string, testName: string; success: boolean; endTime: number, errors?: any[] };
     runEnd: { success: boolean; endTime: number };
 
     click: { selector: string } & CommandArgs;
