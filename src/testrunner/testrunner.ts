@@ -158,6 +158,9 @@ export default class Testrunner extends EventEmitter {
             scroll: async (selector: string, scrollTop: number) => scroll({ selector, scrollTop, testrunner: this, callHooks: true, callLifecycles: true }),
             scrollTo: async (selector: string) => scrollTo({ selector, testrunner: this, callHooks: true, callLifecycles: true }),
             delay: async (amount: number) => delayCmd({ amount, testrunner: this, callHooks: true, callLifecycles: true }),
+            comment: this._comment.bind(this),
+            assert: this._screenshot.bind(this),
+            screenshot: this._screenshot.bind(this),
             pressKey: async (keyCode: string) => pressKey({ keyCode, testrunner: this, callHooks: true, callLifecycles: true }),
             execFunction: async (fn: Function, ...args: any[]) => execFunction({ fn, args, testrunner: this, callHooks: true, callLifecycles: true }),
         } as TestAssertAPIDirect;
