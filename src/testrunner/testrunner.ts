@@ -14,7 +14,18 @@ import { ellipsis, getIdFromName, multiGlobAsync, prettyMs } from '../utils';
 import { TestrunnerConfig, Suite, Test, Command, TestRunReport, DirectAPICallback, BeforeAfterCommandCallback, TestAssertAPIDirect, TestAPI, TestFn } from '../../types';
 import { TEST_STATE } from '../../constants';
 import { PluginManager } from '../PluginManager';
+
 import waitWhileVisible from './commands/waitWhileVisible';
+import waitForVisible from './commands/waitForVisible';
+import click from './commands/click';
+import focus from './commands/focus';
+import scroll from './commands/scroll';
+import scrollTo from './commands/scrollTo';
+import setValue from './commands/setValue';
+import setFileInput from './commands/setFileInput';
+import pressKey from './commands/pressKey';
+import delayCmd from './commands/delay';
+import execFunction from './commands/execFunction';
 
 const DEFAULT_TEST_NAME = '(Unnamed test)';
 
@@ -27,8 +38,8 @@ const DEFAULT_REF_DIFFS_DIR = 'reference-diffs';
 const REPORT_FILE_NAME = 'test-run-report.json';
 
 export default class Testrunner extends EventEmitter {
-    private _conf: TestrunnerConfig;
-    private _log: ChildLogger;
+    _conf: TestrunnerConfig;
+    _log: ChildLogger;
     private _isRunning: boolean;
     _isAborting: boolean;
     private _assertCount: number;
@@ -118,40 +129,41 @@ export default class Testrunner extends EventEmitter {
 
         this.directAPI = {
             getValue: this._getValueDirect.bind(this),
-            setValue: this._setValueDirect.bind(this),
-            setFileInput: this._setFileInputDirect.bind(this),
-            click: this._clickDirect.bind(this),
-            waitForVisible: this._waitForVisibleDirect.bind(this),
+            setValue: async (selector: string, value: string) => setValue({ selector, value, testrunner: this }),
+            setFileInput: async (selector: string, filePath: string[], options?: { waitForVisible?: boolean, checkSelectorType?: boolean }) => setFileInput({ selector, filePath, options, testrunner: this }),
+            click: async (selector: string) => click({ selector, testrunner: this }),
+            waitForVisible: async (selector: string, opts: { timeout?: number } = {}) => waitForVisible({ selector, opts, testrunner: this }),
             waitWhileVisible: async (selector: string, opts: { timeout?: number } = {}) => waitWhileVisible({ selector, opts, testrunner: this }),
             isVisible: this._isVisibleDirect.bind(this),
-            focus: this._focusDirect.bind(this),
-            scroll: this._scrollDirect.bind(this),
-            scrollTo: this._scrollToDirect.bind(this),
-            delay: this._delay.bind(this),
+            focus: async (selector: string) => focus({ selector, testrunner: this }),
+            scroll: async (selector: string, scrollTop: number) => scroll({ selector, scrollTop, testrunner: this }),
+            scrollTo: async (selector: string) => scrollTo({ selector, testrunner: this }),
+            delay: async (amount: number) => delayCmd({ amount, testrunner: this }),
             comment: this._comment.bind(this),
             assert: this._screenshot.bind(this),
             screenshot: this._screenshot.bind(this),
-            pressKey: this._pressKeyDirect.bind(this),
+            pressKey: async (keyCode: string) => pressKey({ keyCode, testrunner: this }),
             mouseover: this._mouseoverDirect.bind(this),
-            execFunction: this._execFunctionDirect.bind(this),
+            execFunction: async (fn: Function, ...args: any[]) => execFunction({ fn, args, testrunner: this }),
         } as TestAssertAPIDirect;
 
         // NTH rename to public api? lifecycled api?
         this.sideEffectAPI = {
-            waitWhileVisible: async (selector: string, opts: { timeout?: number } = {}) => {
-
-                await this._currentBeforeCommand?.(this.directAPI, { type: 'waitWhileVisible' });
-                const fnResult = await waitWhileVisible({ selector, opts, testrunner: this, callHooks: true, callLifecycles: true });
-                await this._currentAfterCommand?.(this.directAPI, { type: 'waitWhileVisible' });
-
-                return fnResult;
-            },
+            setValue: async (selector: string, value: string) => setValue({ selector, value, testrunner: this, callHooks: true, callLifecycles: true }),
+            setFileInput: async (selector: string, filePath: string[], options?: { waitForVisible?: boolean, checkSelectorType?: boolean }) => setFileInput({ selector, filePath, options, testrunner: this, callHooks: true, callLifecycles: true }),
+            click: async (selector: string) => click({ selector, testrunner: this, callHooks: true, callLifecycles: true }),
+            waitForVisible: async (selector: string, opts: { timeout?: number } = {}) => waitForVisible({ selector, opts, testrunner: this, callHooks: true, callLifecycles: true }),
+            waitWhileVisible: async (selector: string, opts: { timeout?: number } = {}) => waitWhileVisible({ selector, opts, testrunner: this, callHooks: true, callLifecycles: true }),
+            focus: async (selector: string) => focus({ selector, testrunner: this, callHooks: true, callLifecycles: true }),
+            scroll: async (selector: string, scrollTop: number) => scroll({ selector, scrollTop, testrunner: this, callHooks: true, callLifecycles: true }),
+            scrollTo: async (selector: string) => scrollTo({ selector, testrunner: this, callHooks: true, callLifecycles: true }),
+            delay: async (amount: number) => delayCmd({ amount, testrunner: this, callHooks: true, callLifecycles: true }),
+            pressKey: async (keyCode: string) => pressKey({ keyCode, testrunner: this, callHooks: true, callLifecycles: true }),
+            execFunction: async (fn: Function, ...args: any[]) => execFunction({ fn, args, testrunner: this, callHooks: true, callLifecycles: true }),
         } as TestAssertAPIDirect;
 
-        Object.keys(this.directAPI).forEach(key => {
-            if (/delay|comment|waitWhileVisible/.test(key)) {
-                return;
-            }
+        // old wrapper, remove in future
+        ['getValue', 'isVisible', 'mouseover'].forEach(key => {
             const directAPIFn = this.directAPI[key as keyof TestAssertAPIDirect];
             this.sideEffectAPI[key as keyof TestAssertAPIDirect] = this._wrapFunctionWithSideEffects(directAPIFn, key as keyof TestAssertAPIDirect);
         });
@@ -383,6 +395,8 @@ export default class Testrunner extends EventEmitter {
                 throw new AbortError();
             }
 
+            this.pluginManager.callHook('suiteStart', { suiteId: suite.name, suiteName: suite.name, startTime: Date.now() });
+
             try {
                 this._log.verbose(test.name);
                 await this._runTestWithRetries({ suite, test });
@@ -392,6 +406,9 @@ export default class Testrunner extends EventEmitter {
             catch (error) {
                 this._log.warn(`${test.name} (${prettyMs(this._testRunReport.runtimes[test.name])})`);
                 this._log.warn(error);
+            }
+            finally {
+                this.pluginManager.callHook('suiteEnd', { suiteId: suite.name, suiteName: suite.name, endTime: Date.now() });
             }
         }
     }
@@ -661,7 +678,7 @@ export default class Testrunner extends EventEmitter {
         }
     }
 
-    private async _runBrowserCommandWithRetries(browserFnName: string | Function, args: any[]) {
+    async _runBrowserCommandWithRetries(browserFnName: string | Function, args: any[]) {
         let retries = 0;
 
         // eslint-disable-next-line no-constant-condition
@@ -722,104 +739,10 @@ export default class Testrunner extends EventEmitter {
         }
     }
 
-    private async _clickDirect(selector: string/* , options*/) {
-        const startTime = Date.now();
-
-        try {
-            await this._runBrowserCommandWithRetries('click', [selector]);
-            await this.pluginManager.callHook('click', { startTime, endTime: Date.now(), selector, success: true, getScreenshot: this.getPNGScreenshot });
-        }
-        catch (err) {
-            await this.pluginManager.callHook('click', { startTime, endTime: Date.now(), selector, success: false, getScreenshot: this.getPNGScreenshot });
-            await this._handleCommandError(err, 'click');
-        }
-    }
-
     private async _getValueDirect(selector: string) {
         this._log.verbose(`getValue: "${ellipsis(selector)}"`);
 
         return this._currentBrowser.getValue(selector);
-    }
-
-    private async _setValueDirect(selector: string, value: string) {
-        this._log.verbose(`setValue: "${ellipsis(value)}", "${ellipsis(selector)}"`);
-
-        const startTime = Date.now();
-
-        try {
-            await this._runBrowserCommandWithRetries(async () => {
-                // @ts-expect-error
-                await this._currentBrowser.execFunction((s) => document.querySelector(s).select(), selector);
-                await this._currentBrowser.type(selector, value);
-            }, []);
-            await this.pluginManager.callHook('setValue', { startTime, endTime: Date.now(), selector, value, success: true, getScreenshot: this.getPNGScreenshot });
-        }
-        catch (err) {
-            await this.pluginManager.callHook('setValue', { startTime, endTime: Date.now(), selector, value, success: false, getScreenshot: this.getPNGScreenshot });
-            await this._handleCommandError(err, 'setValue');
-        }
-    }
-
-    private async _setFileInputDirect(selector: string, filePath: string[], options?: { waitForVisible?: boolean, checkSelectorType?: boolean }) {
-        this._log.verbose(`setFileInput: "${selector}", "${filePath}"`);
-
-        const opts = { ...{ waitForVisible: true, checkSelectorType: true }, ...options };
-
-        try {
-            await this._runBrowserCommandWithRetries(async () => {
-                if (opts.waitForVisible) {
-                    await this._currentBrowser.waitForVisible(selector);
-                }
-
-                if (opts.checkSelectorType) {
-                    const isFileInput = await this._currentBrowser.execFunction((s: Function) => {
-                        // @ts-expect-error
-                        const node = document.querySelector(s);
-                        return Boolean(node && node.tagName.toLowerCase() === 'input' && node.type.toLowerCase() === 'file');
-                    }, selector);
-
-                    if (!isFileInput) {
-                        throw new Error(`setFileInput failure: selector is not a file input: "${selector}"`);
-                    }
-                }
-
-                // @ts-expect-error FIXME implementation leak, don't use getPage, maybe move setFileInput to BrowserInterface
-                const fileChooserPromise = (await this._currentBrowser.getPage()).waitForFileChooser();
-                await this._currentBrowser.click(selector);
-                await (await fileChooserPromise).accept(filePath);
-            }, []);
-        }
-        catch (err) {
-            await this._handleCommandError(err, 'setFileInput');
-        }
-    }
-
-    /**
-     * @param keyCode See https://github.com/puppeteer/puppeteer/blob/main/src/common/USKeyboardLayout.ts
-     */
-    private async _pressKeyDirect(keyCode: string) {
-        this._log.verbose(`pressKey: ${keyCode}`);
-
-        if (arguments.length > 1) {
-            throw new TypeError('Selector is removed, pressKey only accepts keyCode.');
-        }
-
-        if (typeof keyCode !== 'string') {
-            throw new TypeError('Expected string keyCode');
-        }
-
-        await this._runBrowserCommandWithRetries('pressKey', [keyCode]);
-    }
-
-    private async _waitForVisibleDirect(selector: string, opts: {timeout?: number} = {}) {
-        this._log.verbose(`waitForVisible: "${ellipsis(selector)}"`);
-
-        try {
-            await this._currentBrowser.waitForVisible(selector, opts);
-        }
-        catch (err) {
-            await this._handleCommandError(err, 'waitForVisible');
-        }
     }
 
     private async _isVisibleDirect(selector: string) {
@@ -834,40 +757,6 @@ export default class Testrunner extends EventEmitter {
         }
     }
 
-    private async _focusDirect(selector: string /* , options*/) {
-        this._log.verbose(`focus: "${ellipsis(selector)}"`);
-
-        try {
-            await this._currentBrowser.focus(selector);
-        }
-        catch (err) {
-            // TODO handle as error?
-            this._log.warn(`WARNING - focus failed - ${err.message}`);
-        }
-    }
-
-    private async _scrollDirect(selector: string, scrollTop: number) {
-        this._log.verbose(`scroll: ${scrollTop}, "${ellipsis(selector)}"`);
-
-        try {
-            await this._currentBrowser.scroll(selector, scrollTop);
-        }
-        catch (err) {
-            await this._handleCommandError(err, 'scroll');
-        }
-    }
-
-    private async _scrollToDirect(selector: string) {
-        this._log.verbose(`scrollTo: "${ellipsis(selector)}"`);
-
-        try {
-            await this._currentBrowser.scrollIntoView(selector);
-        }
-        catch (err) {
-            await this._handleCommandError(err, 'scrollTo');
-        }
-    }
-
     private async _mouseoverDirect(selector: string) {
         this._log.verbose(`mouseover: ${selector}`);
 
@@ -877,17 +766,6 @@ export default class Testrunner extends EventEmitter {
         catch (err) {
             await this._handleCommandError(err, 'mouseover');
         }
-    }
-
-    private async _execFunctionDirect(fn: Function, ...args: any[]) {
-        this._log.verbose(`execFunction: ${fn.name || '(anonymous)'}`);
-
-        return this._currentBrowser.execFunction(fn, ...args);
-    }
-
-    private async _delay(ms: number) {
-        this._log.verbose(`delay ${ms}`);
-        return delay(ms);
     }
 
     private async _comment(comment: string) {
@@ -948,6 +826,7 @@ export default class Testrunner extends EventEmitter {
         }
         await fsp.mkdir(refImgDir, { recursive: true });
 
+        const startTime = Date.now();
         let screenshotBitmap = await Bitmap.from(await this._currentBrowser.screenshot({ selector: options.selector, fullPage: options.fullPage }));
 
         const screenshots = [screenshotBitmap];
@@ -983,6 +862,8 @@ export default class Testrunner extends EventEmitter {
                 // this._tapWriter.ok(`screenshot assert (${formattedPPM} ppm): ${refImgPathRelative}, retries: ${assertAttempt}`);
                 this._log.verbose(`OK screenshot assert (${formattedPPM} ppm): ${refImgPathRelative}, totalChangedPixels: ${imgDiffResult.totalChangedPixels}, retries: ${assertAttempt}`);
 
+                this.pluginManager.callHook('screenshot', { selector: options.selector, startTime, endTime: Date.now(), getScreenshot: this.getPNGScreenshot, success: true });
+
                 await this._runCurrentAfterAssertTasks();
                 return;
             }
@@ -999,6 +880,8 @@ export default class Testrunner extends EventEmitter {
 
         const screenshotError = new ScreenshotError(`FAIL screenshot assert (${formattedPPM} ppm): ${refImgPathRelative}, totalChangedPixels: ${imgDiffResult.totalChangedPixels}`);
         screenshotError.message += '\n' + getErrorOrigin(screenshotError);
+
+        this.pluginManager.callHook('screenshot', { selector: options.selector, startTime, endTime: Date.now(), getScreenshot: this.getPNGScreenshot, success: false });
 
         this._currentTest.runErrors.push(screenshotError);
 

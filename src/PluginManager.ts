@@ -12,13 +12,22 @@ export type Hooks = {
     testEnd: { testId: string, testName: string; success: boolean; endTime: number, errors?: any[] };
     runEnd: { success: boolean; endTime: number };
 
+    suiteStart: { suiteId: string; suiteName: string; startTime: number };
+    suiteEnd: { suiteId: string; suiteName: string; endTime: number };
+
     click: { selector: string } & CommandArgs;
-    delay: { milliseconds: number } & CommandArgs;
-    execFunction: { functionName: string; args: any[] } & CommandArgs;
+    delay: { amount: number } & CommandArgs;
+    execFunction: { functionName: string } & CommandArgs;
     getValue: { selector: string } & CommandArgs;
+    screenshot: {selector: string } & CommandArgs;
+    scrollTo: { selector: string } & CommandArgs;
+    scroll: { selector: string; scrollTop: number } & CommandArgs;
     setValue: { selector: string; value: string } & CommandArgs;
     waitForVisible: { selector: string; timeout: number } & CommandArgs;
     waitWhileVisible: { selector: string; timeout: number } & CommandArgs;
+    pressKey: { keyCode: string } & CommandArgs;
+    focus: { selector: string } & CommandArgs;
+    setFileInput: { selector: string; filePath: string[]; } & CommandArgs;
 };
 
 type HookName = keyof Hooks;
