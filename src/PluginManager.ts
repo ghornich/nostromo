@@ -66,14 +66,14 @@ export class PluginManager {
             if (hook) {
                 try {
                     await hook(args);
-                    this.log.info(`Hook "${hookId}" executed for plugin "${pluginName}".`);
+                    this.log.verbose(`Hook "${hookId}" executed for plugin "${pluginName}".`);
                 }
                 catch (error) {
                     this.log.error(`Error executing hook "${hookId}" for plugin "${pluginName}":`, error);
                 }
             }
             else {
-                this.log.warn(`Hook "${hookId}" not implemented by plugin "${pluginName}".`);
+                this.log.verbose(`Hook "${hookId}" not implemented by plugin "${pluginName}".`);
             }
         }
     }

@@ -110,19 +110,6 @@ export default class Testrunner extends EventEmitter {
 
         this.pluginManager = new PluginManager();
 
-        // -------------------
-
-        // TODO ensure browser names are unique (for reference images)
-
-        // const validationResult = Schema.validate(CONF_SCHEMA, this._conf);
-
-        // if (!validationResult.valid) {
-        //     this._log.debug('conf validation failed');
-        //     throw new Error(validationResult.format());
-        // }
-
-        // -------------------
-
         if (!Array.isArray(this._conf.browsers)) {
             this._conf.browsers = [this._conf.browsers];
         }
@@ -140,11 +127,12 @@ export default class Testrunner extends EventEmitter {
             scrollTo: async (selector: string) => scrollTo({ selector, testrunner: this }),
             delay: async (amount: number) => delayCmd({ amount, testrunner: this }),
             comment: this._comment.bind(this),
-            assert: this._screenshot.bind(this),
-            screenshot: this._screenshot.bind(this),
+            assert: async (opts: {selector?: string, fullPage?: boolean} = {}) => this._screenshot(opts),
+            screenshot: async (opts: {selector?: string, fullPage?: boolean} = {}) => this._screenshot(opts),
             pressKey: async (keyCode: string) => pressKey({ keyCode, testrunner: this }),
             mouseover: this._mouseoverDirect.bind(this),
             execFunction: async (fn: Function, ...args: any[]) => execFunction({ fn, args, testrunner: this }),
+            execCommands: this._execCommandsDirect.bind(this),
         } as TestAssertAPIDirect;
 
         // NTH rename to public api? lifecycled api?
@@ -157,12 +145,13 @@ export default class Testrunner extends EventEmitter {
             focus: async (selector: string) => focus({ selector, testrunner: this, callHooks: true, callLifecycles: true }),
             scroll: async (selector: string, scrollTop: number) => scroll({ selector, scrollTop, testrunner: this, callHooks: true, callLifecycles: true }),
             scrollTo: async (selector: string) => scrollTo({ selector, testrunner: this, callHooks: true, callLifecycles: true }),
-            delay: async (amount: number) => delayCmd({ amount, testrunner: this, callHooks: true, callLifecycles: true }),
-            comment: this._comment.bind(this),
-            assert: this._screenshot.bind(this),
-            screenshot: this._screenshot.bind(this),
+            delay: this.directAPI.delay,
+            comment: this.directAPI.comment,
+            assert: async (opts: {selector?: string, fullPage?: boolean} = {}) => this._screenshot({ ...opts, callLifecycles: true }),
+            screenshot: async (opts: {selector?: string, fullPage?: boolean} = {}) => this._screenshot({ ...opts, callLifecycles: true }),
             pressKey: async (keyCode: string) => pressKey({ keyCode, testrunner: this, callHooks: true, callLifecycles: true }),
             execFunction: async (fn: Function, ...args: any[]) => execFunction({ fn, args, testrunner: this, callHooks: true, callLifecycles: true }),
+            execCommands: this._execCommandsSideEffect.bind(this),
         } as TestAssertAPIDirect;
 
         // old wrapper, remove in future
@@ -170,12 +159,6 @@ export default class Testrunner extends EventEmitter {
             const directAPIFn = this.directAPI[key as keyof TestAssertAPIDirect];
             this.sideEffectAPI[key as keyof TestAssertAPIDirect] = this._wrapFunctionWithSideEffects(directAPIFn, key as keyof TestAssertAPIDirect);
         });
-
-        this.sideEffectAPI.delay = this.directAPI.delay;
-        this.sideEffectAPI.comment = this.directAPI.comment;
-
-        this.directAPI.execCommands = this._execCommandsDirect.bind(this);
-        this.sideEffectAPI.execCommands = this._execCommandsSideEffect.bind(this);
 
         this.tAPI = {
             ...this.sideEffectAPI,
@@ -814,8 +797,12 @@ export default class Testrunner extends EventEmitter {
         return pngBuffer;
     }
 
-    private async _screenshot(options: { selector?: string, fullPage?: boolean } | string = {}) {
+    private async _screenshot(options: { selector?: string, fullPage?: boolean, callHooks?: boolean, callLifecycles?: boolean } | string = {}) {
         options = typeof options === 'string' ? { selector: options } : options;
+
+        if (options.callLifecycles) {
+            await this._currentBeforeCommand?.(this.directAPI, { type: 'screenshot' });
+        }
 
         const refImgDir = pathlib.resolve(this._conf.referenceScreenshotsDir, this._currentBrowser.name.toLowerCase(), this._currentTest.id);
         const failedImgDir = pathlib.resolve(this._conf.referenceErrorsDir, this._currentBrowser.name.toLowerCase(), this._currentTest.id);
@@ -824,9 +811,8 @@ export default class Testrunner extends EventEmitter {
         const refImgPath = pathlib.resolve(refImgDir, refImgName);
         const refImgPathRelative = pathlib.relative(pathlib.resolve(this._conf.referenceScreenshotsDir), refImgPath);
 
-        if (this._currentBeforeAssert) {
-            await this._currentBeforeAssert(this.directAPI);
-        }
+        await this._currentBeforeAssert?.(this.directAPI);
+
         await fsp.mkdir(refImgDir, { recursive: true });
 
         const startTime = Date.now();
@@ -958,6 +944,10 @@ export default class Testrunner extends EventEmitter {
         }
 
         await this._runCurrentAfterAssertTasks();
+
+        if (options.callLifecycles) {
+            await this._currentAfterCommand?.(this.directAPI, { type: 'screenshot' });
+        }
     }
 
     private async _runCurrentAfterAssertTasks() {
