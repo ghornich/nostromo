@@ -49,8 +49,8 @@ export default class Testrunner extends EventEmitter {
     private _currentTest: Test;
     _currentBeforeCommand: BeforeAfterCommandCallback | null;
     _currentAfterCommand: BeforeAfterCommandCallback | null;
-    private _currentBeforeAssert: DirectAPICallback | null;
-    private _currentAfterAssert: DirectAPICallback | null;
+    private _currentBeforeScreenshot: DirectAPICallback | null;
+    private _currentAfterScreenshot: DirectAPICallback | null;
     _currentBrowser: IBrowser | null;
 
     directAPI: TestAssertAPIDirect;
@@ -102,8 +102,8 @@ export default class Testrunner extends EventEmitter {
         this._currentBeforeCommand = null;
         this._currentAfterCommand = null;
 
-        this._currentBeforeAssert = null;
-        this._currentAfterAssert = null;
+        this._currentBeforeScreenshot = null;
+        this._currentAfterScreenshot = null;
 
         this._isRunning = false;
         this._isAborting = false;
@@ -127,7 +127,6 @@ export default class Testrunner extends EventEmitter {
             scrollTo: async (selector: string) => scrollTo({ selector, testrunner: this }),
             delay: async (amount: number) => delayCmd({ amount, testrunner: this }),
             comment: this._comment.bind(this),
-            assert: async (opts: {selector?: string, fullPage?: boolean} = {}) => this._screenshot(opts),
             screenshot: async (opts: {selector?: string, fullPage?: boolean} = {}) => this._screenshot(opts),
             pressKey: async (keyCode: string) => pressKey({ keyCode, testrunner: this }),
             mouseover: this._mouseoverDirect.bind(this),
@@ -147,7 +146,6 @@ export default class Testrunner extends EventEmitter {
             scrollTo: async (selector: string) => scrollTo({ selector, testrunner: this, callHooks: true, callLifecycles: true }),
             delay: this.directAPI.delay,
             comment: this.directAPI.comment,
-            assert: async (opts: {selector?: string, fullPage?: boolean} = {}) => this._screenshot({ ...opts, callLifecycles: true }),
             screenshot: async (opts: {selector?: string, fullPage?: boolean} = {}) => this._screenshot({ ...opts, callLifecycles: true }),
             pressKey: async (keyCode: string) => pressKey({ keyCode, testrunner: this, callHooks: true, callLifecycles: true }),
             execFunction: async (fn: Function, ...args: any[]) => execFunction({ fn, args, testrunner: this, callHooks: true, callLifecycles: true }),
@@ -511,8 +509,8 @@ export default class Testrunner extends EventEmitter {
 
         this._currentBeforeCommand = suite.beforeCommand || null;
         this._currentAfterCommand = suite.afterCommand || null;
-        this._currentBeforeAssert = suite.beforeAssert || null;
-        this._currentAfterAssert = suite.afterAssert || null;
+        this._currentBeforeScreenshot = suite.beforeAssert || null;
+        this._currentAfterScreenshot = suite.afterAssert || null;
 
         try {
             testStartTime = Date.now();
@@ -637,7 +635,6 @@ export default class Testrunner extends EventEmitter {
                 pollInterval: cmd.pollInterval, timeout: cmd.timeout, initialDelay: cmd.initialDelay,
             });
             case 'focus': return api.focus(cmd.selector);
-            case 'assert': return api.assert();
                 // case 'scroll': return api.()
                 // TODO missing commands
             default: throw new Error(`Unknown cmd.type ${cmd.type}`);
@@ -811,7 +808,7 @@ export default class Testrunner extends EventEmitter {
         const refImgPath = pathlib.resolve(refImgDir, refImgName);
         const refImgPathRelative = pathlib.relative(pathlib.resolve(this._conf.referenceScreenshotsDir), refImgPath);
 
-        await this._currentBeforeAssert?.(this.directAPI);
+        await this._currentBeforeScreenshot?.(this.directAPI);
 
         await fsp.mkdir(refImgDir, { recursive: true });
 
@@ -831,7 +828,7 @@ export default class Testrunner extends EventEmitter {
             // this._tapWriter.ok(`new reference image added: ${refImgPathRelative}`);
             this._log.info(`new reference image added: ${refImgPathRelative}`);
 
-            await this._runCurrentAfterAssertTasks();
+            await this._runCurrentAfterScreenshotTasks();
             return;
         }
         // endregion
@@ -849,15 +846,15 @@ export default class Testrunner extends EventEmitter {
 
             if (imgDiffResult.same) {
                 // this._tapWriter.ok(`screenshot assert (${formattedPPM} ppm): ${refImgPathRelative}, retries: ${assertAttempt}`);
-                this._log.verbose(`OK screenshot assert (${formattedPPM} ppm): ${refImgPathRelative}, totalChangedPixels: ${imgDiffResult.totalChangedPixels}, retries: ${assertAttempt}`);
+                this._log.verbose(`OK screenshot (${formattedPPM} ppm): ${refImgPathRelative}, totalChangedPixels: ${imgDiffResult.totalChangedPixels}, retries: ${assertAttempt}`);
 
                 this.pluginManager.callHook('screenshot', { selector: options.selector, startTime, endTime: Date.now(), getScreenshot: this.getPNGScreenshot, success: true });
 
-                await this._runCurrentAfterAssertTasks();
+                await this._runCurrentAfterScreenshotTasks();
                 return;
             }
 
-            this._log.verbose(`screenshot assert failed: ${refImgPathRelative}, ppm: ${formattedPPM}, totalChangedPixels: ${imgDiffResult.totalChangedPixels}, attempt#: ${assertAttempt}`);
+            this._log.verbose(`screenshot failed: ${refImgPathRelative}, ppm: ${formattedPPM}, totalChangedPixels: ${imgDiffResult.totalChangedPixels}, attempt#: ${assertAttempt}`);
 
             if (assertAttempt < assertRetryMaxAttempts) {
                 screenshotBitmap = await Bitmap.from(await this._currentBrowser.screenshot({ selector: options.selector, fullPage: options.fullPage }));
@@ -867,7 +864,7 @@ export default class Testrunner extends EventEmitter {
             }
         }
 
-        const screenshotError = new ScreenshotError(`FAIL screenshot assert (${formattedPPM} ppm): ${refImgPathRelative}, totalChangedPixels: ${imgDiffResult.totalChangedPixels}`);
+        const screenshotError = new ScreenshotError(`FAIL screenshot (${formattedPPM} ppm): ${refImgPathRelative}, totalChangedPixels: ${imgDiffResult.totalChangedPixels}`);
         screenshotError.message += '\n' + getErrorOrigin(screenshotError);
 
         this.pluginManager.callHook('screenshot', { selector: options.selector, startTime, endTime: Date.now(), getScreenshot: this.getPNGScreenshot, success: false });
@@ -943,17 +940,17 @@ export default class Testrunner extends EventEmitter {
             });
         }
 
-        await this._runCurrentAfterAssertTasks();
+        await this._runCurrentAfterScreenshotTasks();
 
         if (options.callLifecycles) {
             await this._currentAfterCommand?.(this.directAPI, { type: 'screenshot' });
         }
     }
 
-    private async _runCurrentAfterAssertTasks() {
-        if (this._currentAfterAssert) {
+    private async _runCurrentAfterScreenshotTasks() {
+        if (this._currentAfterScreenshot) {
             try {
-                await this._currentAfterAssert(this.directAPI);
+                await this._currentAfterScreenshot(this.directAPI);
             }
             catch (error) {
                 this._log.verbose('_runCurrentAfterAssert catch');
