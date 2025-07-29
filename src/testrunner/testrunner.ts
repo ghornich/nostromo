@@ -1,4 +1,3 @@
-import isEqual from 'lodash.isequal';
 import fs, { promises as fsp } from 'fs';
 import pathlib from 'path';
 import util from 'util';
@@ -10,7 +9,7 @@ import delay from '../../modules/delay/delay';
 import { IBrowser } from '../../modules/browsers/browser-interface';
 import { logger, ChildLogger } from '../logging/logger';
 import { AbortError, ScreenshotError, BailoutError, CommandError, TestBailoutError, TestFailedError } from './errors';
-import { ellipsis, getIdFromName, multiGlobAsync, prettyMs } from '../utils';
+import { ellipsis, getIdFromName, prettyMs } from '../utils';
 import { TestrunnerConfig, Suite, Test, Command, TestRunReport, DirectAPICallback, BeforeAfterCommandCallback, TestAssertAPIDirect, TestAPI, TestFn } from '../../types';
 import { TEST_STATE } from '../../constants';
 import { PluginManager } from '../PluginManager';
@@ -26,6 +25,7 @@ import setFileInput from './commands/setFileInput';
 import pressKey from './commands/pressKey';
 import delayCmd from './commands/delay';
 import execFunction from './commands/execFunction';
+import { glob } from 'glob';
 
 const DEFAULT_TEST_NAME = '(Unnamed test)';
 
@@ -545,7 +545,7 @@ export default class Testrunner extends EventEmitter {
         const conf = this._conf;
 
         for (const suite of conf.suites) {
-            suite.tests = await this._parseTestFiles(await multiGlobAsync(suite.testFiles));
+            suite.tests = await this._parseTestFiles(await glob(suite.testFiles));
 
             if (conf.testFilter !== null) {
                 const filterRegex = new RegExp(conf.testFilter, 'i');
@@ -713,7 +713,7 @@ export default class Testrunner extends EventEmitter {
     }
 
     private _equal(actual: unknown, expected: unknown, description: string) {
-        if (isEqual(actual, expected)) {
+        if (util.isDeepStrictEqual(actual, expected)) {
             this._log.info('equal OK: ' + (description || '(unnamed)'));
         }
         else {

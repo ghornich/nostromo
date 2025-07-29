@@ -1,7 +1,4 @@
 const DEFAULT_ELLIPSIS_LIMIT = 40;
-import glob from 'glob';
-import util from 'util';
-const globAsync = util.promisify(glob);
 import unsafePrettyMs from 'pretty-ms';
 
 export function ellipsis(s: string, limit = DEFAULT_ELLIPSIS_LIMIT) {
@@ -10,16 +7,6 @@ export function ellipsis(s: string, limit = DEFAULT_ELLIPSIS_LIMIT) {
     }
 
     return `${s.substr(0, limit - 3)}...`;
-}
-
-export async function multiGlobAsync(globs: string[]) {
-    let paths: string[] = [];
-
-    for (const g of globs) {
-        paths = paths.concat(await globAsync(g));
-    }
-
-    return paths;
 }
 
 export function getIdFromName(name: string) {
