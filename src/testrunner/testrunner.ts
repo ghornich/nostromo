@@ -545,7 +545,7 @@ export default class Testrunner extends EventEmitter {
         const conf = this._conf;
 
         for (const suite of conf.suites) {
-            suite.tests = await this._parseTestFiles(await glob(suite.testFiles));
+            suite.tests = await this._parseTestFiles(await glob(suite.testFiles, { windowsPathsNoEscape: true }));
 
             if (conf.testFilter !== null) {
                 const filterRegex = new RegExp(conf.testFilter, 'i');
