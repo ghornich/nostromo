@@ -591,6 +591,8 @@ export default class Testrunner extends EventEmitter {
             });
         }
 
+        testRegistrar.skip = function () {};
+
         for (const path of testFilePaths) {
             const absPath = pathlib.resolve(path);
             const module = require(absPath);
